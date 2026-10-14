@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Umum -->
+    <string name="action_save">Simpan</string>
+    <string name="action_cancel">Batal</string>
+    <string name="action_delete">Hapus</string>
+    <string name="action_edit">Ubah</string>
+    <string name="action_close">Tutup</string>
+    <string name="action_pay">Bayar</string>
+    <string name="action_record">Catat</string>
+    <string name="action_add_product">Tambah barang</string>
+
+    <!-- Navigasi & judul -->
+    <string name="tab_home">Beranda</string>
+    <string name="tab_cashier">Kasir</string>
+    <string name="tab_stock">Stok</string>
+    <string name="tab_debt">Bon</string>
+    <string name="tab_more">Lainnya</string>
+    <string name="title_app">iTalase</string>
+    <string name="title_cashier">Kasir</string>
+    <string name="title_products">Stok Barang</string>
+    <string name="title_history">Riwayat Transaksi</string>
+    <string name="title_debts">Bon &amp; Hutang</string>
+    <string name="title_expenses">Pengeluaran</string>
+    <string name="title_more">Lainnya</string>
+
+    <!-- Beranda -->
+    <string name="dash_hello">Halo, Juragan</string>
+    <string name="dash_hello_sub">Ringkasan warung hari ini</string>
+    <string name="dash_omzet">OMZET HARI INI</string>
+    <string name="dash_trx_profit">%1$d transaksi • Untung %2$s</string>
+    <string name="dash_stat_net">Untung bersih</string>
+    <string name="dash_stat_gross">Untung kotor</string>
+    <string name="dash_stat_debt">Piutang aktif</string>
+    <string name="dash_debt_running">%1$d bon berjalan</string>
+    <string name="dash_top">Terlaris hari ini</string>
+    <string name="dash_top_count">%1$d barang</string>
+    <string name="dash_top_empty_t">Belum ada penjualan</string>
+    <string name="dash_top_empty_h">Transaksi kasir akan muncul di sini</string>
+    <string name="dash_top_sold">%1$d terjual</string>
+    <string name="dash_low">Stok menipis</string>
+    <string name="dash_low_count">%1$d perlu kulakan</string>
+    <string name="dash_low_empty_t">Semua stok aman</string>
+    <string name="dash_low_empty_h">Tidak ada barang di bawah batas minimum</string>
+    <string name="dash_min_stock">Minimum %1$d %2$s</string>
+    <string name="dash_stock_left">Sisa %1$d</string>
+
+    <!-- Kasir -->
+    <string name="cash_sub">Pilih barang, bayar, catat</string>
+    <string name="cash_search">Cari barang / barcode</string>
+    <string name="cash_empty_t">Barang tidak ketemu</string>
+    <string name="cash_empty_h">Coba kata kunci lain atau tambah barang baru di menu Stok</string>
+    <string name="cash_add_cart">+ Keranjang</string>
+    <string name="cash_product_line">%1$s • Stok %2$d</string>    <string name="cash_cart_items">%1$d item di keranjang</string>
+    <string name="cash_pay_title">Bayar %1$s</string>
+    <string name="cash_customer">Pelanggan (wajib jika Bon)</string>
+    <string name="cash_paid">Uang diterima (Rp)</string>
+    <string name="cash_m_cash">Tunai</string>
+    <string name="cash_m_transfer">Transfer</string>
+    <string name="cash_change">Kembalian</string>
+    <string name="cash_short">Kurang</string>
+    <string name="cash_short_hint">Uang kurang — sisanya otomatis tercatat sebagai Bon.</string>
+    <string name="msg_cart_empty">Keranjang kosong</string>
+    <string name="msg_product_gone">Produk %1$s tidak ditemukan</string>
+    <string name="msg_qty_invalid">Jumlah harus lebih dari 0</string>
+    <string name="msg_stock_short">Stok %1$s tidak cukup</string>
+    <string name="msg_txn_saved">Transaksi #%1$d tersimpan</string>
+    <string name="msg_checkout_failed">Pembayaran gagal disimpan</string>
+
+    <!-- Stok -->
+    <string name="prod_category">Kategori</string>
+    <string name="cat_all">Semua</string>
+    <string name="prod_count">%1$d barang tercatat</string>
+    <string name="prod_empty_t">Belum ada barang</string>
+    <string name="prod_empty_h">Tambah barang pertama lewat tombol + di bawah</string>
+    <string name="prod_out">Habis</string>
+    <string name="prod_stock_left">Stok %1$d</string>
+    <string name="prod_price_line">Beli %1$s • Jual %2$s • Untung %3$s/%4$s</string>
+    <string name="prod_new">Barang Baru</string>
+    <string name="prod_edit_title">Ubah Barang</string>
+    <string name="prod_name">Nama barang</string>
+    <string name="prod_buy">Harga beli</string>
+    <string name="prod_sell">Harga jual</string>
+    <string name="prod_stock">Stok</string>
+    <string name="prod_unit">Satuan</string>
+    <string name="prod_barcode">Barcode (opsional)</string>
+    <string name="msg_prod_saved">Barang tersimpan</string>
+    <string name="msg_prod_deleted">Barang dihapus</string>
+    <string name="msg_save_failed">Gagal menyimpan</string>
+    <string name="msg_delete_failed">Gagal menghapus</string>
+    <string name="err_name_required">Nama barang wajib diisi</string>
+    <string name="err_price_positive">Harga jual harus lebih dari 0</string>
+
+    <!-- Riwayat -->
+    <string name="hist_count">%1$d transaksi terakhir</string>
+    <string name="hist_empty_t">Belum ada transaksi</string>
+    <string name="hist_empty_h">Hasil penjualan dari kasir akan tercatat di sini</string>
+    <string name="hist_receipt">Struk #%1$d</string>
+    <string name="hist_profit">Untung %1$s</string>
+    <string name="status_paid">Lunas</string>
+    <string name="title_detail">Detail Struk</string>
+    <string name="detail_back">Kembali</string>
+    <string name="detail_items">Daftar barang</string>
+    <string name="detail_payment">Pembayaran</string>
+    <string name="detail_total">Total</string>
+    <string name="detail_received">Diterima</string>
+    <string name="detail_change">Kembalian</string>
+    <string name="detail_remaining">Sisa bon</string>
+    <string name="detail_edit_title">Ubah Struk</string>
+    <string name="detail_item_line">%1$d × %2$s</string>
+    <string name="detail_loading">Memuat struk...</string>
+    <string name="detail_not_found">Struk tidak ditemukan</string>
+    <string name="msg_sale_saved">Struk diperbarui</string>
+
+    <!-- Bon -->
+    <string name="debt_running">%1$d bon berjalan</string>
+    <string name="debt_total">TOTAL PIUTANG</string>
+    <string name="debt_empty_t">Tidak ada bon</string>
+    <string name="debt_empty_h">Bon kasir dan catatan manual muncul di sini</string>
+    <string name="debt_progress">Terbayar %1$s dari %2$s</string>
+    <string name="debt_remaining">Sisa %1$s</string>
+    <string name="debt_from_cashier">Bon kasir #%1$d</string>
+    <string name="debt_form">Catat Bon Manual</string>
+    <string name="debt_name">Nama pelanggan</string>
+    <string name="debt_amount">Nominal (Rp)</string>
+    <string name="debt_note">Catatan</string>
+    <string name="debt_pay_title">Catat Pembayaran</string>
+    <string name="debt_pay_amount">Nominal bayar (Rp)</string>
+    <string name="debt_pay_action">Catat Bayar</string>
+    <string name="msg_debt_saved">Bon tersimpan</string>
+    <string name="msg_debt_paid">Pembayaran %1$s tercatat</string>
+    <string name="msg_debt_save_failed">Gagal menyimpan bon</string>
+    <string name="msg_debt_pay_failed">Gagal mencatat pembayaran</string>
+    <string name="err_debt_paid">Bon ini sudah lunas</string>
+    <string name="err_customer_required">Nama pelanggan wajib diisi</string>
+    <string name="err_expense_name">Nama pengeluaran wajib diisi</string>
+    <string name="err_amount_positive">Nominal harus lebih dari 0</string>
+    <string name="err_debt_missing">Bon tidak ditemukan</string>
+
+    <!-- Pengeluaran -->
+    <string name="exp_count">%1$d catatan</string>
+    <string name="exp_total">TOTAL KELUAR</string>
+    <string name="exp_empty_t">Belum ada pengeluaran</string>
+    <string name="exp_empty_h">Catat listrik, plastik, parkir kulakan, dan lainnya</string>
+    <string name="exp_form">Catat Pengeluaran</string>
+    <string name="exp_name">Nama (mis. Listrik, Plastik)</string>
+    <string name="exp_category">Kategori</string>
+    <string name="exp_amount">Nominal</string>
+    <string name="msg_exp_saved">Pengeluaran tersimpan</string>
+    <string name="msg_exp_save_failed">Gagal menyimpan pengeluaran</string>
+    <string name="err_summary_failed">Gagal memuat ringkasan</string>
+    <string name="err_generic">Terjadi kesalahan, coba lagi</string>
+
+    <!-- Lainnya -->
+    <string name="more_sub">Menu tambahan warung</string>
+    <string name="more_history_d">Semua struk penjualan</string>
+    <string name="more_expense_d">Biaya operasional toko</string>
+    <string name="more_stock_d">Kelola barang &amp; kulakan</string>
+    <string name="more_about_t">iTalase • Offline</string>
+    <string name="more_about_d">Data tersimpan aman di HP, tanpa internet.</string>
+
+    <!-- Aksesibilitas -->
+    <string name="cd_search">Cari</string>
+    <string name="cd_add">Tambah</string>
+    <string name="cd_remove">Kurangi</string>
+    <string name="cd_open">Buka</string>
+    <string name="cd_add_product">Tambah barang</string>
+    <string name="cd_add_debt">Catat bon</string>
+    <string name="cd_add_expense">Catat pengeluaran</string>
+</resources>

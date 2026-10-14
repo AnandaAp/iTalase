@@ -1,0 +1,173 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidMultiplatformLibrary)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
+    alias(libs.plugins.koin.compiler)
+    kotlin("plugin.serialization")
+    id("kotlin-parcelize")
+}
+
+val buildConfigGenerator by tasks.registering(Sync::class) {
+    description = "Generate SharedBuildConfig.kt"
+    from(
+        resources.text.fromString(
+            """
+        |package generated.com.anlian.italase.shared
+        |
+        |object SharedBuildConfig {
+        |  private const val PROJECT_VERSION: String = "${project.version}"
+        |  const val APP_VERSION: String = PROJECT_VERSION
+        |  const val APP_VERSION_CODE: Int = ${libs.versions.app.versioncode.get().toInt()}
+        |  const val YOUTUBE_KEY: String = "${libs.versions.key.youtube.get()}"
+        |}
+        |
+      """.trimMargin()
+        )
+    ) {
+        rename { "SharedBuildConfig.kt" } // set the file name
+        into ("com/anlian/italase/shared")
+    }
+
+    into("src/commonMain/kotlin/generated/") // change the directory to match the package
+}
+
+val cleanBuildConfig by tasks.registering(Delete::class) {
+    description = "clean the generated shared build config"
+    val path = buildConfigGenerator.map { it.destinationDir }.get()
+    if (path.exists()) {
+        delete(path)
+    }
+}
+
+kotlin {
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
+    
+    android {
+        namespace = libs.versions.app.shared.get()
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        version = libs.versions.app.version.get()
+    
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_21
+        }
+        androidResources {
+            enable = true
+        }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
+        withDeviceTestBuilder {
+            sourceSetTreeName = "test"
+        }.configure {
+            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        }
+    }
+    
+    sourceSets {
+        androidMain.dependencies {
+            implementation(libs.compose.uiToolingPreview)
+            implementation(libs.compose.uiTooling)
+            implementation(libs.koin.android)
+            implementation(libs.koin.androidx.compose)
+            val bom = project.dependencies.platform(libs.compose.bom)
+
+            implementation(bom)
+            implementation(libs.bundles.android.compose)
+            api(libs.bundles.ktor.shared.android)
+            api(libs.bundles.android.essentials)
+        }
+        commonMain.dependencies {
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.animation.core)
+            implementation(libs.compose.animation.graphic)
+            implementation(libs.compose.ui)
+            implementation(libs.compose.components.resources)
+            implementation(libs.compose.uiToolingPreview)
+            implementation(libs.androidx.lifecycle.viewmodelCompose)
+            implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.androidx.lifecycle.viewmodel)
+            implementation(libs.androidx.lifecycle.runtime)
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.koin.core)
+            implementation(libs.koin.annotations)
+            implementation(libs.koin.compose)
+            implementation(libs.compose.navigation.multiplatform)
+            implementation(libs.room.runtime)
+            implementation(libs.sqlite.bundled)
+
+            api(libs.napier)
+            api(libs.bundles.ktor.core)
+            api(libs.kotlinx.collections.immutable)
+        }
+        commonMain.configure {
+            this@configure.kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
+    }
+
+    compilerOptions {
+        optIn.addAll(listOf(
+            "kotlin.RequiresOptIn",
+            "kotlin.ExperimentalStdlibApi",
+            "kotlin.ExperimentalUnsignedTypes"
+        ))
+        freeCompilerArgs.addAll(listOf(
+            "-Xexpect-actual-classes"
+        ))
+    }
+}
+
+dependencies {
+    androidRuntimeClasspath(libs.compose.uiTooling)
+    androidRuntimeClasspath(libs.koin.android)
+    androidRuntimeClasspath(libs.koin.androidx.compose)
+
+    val bom = project.dependencies.platform(libs.compose.bom)
+
+    androidRuntimeClasspath(bom)
+    androidRuntimeClasspath(libs.bundles.android.compose)
+
+    add("kspAndroid", libs.room.compiler)
+    add("kspIosArm64", libs.room.compiler)
+    add("kspIosSimulatorArm64", libs.room.compiler)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+koinCompiler {
+    userLogs = true
+    skipDefaultValues = true
+    compileSafety = true
+}
+
+tasks {
+    withType(KotlinCompile::class.java) {
+        dependsOn(buildConfigGenerator)
+    }
+}
+
+project.afterEvaluate {
+    tasks.named("generateComposeResClass").get().dependsOn(buildConfigGenerator)
+    tasks.getByName("clean").finalizedBy(cleanBuildConfig)
+}
