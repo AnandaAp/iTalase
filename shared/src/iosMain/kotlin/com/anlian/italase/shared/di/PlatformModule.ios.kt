@@ -6,9 +6,10 @@ import com.anlian.italase.shared.data.local.getDatabaseBuilder
 import com.anlian.italase.shared.data.local.getRoomDatabase
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Singleton
+import org.koin.core.component.KoinComponent
 
 @Module
-actual class PlatformModule {
+actual class PlatformModule: KoinComponent {
     @Singleton
     fun provideDbBuilder(): RoomDatabase.Builder<ITalaseDatabase> = getDatabaseBuilder()
 

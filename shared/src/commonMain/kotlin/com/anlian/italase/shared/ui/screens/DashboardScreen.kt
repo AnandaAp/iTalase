@@ -47,8 +47,10 @@ import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
+import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.Routes
+import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.dash_debt_running
@@ -123,9 +125,15 @@ fun DashboardContent(
     var appeared by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { appeared = true }
 
+    val scrollBehavior = LocalTopAppBarScrollBehavior.current
     Column(
         modifier = Modifier
             .fillMaxSize()
+            // Urutan penting: nestedScroll WAJIB di luar (sebelum) verticalScroll.
+            // Modifier paling awal = paling luar; event scroll naik dari child ke
+            // parent, jadi connection harus membungkus scrollable-nya agar
+            // contentOffset di top bar benar-benar ter-update.
+            .nestedScrollConnection(scrollBehavior, null)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),

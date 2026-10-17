@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -42,7 +43,9 @@ import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
+import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatDateTime
 import com.anlian.italase.shared.util.formatRupiah
 import italase.shared.generated.resources.Res
@@ -144,14 +147,20 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
         else -> stringResource(Res.string.tab_debt)
     }
 
+    val scrollBehavior = LocalTopAppBarScrollBehavior.current
+    val listState = rememberLazyListState()
     Column(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
     LazyColumn(
+        state = listState,
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.weight(1f),
-        contentPadding = PaddingValues(bottom = 88.dp),
+        modifier = Modifier
+            .weight(1f)
+            .nestedScrollConnection(scrollBehavior, listState),
+        // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
+        contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current),
     ) {
         item {
             ScreenHeader(

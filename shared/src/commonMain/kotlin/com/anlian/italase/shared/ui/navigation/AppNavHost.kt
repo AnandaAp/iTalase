@@ -19,12 +19,10 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -47,10 +45,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -182,7 +180,12 @@ fun AppNavHost(
     }
 
     // YouTube-style: top app bar hides on scroll down, shows on scroll up
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    // pinnedScrollBehavior, bukan enterAlways: bar tidak lagi menyembunyikan
+    // diri saat scroll. Ia tetap di tempat dan bertransisi dari tembus
+    // (di atas) menjadi frosted glass (saat konten lewat di belakangnya).
+    // enterAlways membuat judul hilang lalu konten menabrak status bar —
+    // persis masalah yang muncul di screenshot.
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     // Each destination starts with an expanded bar: the behavior is shared
     // across routes, so reset it on navigation. Otherwise a bar hidden on
@@ -210,13 +213,11 @@ fun AppNavHost(
         // tidak pernah lewat di BELAKANG kaca. Bar dirender sebagai overlay
         // sibling supaya konten bisa menggulir menembusnya.
         bottomBar = {},
-    ) { pad ->
+    ) {
         // Overlay: full-bleed content behind the status bar + translucent top bar on top.
         // Only the bottom bar reserves layout space; top offset is handled per-screen
         // as scrollable content padding so lists slide underneath it.
-        Box(
-            Modifier.fillMaxSize(),
-        ) {
+        Box(Modifier.fillMaxSize()) {
             val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
             // Footprint tab bar yang mengambang: margin bawah 12dp + tinggi bar 64dp,
             // di atas system nav bar. Ditambah jeda 8dp jadi ruang gulir minimum.
@@ -594,85 +595,96 @@ private fun GlassTabItem(
         )
     }
 }
-@OptIn(ExperimentalMaterial3Api::class)
+
+/**
+ * Top bar overlay. Dua keadaan:
+ *
+ *  • Di paling atas (collapse 0): TANPA latar → background app menembus sampai
+ *    ke status bar (sesuai catatan: top system bar harus tembus).
+ *
+ *  • Setelah di-scroll (collapse naik): menjadi FROSTED GLASS dengan bahasa
+ *    visual yang sama seperti bottom tab bar — surface α 0.85 + rim specular +
+ *    shadow diffuse. Tanpa ini konten yang menggulir menabrak jam status bar
+ *    dan judul (jelek, dan judul jadi tidak terbaca).
+ *
+ * CATATAN PENTING: nilai `collapse` hanya bergerak kalau layar memanggil
+ * Modifier.nestedScrollConnection(scrollBehavior, ...) pada container
+ * scroll-nya. Layar yang tidak memasangnya akan selalu collapse = 0, sehingga
+ * top bar tetap tembus dan konten menabrak status bar.
+ */
 @Composable
 private fun PremiumTopBar(
     title: String,
     scrollBehavior: TopAppBarScrollBehavior?,
 ) {
-    val surface = MaterialTheme.colorScheme.surface
-    // 0f expanded → 1f fully collapsed on scroll.
-    val collapse = scrollBehavior?.state?.collapsedFraction ?: 0f
-    // Same translation the TopAppBar applies internally, so scrim and bar move as one.
-    val barOffset = scrollBehavior?.state?.heightOffset ?: 0f
-    // Scrim mengikuti scroll, bukan konstan. Saat berada di paling atas
-    // (collapse 0) scrim NOL → background aplikasi menembus sampai ke status
-    // bar. Begitu konten mulai lewat di belakang bar (collapse naik), scrim
-    // menguat supaya judul tetap terbaca di atas konten yang menggulir.
-    // Ini perilaku large-title ala iOS.
-    val scrim = 0.92f * collapse
-    Box(Modifier.fillMaxWidth()) {
-        // Fixed status scrim: never moves, keeps the system bar translucent
-        // with content faintly melting underneath when the bar is hidden.
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .windowInsetsTopHeight(TopAppBarDefaults.windowInsets)
-                .then(
-                    if (scrim > 0.01f) {
-                        Modifier.background(
-                            Brush.verticalGradient(
-                                0f to surface.copy(alpha = scrim),
-                                1f to surface.copy(alpha = scrim * 0.65f),
-                            ),
-                        )
-                    } else {
-                        Modifier
-                    },
-                ),
-        )
-        // Moving bar unit.
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .graphicsLayer { translationY = barOffset },
-        ) {
-            if (scrim > 0.01f) {
-                Box(
-                    Modifier.matchParentSize().background(
+    val scheme = MaterialTheme.colorScheme
+    val surface = scheme.surface
+    val isDark = surface.luminance() < 0.5f
+    // PENTING — kenapa overlappedFraction, bukan collapsedFraction:
+    // PinnedScrollBehavior hanya memperbarui contentOffset dan TIDAK pernah
+    // menyentuh heightOffset (lihat material3 AppBar.kt, PinnedScrollBehavior).
+    // collapsedFraction = heightOffset / heightOffsetLimit = 0 / -barHeight,
+    // jadi SELALU 0 → frosted glass tidak pernah terpicu.
+    // overlappedFraction justru didefinisikan sebagai "persentase area app bar
+    // yang ter-overlap konten yang di-scroll di belakangnya": 0 saat di paling
+    // atas, naik ke 1 saat konten mulai lewat. Persis sinyal yang dibutuhkan.
+    val glass = (scrollBehavior?.state?.overlappedFraction ?: 0f).coerceIn(0f, 1f)
+
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .then(
+                if (glass > 0.01f) {
+                    Modifier.shadow(
+                        elevation = 10.dp * glass,
+                        shape = RectangleShape,
+                        ambientColor = scheme.onSurface.copy(alpha = 0.10f),
+                        spotColor = scheme.onSurface.copy(alpha = 0.16f),
+                    )
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+            // Panel kaca: satu bidang menutup status bar + bar, sama seperti
+            // perlakuan pada tab bar bawah.
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(surface.copy(alpha = if (isDark) 0.80f else 0.85f * glass)),
+            )
+            // Rim specular di tepi bawah — pantulan cahaya, bukan stroke seragam.
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(
                         Brush.verticalGradient(
-                            0f to surface.copy(alpha = scrim),
-                            0.7f to surface.copy(alpha = scrim * 0.9f),
-                            1f to surface.copy(alpha = scrim * 0.7f),
+                            listOf(
+                                Color.White.copy(alpha = 0.55f * glass),
+                                scheme.onSurface.copy(alpha = 0.10f * glass),
+                            ),
                         ),
                     ),
-                )
-            }
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        title,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.25.sp,
-                        maxLines = 1,
-                    )
-                },
-                scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    navigationIconContentColor = Color.Unspecified,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = Color.Unspecified,
-                ),
             )
-            if (collapse > 0.02f) {
-                HorizontalDivider(
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                    thickness = Dp.Hairline,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f * collapse),
+        CenterAlignedTopAppBar(
+            title = {
+                Text(
+                    title,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.25.sp,
+                    maxLines = 1,
                 )
-            }
-        }
+            },
+            scrollBehavior = scrollBehavior,
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                scrolledContainerColor = Color.Transparent,
+                navigationIconContentColor = Color.Unspecified,
+                titleContentColor = scheme.onSurface,
+                actionIconContentColor = Color.Unspecified,
+            ),
+        )
     }
 }

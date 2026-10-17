@@ -47,6 +47,7 @@ import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import com.anlian.italase.shared.util.parseRupiah
 import italase.shared.generated.resources.Res
@@ -177,9 +178,12 @@ fun ProductContent(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .nestedScrollConnection(scrollBehavior, listState),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 88.dp),
+                    // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
+                    contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current),
                 ) {
                     items(products, key = { it.id }) { p ->
                         val low = p.stock <= p.minStock || p.stock <= StockRules.LOW_STOCK_FALLBACK
