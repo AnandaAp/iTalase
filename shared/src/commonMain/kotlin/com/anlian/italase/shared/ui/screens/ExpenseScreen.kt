@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -32,9 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.data.local.entity.ExpenseEntity
+import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
-import com.anlian.italase.shared.ui.components.ListCard
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.painter
@@ -65,22 +64,32 @@ import italase.shared.generated.resources.exp_name
 import italase.shared.generated.resources.exp_total
 import italase.shared.generated.resources.title_expenses
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.anlian.italase.shared.ui.components.GlassCard
+import com.anlian.italase.shared.ui.components.LoadMoreFooter
+import com.anlian.italase.shared.ui.components.onBottomReached
 
 @Composable
 fun ExpenseScreen(
     items: List<ExpenseEntity>,
     message: String,
     showAddDialog: Boolean,
+    loadingMore: Boolean = false,
+    hasMore: Boolean = false,
     onAdd: () -> Unit = {},
     onDelete: (Long) -> Unit = {},
     onDismissAdd: () -> Unit = {},
     onSaveExpense: (String, String, Long, String) -> Unit = { _, _, _, _ -> },
+    onLoadMore: () -> Unit = {},
 ) {
     ExpenseContent(
         items = items,
         message = message,
+        loadingMore = loadingMore,
+        hasMore = hasMore,
         onAdd = onAdd,
         onDelete = onDelete,
+        onLoadMore = onLoadMore,
     )
 
     if (showAddDialog) {
@@ -95,8 +104,11 @@ fun ExpenseScreen(
 fun ExpenseContent(
     items: List<ExpenseEntity>,
     message: String,
+    loadingMore: Boolean = false,
+    hasMore: Boolean = false,
     onAdd: () -> Unit = {},
     onDelete: (Long) -> Unit = {},
+    onLoadMore: () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
@@ -114,9 +126,12 @@ fun ExpenseContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-            Card(
+            // Kartu total: primitif kaca yang sama dengan layar lain, warna
+            // maknanya tetap (sand) — lihat DebtScreen untuk alasannya.
+            GlassCard(
                 modifier = Modifier.fillMaxWidth().enter(appeared, 0),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                tint = MaterialTheme.colorScheme.secondaryContainer,
+                alpha = 0.95f,
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
@@ -146,6 +161,12 @@ fun ExpenseContent(
                     stringResource(Res.string.exp_empty_h),
                 )
             } else {
+                // Lihat catatan di HistoryScreen: isi LazyColumn bukan scope
+                // @Composable, jadi pemicunya dipasang di luar.
+                listState.onBottomReached(
+                    enabled = hasMore && !loadingMore,
+                    onLoadMore = onLoadMore,
+                )
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -153,7 +174,7 @@ fun ExpenseContent(
                     contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
                 ) {
                     items(items, key = { it.id }) { e ->
-                        ListCard {
+                        GlassCard(shape = RoundedCornerShape(20.dp)) {
                             Row(
                                 Modifier.fillMaxWidth().padding(14.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -184,6 +205,7 @@ fun ExpenseContent(
                             }
                         }
                     }
+                    item(key = "load-more") { LoadMoreFooter(loadingMore) }
                 }
             }
         }
@@ -203,6 +225,7 @@ fun ExpenseFormDialog(onDismiss: () -> Unit, onSave: (String, String, Long, Stri
     var cat by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
+    AnnounceGlassDialogOpen()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.exp_form)) },

@@ -13,20 +13,41 @@ import com.anlian.italase.shared.data.repository.CartLine
 import com.anlian.italase.shared.data.repository.DaySummary
 import com.anlian.italase.shared.data.repository.ShopException
 import com.anlian.italase.shared.data.repository.ShopRepository
-import com.anlian.italase.shared.util.filterProducts
+import com.anlian.italase.shared.util.ProductList
 import com.anlian.italase.shared.util.nowMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.Singleton
+import com.anlian.italase.shared.util.PAGE_SIZE
+import com.anlian.italase.shared.util.hasMorePages
+import kotlinx.coroutines.delay
 
 private const val SUBSCRIBE_TIMEOUT_MILLIS = 5_000L
+
+/**
+ * Jeda sebelum query disaring. Mengetik "susu" itu 4 ketikan, tapi cuma butuh
+ * 1 saring — dengan jeda ini yang jalan 1, bukan 4.
+ */
+private const val QUERY_DEBOUNCE_MILLIS = 120L
+
+/**
+ * Lantai waktu tampil indikator "memuat halaman berikutnya".
+ *
+ * SQLite lokal mengembalikan satu halaman dalam hitungan milidetik. Indikator
+ * yang muncul lalu hilang dalam kurang dari satu frame cuma berkedip dan
+ * terbaca seperti bug, jadi ditahan minimal selama ini. Ini BATAS TAMPIL
+ * MINIMUM, bukan kerja palsu yang ditambahkan ke alur data.
+ */
+private const val MIN_LOADING_MILLIS = 400L
 
 @Singleton
 class DashboardViewModel(private val repo: ShopRepository) : ViewModel() {
@@ -55,6 +76,7 @@ class DashboardViewModel(private val repo: ShopRepository) : ViewModel() {
     }
 }
 
+@OptIn(FlowPreview::class)
 @Singleton
 class ProductViewModel(private val repo: ShopRepository) : ViewModel() {
     val products: StateFlow<List<ProductEntity>> =
@@ -63,13 +85,22 @@ class ProductViewModel(private val repo: ShopRepository) : ViewModel() {
     val query: MutableStateFlow<String> = MutableStateFlow("")
     val category: MutableStateFlow<String?> = MutableStateFlow(null)
 
+    /**
+     * Daftar terurut + kunci huruf-kecil, dihitung SEKALI per perubahan tabel.
+     * Inilah pemisahnya: urutan & `lowercase()` tidak lagi diulang tiap ketikan.
+     */
+    private val productList: StateFlow<ProductList> = products
+        .map { ProductList.of(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), ProductList.EMPTY)
+
     val categories: StateFlow<List<String>> = products
         .map { list -> list.map { it.category.ifBlank { ProductCategories.OTHER } }.distinct().sorted() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
 
     val visibleProducts: StateFlow<List<ProductEntity>> =
-        combine(products, query, category) { list, q, c -> filterProducts(list, q, c) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+        combine(productList, query.debounce(QUERY_DEBOUNCE_MILLIS), category) { list, q, c ->
+            list.visible(q, c)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
 
     fun search(q: String) {
         query.value = q
@@ -130,6 +161,7 @@ class ProductViewModel(private val repo: ShopRepository) : ViewModel() {
     }
 }
 
+@OptIn(FlowPreview::class)
 @Singleton
 class CashierViewModel(private val repo: ShopRepository) : ViewModel() {
     val products: StateFlow<List<ProductEntity>> =
@@ -141,13 +173,22 @@ class CashierViewModel(private val repo: ShopRepository) : ViewModel() {
     val message: MutableStateFlow<UiMessage?> = MutableStateFlow(null)
     val lastSaleId: MutableStateFlow<Long?> = MutableStateFlow(null)
 
+    /**
+     * Daftar terurut + kunci huruf-kecil, dihitung SEKALI per perubahan tabel.
+     * Inilah pemisahnya: urutan & `lowercase()` tidak lagi diulang tiap ketikan.
+     */
+    private val productList: StateFlow<ProductList> = products
+        .map { ProductList.of(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), ProductList.EMPTY)
+
     val categories: StateFlow<List<String>> = products
         .map { list -> list.map { it.category.ifBlank { ProductCategories.OTHER } }.distinct().sorted() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
 
     val visibleProducts: StateFlow<List<ProductEntity>> =
-        combine(products, query, category) { list, q, c -> filterProducts(list, q, c) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+        combine(productList, query.debounce(QUERY_DEBOUNCE_MILLIS), category) { list, q, c ->
+            list.visible(q, c)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
 
     fun search(q: String) {
         query.value = q
@@ -226,16 +267,41 @@ class CashierViewModel(private val repo: ShopRepository) : ViewModel() {
 class HistoryViewModel(private val repo: ShopRepository) : ViewModel() {
     val category: MutableStateFlow<String?> = MutableStateFlow(null)
 
-    val sales: StateFlow<List<SaleEntity>> = category.flatMapLatest { c ->
-        if (c == null) repo.observeRecentSales(ShopRepository.RECENT_SALES_LIMIT)
-        else repo.observeSalesByCategory(c, ShopRepository.RECENT_SALES_LIMIT)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+    /** Batas baris yang diminta ke SQL — tumbuh PAGE_SIZE tiap muat-tambahan. */
+    private val limit: MutableStateFlow<Int> = MutableStateFlow(PAGE_SIZE)
+    private val loading: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
+    val sales: StateFlow<List<SaleEntity>> = combine(category, limit) { c, l -> c to l }
+        .flatMapLatest { (c, l) ->
+            if (c == null) repo.observeRecentSales(l) else repo.observeSalesByCategory(c, l)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
 
     val categories: StateFlow<List<String>> = repo.observeItemCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
 
+    val loadingMore: StateFlow<Boolean> = loading
+
+    val hasMore: StateFlow<Boolean> = combine(sales, limit) { s, l -> hasMorePages(s.size, l) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), false)
+
+    /** Satu halaman lagi, tepat PAGE_SIZE. Diabaikan kalau sudah mentok/masih memuat. */
+    fun loadMore() {
+        if (loading.value || !hasMore.value) return
+        loading.value = true
+        limit.value += PAGE_SIZE
+        viewModelScope.launch {
+            delay(MIN_LOADING_MILLIS)
+            loading.value = false
+        }
+    }
+
     fun selectCategory(c: String?) {
+        if (category.value == c) return
         category.value = c
+        // Ganti saringan = mulai dari halaman pertama lagi.
+        limit.value = PAGE_SIZE
+        loading.value = false
     }
 
     val detail: MutableStateFlow<ShopRepository.SaleDetail?> = MutableStateFlow(null)
@@ -309,9 +375,33 @@ class DebtViewModel(private val repo: ShopRepository) : ViewModel() {
 }
 
 @Singleton
+@OptIn(ExperimentalCoroutinesApi::class)
 class ExpenseViewModel(private val repo: ShopRepository) : ViewModel() {
-    val items: StateFlow<List<ExpenseEntity>> =
-        repo.observeExpenses().stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+    /** Batas baris yang diminta ke SQL — tumbuh PAGE_SIZE tiap muat-tambahan. */
+    private val limit: MutableStateFlow<Int> = MutableStateFlow(PAGE_SIZE)
+    private val loading: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
+    val items: StateFlow<List<ExpenseEntity>> = limit
+        .flatMapLatest { repo.observeExpenses(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+
+    val loadingMore: StateFlow<Boolean> = loading
+
+    val hasMore: StateFlow<Boolean> = combine(items, limit) { i, l -> hasMorePages(i.size, l) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), false)
+
+    /** Satu halaman lagi, tepat PAGE_SIZE. Diabaikan kalau sudah mentok/masih memuat. */
+    fun loadMore() {
+        if (loading.value || !hasMore.value) return
+        loading.value = true
+        limit.value += PAGE_SIZE
+        viewModelScope.launch {
+            // Lihat catatan MIN_LOADING_MILLIS.
+            delay(MIN_LOADING_MILLIS)
+            loading.value = false
+        }
+    }
+
     val message: MutableStateFlow<UiMessage?> = MutableStateFlow(null)
 
     fun save(name: String, category: String, amount: Long, note: String) {

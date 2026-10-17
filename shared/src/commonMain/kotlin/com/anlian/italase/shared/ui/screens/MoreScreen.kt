@@ -1,6 +1,5 @@
 package com.anlian.italase.shared.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,8 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.ui.components.AppIcon
+import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.components.rememberAppear
@@ -35,12 +33,10 @@ import italase.shared.generated.resources.more_about_d
 import italase.shared.generated.resources.more_about_t
 import italase.shared.generated.resources.more_expense_d
 import italase.shared.generated.resources.more_history_d
-import italase.shared.generated.resources.more_stock_d
 import italase.shared.generated.resources.more_sub
 import italase.shared.generated.resources.title_expenses
 import italase.shared.generated.resources.title_history
 import italase.shared.generated.resources.title_more
-import italase.shared.generated.resources.title_products
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -75,16 +71,7 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
             desc = stringResource(Res.string.more_expense_d),
             icon = AppIcon.PAYMENTS,
         ) { onNavigate(Routes.EXPENSE) }
-        MoreRow(
-            title = stringResource(Res.string.title_products),
-            desc = stringResource(Res.string.more_stock_d),
-            icon = AppIcon.INVENTORY,
-        ) { onNavigate(Routes.STOCK) }
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        ) {
+        GlassCard {
             Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     AppIcon.STOREFRONT.painter(),
@@ -112,12 +99,7 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
 
 @Composable
 private fun MoreRow(title: String, desc: String, icon: AppIcon, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
+    GlassCard(onClick = onClick) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 icon.painter(),

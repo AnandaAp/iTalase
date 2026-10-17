@@ -68,6 +68,7 @@ import com.anlian.italase.shared.data.StockRules
 import com.anlian.italase.shared.data.local.entity.ProductEntity
 import com.anlian.italase.shared.platform.rememberAppExit
 import com.anlian.italase.shared.ui.components.AppIcon
+import com.anlian.italase.shared.ui.components.GlassDialogBackdrop
 import com.anlian.italase.shared.ui.components.glassSurface
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.screens.CashierScreen
@@ -96,6 +97,8 @@ import kotlinx.collections.immutable.toImmutableMap
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+import androidx.compose.material3.IconButton
+import italase.shared.generated.resources.cd_back
 
 private data class Tab(val route: String, val label: StringResource, val icon: AppIcon)
 
@@ -293,7 +296,20 @@ fun AppNavHost(
             // konten app di belakang dialog. Dialog-nya sendiri adalah jendela
             // terpisah (android.ui.window.Dialog) sehingga TIDAK ikut ter-blur —
             // ini satu-satunya komposisi blur yang benar di Compose Multiplatform.
-            modifier = Modifier.blur(if (confirmExit) 20.dp else 0.dp),
+            //
+            // Dinyalakan oleh `confirmExit` (dialog keluar) ATAU
+            // GlassDialogBackdrop (dialog kaca mana pun, mis. konfirmasi hapus di
+            // Stok). Tanpa yang kedua, latar dialog dari baris daftar tetap tajam
+            // dan teksnya menembus panel — lihat catatan di Common.kt.
+            //
+            // Catatan minSdk 26: Modifier.blur no-op di bawah API 31. Di sana
+            // kedua jalur sama-sama tidak ter-blur, jadi tidak ada ketimpangan;
+            // yang hilang cuma kehalusan latarnya. Kalau itu suatu saat jadi
+            // masalah, tambahkan scrim eksplisit di dalam dialog — bukan
+            // menurunkan alpha panel.
+            modifier = Modifier.blur(
+                if (confirmExit || GlassDialogBackdrop.open) 20.dp else 0.dp,
+            ),
             containerColor = Color.Transparent,
             // No automatic insets: content draws full-bleed behind the status bar,
             // top bar overlays it translucency-style (YouTube). Bottom bar is NOT
@@ -430,16 +446,21 @@ fun AppNavHost(
                                 val sales by vm.sales.collectAsState()
                                 val category by vm.category.collectAsState()
                                 val categories by vm.categories.collectAsState()
+                                val loadingMore by vm.loadingMore.collectAsState()
+                                val hasMore by vm.hasMore.collectAsState()
 
                                 HistoryScreen(
                                     sales = sales,
                                     categories = categories,
                                     activeCategory = category,
+                                    loadingMore = loadingMore,
+                                    hasMore = hasMore,
                                     onCategory = vm::selectCategory,
                                     onOpen = {
                                         vm.selectSale(it)
                                         goToScreen(Routes.HISTORY_DETAIL)
                                     },
+                                    onLoadMore = vm::loadMore,
                                 )
                             }
                         }
@@ -500,12 +521,16 @@ fun AppNavHost(
                                 val vm: ExpenseViewModel = koinInject()
                                 val items by vm.items.collectAsState()
                                 val message by vm.message.collectAsState()
+                                val loadingMore by vm.loadingMore.collectAsState()
+                                val hasMore by vm.hasMore.collectAsState()
                                 var showAdd by remember { mutableStateOf(false) }
 
                                 ExpenseScreen(
                                     items = items,
                                     message = message?.text().orEmpty(),
                                     showAddDialog = showAdd,
+                                    loadingMore = loadingMore,
+                                    hasMore = hasMore,
                                     onAdd = { showAdd = true },
                                     onDelete = vm::delete,
                                     onDismissAdd = { showAdd = false },
@@ -513,6 +538,7 @@ fun AppNavHost(
                                         vm.save(name, category, amount, note)
                                         showAdd = false
                                     },
+                                    onLoadMore = vm::loadMore,
                                 )
                             }
                         }
@@ -543,6 +569,8 @@ fun AppNavHost(
                                 eyebrow = topBarState.eyebrow[current].orEmpty(),
                                 title = topBarState.title[current].orEmpty(),
                                 scrollOffset = frostOffset,
+                                showBack = Routes.hasBackButton(current),
+                                onBack = { navController.popBackStack() },
                             )
                         }
             }
@@ -780,6 +808,8 @@ private fun PremiumTopBar(
     eyebrow: String,
     title: String,
     scrollOffset: Float,
+    showBack: Boolean = false,
+    onBack: () -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val surface = scheme.surface
@@ -827,33 +857,54 @@ private fun PremiumTopBar(
                     ),
             )
         }
-        Column(
+        // Baris: [tombol back?] [eyebrow + judul]. Padding kiri dikurangi saat
+        // tombolnya ada, karena IconButton sudah membawa padding sentuh 12dp-nya
+        // sendiri — kalau tidak, judulnya terdorong terlalu jauh ke kanan
+        // dibanding layar yang tanpa tombol back.
+        Row(
             Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+                .padding(
+                    start = if (showBack) 8.dp else 20.dp,
+                    end = 20.dp,
+                    top = 10.dp,
+                    bottom = 14.dp,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (eyebrow.isNotBlank()) {
+            if (showBack) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        AppIcon.ARROW_BACK_IOS_NEW.painter(),
+                        contentDescription = stringResource(Res.string.cd_back),
+                        tint = scheme.onSurface,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (eyebrow.isNotBlank()) {
+                    Text(
+                        eyebrow.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp,
+                        color = scheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
-                    eyebrow.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
+                    title,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp,
-                    color = scheme.primary,
+                    letterSpacing = (-0.25).sp,
+                    color = scheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.25).sp,
-                color = scheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }

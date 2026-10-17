@@ -37,9 +37,11 @@ import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.data.ProductCategories
 import com.anlian.italase.shared.data.StockRules
 import com.anlian.italase.shared.data.local.entity.ProductEntity
+import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.CategoryChips
 import com.anlian.italase.shared.ui.components.GlassCard
+import com.anlian.italase.shared.ui.components.GlassConfirmDialog
 import com.anlian.italase.shared.ui.components.GlassEmptyState
 import com.anlian.italase.shared.ui.components.GlassTextField
 import com.anlian.italase.shared.ui.components.PrimaryFab
@@ -65,10 +67,13 @@ import italase.shared.generated.resources.action_save
 import italase.shared.generated.resources.cash_search
 import italase.shared.generated.resources.cd_add_product
 import italase.shared.generated.resources.cd_search
+import italase.shared.generated.resources.exit_eyebrow
 import italase.shared.generated.resources.prod_barcode
 import italase.shared.generated.resources.prod_buy
 import italase.shared.generated.resources.prod_category
 import italase.shared.generated.resources.prod_count
+import italase.shared.generated.resources.prod_del_msg
+import italase.shared.generated.resources.prod_del_title
 import italase.shared.generated.resources.prod_edit_title
 import italase.shared.generated.resources.prod_empty_h
 import italase.shared.generated.resources.prod_empty_t
@@ -136,6 +141,8 @@ fun ProductContent(
     onEdit: (ProductEntity) -> Unit = {},
     onDelete: (ProductEntity) -> Unit = {},
 ) {
+    // Aksi destruktif ditahan di sini dulu sampai user mengonfirmasi.
+    var pendingDelete by remember { mutableStateOf<ProductEntity?>(null) }
     Box(Modifier.fillMaxSize()) {
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
@@ -246,7 +253,7 @@ fun ProductContent(
                                     // satu warna. Sebelumnya mewarisi warna primary
                                     // (hijau), sehingga aksi hapus terbaca "aman".
                                     TextButton(
-                                        onClick = { onDelete(p) },
+                                        onClick = { pendingDelete = p },
                                         colors = ButtonDefaults.textButtonColors(
                                             contentColor = MaterialTheme.colorScheme.error,
                                         ),
@@ -275,6 +282,22 @@ fun ProductContent(
             onClick = onAdd,
             modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar().enter(appeared, 2),
         )
+
+        // Konfirmasi pakai panel yang SAMA dengan dialog keluar: satu resep
+        // dialog konfirmasi untuk seluruh app.
+        pendingDelete?.let { target ->
+            GlassConfirmDialog(
+                eyebrow = stringResource(Res.string.exit_eyebrow),
+                title = stringResource(Res.string.prod_del_title),
+                message = stringResource(Res.string.prod_del_msg, target.name),
+                confirmText = stringResource(Res.string.action_delete),
+                onConfirm = {
+                    pendingDelete = null
+                    onDelete(target)
+                },
+                onDismiss = { pendingDelete = null },
+            )
+        }
     }
 }
 
@@ -304,6 +327,7 @@ fun ProductFormDialog(
         }
     }
     
+    AnnounceGlassDialogOpen()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {

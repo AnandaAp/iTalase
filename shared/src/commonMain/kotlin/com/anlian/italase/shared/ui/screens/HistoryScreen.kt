@@ -25,7 +25,6 @@ import com.anlian.italase.shared.data.local.entity.TxnStatus
 import com.anlian.italase.shared.ui.components.CategoryChips
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.Enter
-import com.anlian.italase.shared.ui.components.ListCard
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.rememberAppear
@@ -47,16 +46,32 @@ import italase.shared.generated.resources.status_paid
 import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.title_history
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.anlian.italase.shared.ui.components.GlassCard
+import com.anlian.italase.shared.ui.components.LoadMoreFooter
+import com.anlian.italase.shared.ui.components.onBottomReached
 
 @Composable
 fun HistoryScreen(
     sales: List<SaleEntity>,
     categories: List<String>,
     activeCategory: String?,
+    loadingMore: Boolean = false,
+    hasMore: Boolean = false,
     onCategory: (String?) -> Unit = {},
     onOpen: (Long) -> Unit = {},
+    onLoadMore: () -> Unit = {},
 ) {
-    HistoryContent(sales = sales, categories = categories, activeCategory = activeCategory, onCategory = onCategory, onOpen = onOpen)
+    HistoryContent(
+        sales = sales,
+        categories = categories,
+        activeCategory = activeCategory,
+        loadingMore = loadingMore,
+        hasMore = hasMore,
+        onCategory = onCategory,
+        onOpen = onOpen,
+        onLoadMore = onLoadMore,
+    )
 }
 
 @Composable
@@ -71,8 +86,11 @@ fun HistoryContent(
     sales: List<SaleEntity>,
     categories: List<String> = emptyList(),
     activeCategory: String? = null,
+    loadingMore: Boolean = false,
+    hasMore: Boolean = false,
     onCategory: (String?) -> Unit = {},
     onOpen: (Long) -> Unit = {},
+    onLoadMore: () -> Unit = {},
 ) {
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val listState = rememberLazyListState()
@@ -102,6 +120,14 @@ fun HistoryContent(
                 stringResource(Res.string.hist_empty_h),
             )
         } else {
+            // Pemicu muat-tambahan dipasang DI LUAR LazyColumn: isi LazyColumn
+            // bertipe LazyListScope (bukan @Composable), jadi composable seperti
+            // onBottomReached tidak bisa dipanggil di dalamnya. Ia hanya membaca
+            // listState, jadi posisinya di sini sama saja.
+            listState.onBottomReached(
+                enabled = hasMore && !loadingMore,
+                onLoadMore = onLoadMore,
+            )
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -111,7 +137,7 @@ fun HistoryContent(
             ) {
                 items(sales, key = { it.id }) { s ->
                     val lunas = s.status == TxnStatus.LUNAS
-                    ListCard(onClick = { onOpen(s.id) }) {
+                    GlassCard(shape = RoundedCornerShape(20.dp), onClick = { onOpen(s.id) }) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(
                                 Modifier.fillMaxWidth(),
@@ -156,6 +182,7 @@ fun HistoryContent(
                         }
                     }
                 }
+                item(key = "load-more") { LoadMoreFooter(loadingMore) }
             }
         }
     }

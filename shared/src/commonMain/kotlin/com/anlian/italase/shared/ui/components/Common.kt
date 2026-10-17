@@ -23,12 +23,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +39,9 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,14 +64,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.anlian.italase.shared.util.endOfListReached
 import italase.shared.generated.resources.Res
+import italase.shared.generated.resources.action_cancel
 import italase.shared.generated.resources.cat_all
-import italase.shared.generated.resources.cd_exit_warning
+import italase.shared.generated.resources.cd_confirm_warning
 import italase.shared.generated.resources.exit_cancel
 import italase.shared.generated.resources.exit_confirm
 import italase.shared.generated.resources.exit_eyebrow
 import italase.shared.generated.resources.exit_msg
 import italase.shared.generated.resources.exit_title
+import italase.shared.generated.resources.load_more_loading
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -166,6 +173,65 @@ fun MoneyBig(amount: String, label: String, light: Boolean = false) {
     Column {
         Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = labelColor, fontWeight = FontWeight.Bold)
         Text(amount, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = valueColor)
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  LAZY LOAD — kaki daftar + pemicu halaman berikutnya
+// ════════════════════════════════════════════════════════════════════════
+//  Tinggi kaki dipesan TETAP walau sedang tidak memuat. Kalau tingginya
+//  berubah-ubah, daftar yang sedang di-scroll akan tersentak saat indikator
+//  muncul/hilang.
+private val LOAD_MORE_FOOTER_HEIGHT = 56.dp
+
+/** Kaki daftar: indikator saat halaman berikutnya sedang dimuat. */
+@Composable
+fun LoadMoreFooter(loading: Boolean, modifier: Modifier = Modifier) {
+    Box(
+        modifier.fillMaxWidth().height(LOAD_MORE_FOOTER_HEIGHT),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!loading) return@Box
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                stringResource(Res.string.load_more_loading),
+                modifier = Modifier.padding(start = 10.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * Panggil [onLoadMore] begitu daftar sampai di ujung bawah.
+ *
+ * Dipasang di dalam LazyColumn-nya sendiri; [enabled] dipakai untuk mematikan
+ * pemicunya selama masih memuat atau saat sudah tidak ada halaman tersisa,
+ * sehingga tidak ada permintaan beruntun.
+ */
+@Composable
+fun LazyListState.onBottomReached(
+    enabled: Boolean,
+    onLoadMore: () -> Unit,
+    buffer: Int = 3,
+) {
+    val reached by remember {
+        derivedStateOf {
+            endOfListReached(
+                lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1,
+                totalCount = layoutInfo.totalItemsCount,
+                buffer = buffer,
+            )
+        }
+    }
+    LaunchedEffect(reached, enabled) {
+        if (reached && enabled) onLoadMore()
     }
 }
 
@@ -333,12 +399,63 @@ fun Modifier.glassSurface(
         )
 }
 
-/** Dialog konfirmasi keluar. Jendela terpisah → tidak pernah ikut di-blur. */
+// ════════════════════════════════════════════════════════════════════════
+//  BACKDROP DIALOG KACA — siapa yang mem-blur konten app
+// ════════════════════════════════════════════════════════════════════════
+//  Masalahnya struktural: dialog Compose adalah JENDELA TERPISAH, jadi ia
+//  tidak bisa mem-blur konten di belakangnya sendiri. Yang bisa mem-blur adalah
+//  AppNavHost, lewat Modifier.blur pada subtree Scaffold.
+//
+//  Sebelumnya AppNavHost hanya mem-blur kalau `confirmExit` menyala — yaitu
+//  HANYA dialog keluar dari tombol back. Dialog konfirmasi dari baris daftar
+//  (hapus barang) tidak pernah memicunya, sehingga latarnya tetap TAJAM dan
+//  teks latar menembus panel translusen 0.54 sampai menabrak teks dialog.
+//  Akibatnya satu resep dialog yang sama terlihat berbeda tergantung dari mana
+//  ia dipicu — persis keluhan "background tidak segelap waktu exit pop up".
+//
+//  Jadi penanda ini adalah SATU sumber untuk "ada dialog kaca terbuka", dibaca
+//  AppNavHost dan ditulis oleh dialog mana pun. Sengaja bukan CompositionLocal:
+//  nilainya global dan tunggal (satu jendela backdrop), sementara membungkus
+//  seluruh body AppNavHost dengan provider berarti menggeser indentasi ~280
+//  baris demi satu boolean. Kalau nanti ada dua dialog kaca yang boleh terbuka
+//  bersamaan, ini yang harus jadi counter, bukan boolean.
+internal object GlassDialogBackdrop {
+    var open: Boolean by mutableStateOf(false)
+}
+
+/** Dipasang di dalam setiap dialog kaca; menandai dan melepas sendiri. */
 @Composable
-fun ExitConfirmDialog(
+internal fun AnnounceGlassDialogOpen() {
+    DisposableEffect(Unit) {
+        GlassDialogBackdrop.open = true
+        onDispose { GlassDialogBackdrop.open = false }
+    }
+}
+
+/**
+ * Dialog konfirmasi bergaya kaca — SATU-SATUNYA resep dialog konfirmasi di app.
+ *
+ * Dipakai "Keluar aplikasi" dan "Hapus barang". Kalau resep ini disalin ke dua
+ * tempat, cepat atau lambat keduanya berbeda dan user melihat dua bahasa visual
+ * untuk satu jenis momen yang sama. Panel (veil + sheen + tombol kaca) tinggal
+ * di sini; pemanggil hanya mengisi teks — lihat [ExitConfirmDialog].
+ *
+ * Jendela terpisah dari tree screen → tidak pernah ikut di-blur, dan boleh
+ * memakai alpha panel 0.54 karena backdrop di belakangnya SUDAH di-blur Scaffold.
+ */
+@Composable
+fun GlassConfirmDialog(
+    title: String,
+    message: String,
+    confirmText: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    eyebrow: String? = null,
+    cancelText: String = stringResource(Res.string.action_cancel),
+    warningDescription: String = stringResource(Res.string.cd_confirm_warning),
 ) {
+    // Konten app di belakang di-blur oleh AppNavHost selama dialog ini terbuka.
+    AnnounceGlassDialogOpen()
     val scheme = MaterialTheme.colorScheme
     val isDark = scheme.surface.luminance() < 0.5f
 
@@ -438,34 +555,41 @@ fun ExitConfirmDialog(
                     ) {
                         Icon(
                             AppIcon.WARNING.painter(),
-                            contentDescription = stringResource(Res.string.cd_exit_warning),
+                            contentDescription = warningDescription,
                             tint = scheme.onErrorContainer,
                             modifier = Modifier.size(24.dp),
                         )
                     }
 
+                    eyebrow?.let {
+                        Text(
+                            it,
+                            modifier = Modifier.padding(top = 16.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.4.sp,
+                            color = scheme.error.copy(alpha = 0.85f),
+                        )
+                    }
                     Text(
-                        stringResource(Res.string.exit_eyebrow),
-                        modifier = Modifier.padding(top = 16.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.4.sp,
-                        color = scheme.error.copy(alpha = 0.85f),
-                    )
-                    Text(
-                        stringResource(Res.string.exit_title),
-                        modifier = Modifier.padding(top = 4.dp),
+                        title,
+                        modifier = Modifier.padding(top = if (eyebrow == null) 16.dp else 4.dp),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.3).sp,
                         color = scheme.onSurface,
                     )
                     Text(
-                        stringResource(Res.string.exit_msg),
+                        message,
                         modifier = Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         lineHeight = 22.sp,
-                        color = scheme.onSurfaceVariant,
+                        // Bukan onSurfaceVariant: panel dialog hanya 0.54 di atas
+                        // latar yang di-blur+dim, jadi komposit warnanya tidak
+                        // pernah seterang permukaan biasa. Baris ini yang wajib
+                        // dibaca user sebelum aksi destruktif, jadi dipakai
+                        // onSurface 0.86 → ±10:1 di panel, bukan ±5:1.
+                        color = scheme.onSurface.copy(alpha = 0.86f),
                     )
 
                     Row(
@@ -476,7 +600,7 @@ fun ExitConfirmDialog(
                         // panel, jadi tombolnya nyaris tak berbentuk). 0.12 → 1.28:1
                         // dan tetap terbaca sebagai pil kaca, bukan teks telanjang.
                         GlassButton(
-                            text = stringResource(Res.string.exit_cancel),
+                            text = cancelText,
                             onClick = onDismiss,
                             container = scheme.onSurface.copy(alpha = if (isDark) 0.16f else 0.12f),
                             content = scheme.onSurface,
@@ -490,7 +614,7 @@ fun ExitConfirmDialog(
                         // 0.80 menahan label putih di 4.63:1 (AA) sambil membiarkan
                         // panel menembus, dan sheen 0.30 terbaca di atas merah.
                         GlassButton(
-                            text = stringResource(Res.string.exit_confirm),
+                            text = confirmText,
                             onClick = onConfirm,
                             container = scheme.error.copy(alpha = 0.80f),
                             content = scheme.onError,
@@ -504,6 +628,23 @@ fun ExitConfirmDialog(
         }
     }
     }
+}
+
+/** Konfirmasi keluar aplikasi — teksnya saja yang khusus, panelnya milik [GlassConfirmDialog]. */
+@Composable
+fun ExitConfirmDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    GlassConfirmDialog(
+        eyebrow = stringResource(Res.string.exit_eyebrow),
+        title = stringResource(Res.string.exit_title),
+        message = stringResource(Res.string.exit_msg),
+        confirmText = stringResource(Res.string.exit_confirm),
+        cancelText = stringResource(Res.string.exit_cancel),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    )
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -829,6 +970,9 @@ fun GlassDialog(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // Sama seperti GlassConfirmDialog: latar app diblur oleh AppNavHost selama
+    // dialog ini terbuka, supaya panel 0.86 tidak duduk di atas konten tajam.
+    AnnounceGlassDialogOpen()
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(

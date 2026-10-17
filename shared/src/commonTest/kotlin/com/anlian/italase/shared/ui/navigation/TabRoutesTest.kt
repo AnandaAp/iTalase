@@ -43,4 +43,22 @@ class TabRoutesTest {
     fun tabRouteSetHasNoDuplicates() {
         assertTrue(Routes.TAB_ROUTES.size == 5, "tab root tidak boleh duplikat: ${Routes.TAB_ROUTES}")
     }
+
+    // ── Tombol back di top bar: HANYA Riwayat + Pengeluaran ──
+    @Test
+    fun onlyHistoryAndExpenseGetABackButton() {
+        assertTrue(Routes.hasBackButton(Routes.HISTORY))
+        assertTrue(Routes.hasBackButton(Routes.EXPENSE))
+        assertTrue(Routes.BACK_ROUTES.size == 2, "jangan tambah tanpa sengaja: ${Routes.BACK_ROUTES}")
+    }
+
+    @Test
+    fun tabsAndDetailScreenHaveNoBackButton() {
+        // Tab root tidak butuh (ada bottom nav); Detail Struk merender tombolnya
+        // sendiri, jadi kalau ia ikut dapat, tombolnya jadi dua.
+        (Routes.TAB_ROUTES + Routes.HISTORY_DETAIL + "tidak-ada").forEach {
+            assertFalse(Routes.hasBackButton(it), "$it tidak boleh punya tombol back di top bar")
+        }
+        assertFalse(Routes.hasBackButton(null))
+    }
 }

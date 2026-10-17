@@ -12,10 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -32,9 +31,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.data.local.entity.DebtEntity
 import com.anlian.italase.shared.data.local.entity.DebtStatus
+import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
-import com.anlian.italase.shared.ui.components.ListCard
+import com.anlian.italase.shared.ui.components.GlassButton
+import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.enter
@@ -130,9 +131,14 @@ fun DebtContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-            Card(
+            // Kartu total: primitif kaca yang sama dengan layar lain. Warna
+            // hijau tetap — yang berubah cuma bahannya (sheen, shadow, tanpa
+            // BorderStroke). alpha 0.92: hampir pekat supaya angka tetap
+            // terbaca, tapi blob latar masih samar menembus.
+            GlassCard(
                 modifier = Modifier.fillMaxWidth().enter(appeared, 0),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+                tint = MaterialTheme.colorScheme.primary,
+                alpha = 0.95f,
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
@@ -171,7 +177,7 @@ fun DebtContent(
                     items(debts, key = { it.id }) { d ->
                         val lunas = d.status == DebtStatus.LUNAS
                         val progress = if (d.totalAmount > 0) d.paidAmount.toFloat() / d.totalAmount.toFloat() else 1f
-                        ListCard {
+                        GlassCard(shape = RoundedCornerShape(20.dp)) {
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Row(
                                     Modifier.fillMaxWidth(),
@@ -203,9 +209,11 @@ fun DebtContent(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 if (!lunas) {
-                                    Button(onClick = { onPay(d.id) }) {
-                                        Text(stringResource(Res.string.debt_pay_action))
-                                    }
+                                    GlassButton(
+                                        text = stringResource(Res.string.debt_pay_action),
+                                        onClick = { onPay(d.id) },
+                                        height = 40.dp,
+                                    )
                                 }
                             }
                         }
@@ -228,6 +236,7 @@ fun DebtFormDialog(onDismiss: () -> Unit, onSave: (String, Long, String) -> Unit
     var name by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
+    AnnounceGlassDialogOpen()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.debt_form)) },
@@ -261,6 +270,7 @@ fun DebtFormDialog(onDismiss: () -> Unit, onSave: (String, Long, String) -> Unit
 @Composable
 fun PayDebtDialog(onDismiss: () -> Unit, onSave: (Long) -> Unit) {
     var amount by remember { mutableStateOf("") }
+    AnnounceGlassDialogOpen()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.debt_pay_title)) },

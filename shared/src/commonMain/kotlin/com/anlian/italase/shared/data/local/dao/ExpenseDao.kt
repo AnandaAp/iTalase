@@ -10,8 +10,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ExpenseDao {
-    @Query("SELECT * FROM ${Tables.EXPENSES} ORDER BY dateMillis DESC")
-    fun observeAll(): Flow<List<ExpenseEntity>>
+    // LIMIT bertumbuh dari sisi pemanggil (lihat util/Paging.kt): awalnya 20
+    // baris, lalu 40, 60, ... Jadi awalnya Room hanya mengirim satu halaman.
+    @Query("SELECT * FROM ${Tables.EXPENSES} ORDER BY dateMillis DESC LIMIT :limit")
+    fun observePage(limit: Int): Flow<List<ExpenseEntity>>
 
     @Query("SELECT * FROM ${Tables.EXPENSES} WHERE dateMillis BETWEEN :from AND :to ORDER BY dateMillis DESC")
     suspend fun listRange(from: Long, to: Long): List<ExpenseEntity>

@@ -14,10 +14,18 @@ import com.anlian.italase.shared.data.local.entity.ProductEntity
 import com.anlian.italase.shared.data.local.entity.SaleEntity
 import com.anlian.italase.shared.data.local.entity.SaleItemEntity
 import com.anlian.italase.shared.data.local.entity.TxnStatus
+import com.anlian.italase.shared.util.PAGE_SIZE
 import com.anlian.italase.shared.util.endOfLocalDayMillis
-import com.anlian.italase.shared.util.startOfLocalDayMillis
 import com.anlian.italase.shared.util.nowMillis
+import com.anlian.italase.shared.util.startOfLocalDayMillis
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import org.koin.core.annotation.Singleton
 
 data class CartLine(
@@ -38,10 +46,23 @@ class ShopRepository(
     private val db: ITalaseDatabase,
 ) {
     companion object {
-        const val RECENT_SALES_LIMIT = 200
+        private const val SUBSCRIBE_TIMEOUT_MILLIS = 5_000L
     }
+
+    // Repository ini singleton seumur app, jadi di sinilah tempat satu-satunya
+    // salinan daftar produk.
+    //
+    // Tanpa ini: Beranda, Kasir, dan Stok masing-masing memanggil
+    // observeProducts() → Room menjalankan query yang SAMA 3x dan menyalin
+    // SELURUH tabel 3x setiap kali tabelnya berubah (mis. tiap checkout
+    // mengurangi stok). Dengan ini: 1 query, 1 daftar, 3 pelanggan. Ini juga
+    // yang bikin jumlah baris tidak lagi mengalikan biaya perubahan stok.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val productsCache: StateFlow<List<ProductEntity>> = db.productDao().observeAll()
+        .stateIn(scope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+
     // ---- Produk ----
-    fun observeProducts(): Flow<List<ProductEntity>> = db.productDao().observeAll()
+    fun observeProducts(): Flow<List<ProductEntity>> = productsCache
 
     fun observeLowStock(): Flow<List<ProductEntity>> = db.productDao().observeLowStock()
 
@@ -147,10 +168,10 @@ class ShopRepository(
     }
 
     // ---- Riwayat & laporan ----
-    fun observeRecentSales(limit: Int = RECENT_SALES_LIMIT): Flow<List<SaleEntity>> =
+    fun observeRecentSales(limit: Int = PAGE_SIZE): Flow<List<SaleEntity>> =
         db.saleDao().observeRecent(limit)
 
-    fun observeSalesByCategory(category: String, limit: Int = RECENT_SALES_LIMIT): Flow<List<SaleEntity>> =
+    fun observeSalesByCategory(category: String, limit: Int = PAGE_SIZE): Flow<List<SaleEntity>> =
         db.saleDao().observeSalesByCategory(category, limit)
 
     fun observeItemCategories(): Flow<List<String>> = db.saleDao().observeItemCategories()
@@ -227,7 +248,8 @@ class ShopRepository(
     }
 
     // ---- Pengeluaran ----
-    fun observeExpenses(): Flow<List<ExpenseEntity>> = db.expenseDao().observeAll()
+    fun observeExpenses(limit: Int = PAGE_SIZE): Flow<List<ExpenseEntity>> =
+        db.expenseDao().observePage(limit)
 
     suspend fun saveExpense(name: String, category: String, amount: Long, note: String): Long {
         if (name.isBlank()) throw ShopException(ErrorCode.EXPENSE_NAME_REQUIRED)

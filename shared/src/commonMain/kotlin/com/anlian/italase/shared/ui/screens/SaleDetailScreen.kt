@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.data.local.entity.PayMethod
 import com.anlian.italase.shared.data.local.entity.TxnStatus
 import com.anlian.italase.shared.data.repository.ShopRepository.SaleDetail
+import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
@@ -335,6 +336,7 @@ fun SaleEditDialog(
 ) {
     var customer by remember(initialCustomer) { mutableStateOf(initialCustomer) }
     var note by remember(initialNote) { mutableStateOf(initialNote) }
+    AnnounceGlassDialogOpen()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.detail_edit_title)) },

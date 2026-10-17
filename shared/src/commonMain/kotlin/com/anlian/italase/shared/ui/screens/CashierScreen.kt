@@ -209,7 +209,12 @@ fun CashierContent(
                     // tertutup di bawahnya.
                     contentPadding = checkoutSpace,
                 ) {
-                    items(list.take(60), key = { it.id }) { p ->
+                    // Tanpa `take(60)`: dulu daftarnya dipotong 60 baris, jadi
+                    // produk ke-61 ke atas TIDAK BISA dijangkau dengan scroll —
+                    // dan `take()` sendiri menyalin ulang list di tiap
+                    // recomposisi. LazyColumn hanya menyusun baris yang terlihat,
+                    // jadi 5.000 baris sama murahnya dengan 20 di layar.
+                    items(list, key = { it.id }) { p ->
                         val qty = cart[p.id] ?: 0
                         GlassRow(
                             title = p.name,

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="36%" r="80%">
+      <stop offset="0%" stop-color="#227D48"/>
+      <stop offset="52%" stop-color="#1D6B3C"/>
+      <stop offset="100%" stop-color="#0E3D20"/>
+    </radialGradient>
+    <linearGradient id="roof" x1="18%" y1="0%" x2="82%" y2="100%">
+      <stop offset="0%" stop-color="#FFF0CE"/>
+      <stop offset="55%" stop-color="#F6BE5C"/>
+      <stop offset="100%" stop-color="#E8930C"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="60%" stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#0E3D20" stop-opacity="0.42"/>
+    </linearGradient>
+    <filter id="under" x="-40%" y="-200%" width="180%" height="500%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <ellipse cx="256" cy="392" rx="118" ry="16" fill="#05190C" opacity="0.50" filter="url(#under)"/>
+
+  <rect x="152" y="286" width="208" height="108" rx="24" fill="url(#body)"/>
+  <rect x="152" y="286" width="208" height="108" rx="24" fill="none"
+        stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2.5"/>
+  <!-- two shelves with stock, so the counter reads as a warung display, not decoration -->
+  <rect x="176" y="316" width="160" height="6" rx="3" fill="#FDEBC8" opacity="0.34"/>
+  <rect x="176" y="348" width="160" height="6" rx="3" fill="#FDEBC8" opacity="0.24"/>
+  <rect x="188" y="330" width="14" height="18" rx="3" fill="#E8930C" opacity="0.55"/>
+  <rect x="208" y="334" width="11" height="14" rx="3" fill="#FAF6EE" opacity="0.42"/>
+  <rect x="288" y="332" width="12" height="16" rx="3" fill="#FAF6EE" opacity="0.38"/>
+  <rect x="192" y="362" width="12" height="14" rx="3" fill="#FAF6EE" opacity="0.30"/>
+  <rect x="272" y="360" width="15" height="16" rx="3" fill="#E8930C" opacity="0.38"/>
+
+  <rect x="188" y="266" width="26" height="22" rx="6" fill="#E8930C"/>
+  <rect x="224" y="270" width="22" height="18" rx="5" fill="#FAF6EE" opacity="0.92"/>
+  <rect x="256" y="262" width="28" height="26" rx="7" fill="#FDEBC8"/>
+  <rect x="294" y="269" width="24" height="19" rx="5" fill="#E8930C" opacity="0.85"/>
+
+  <rect x="130" y="232" width="252" height="26" rx="13" fill="#B26A05"/>
+  <rect x="130" y="232" width="252" height="26" rx="13" fill="none"
+        stroke="#FDEBC8" stroke-opacity="0.34" stroke-width="2"/>
+
+  <path d="M134 252 H378 a10 10 0 0 1 0 8 q-20 18 -41 0 q-21 18 -41 0 q-20 18 -41 0 q-21 18 -41 0 q-20 18 -40 0
+           a10 10 0 0 1 0 -8 Z" fill="#E8930C"/>
+  <path d="M134 252 H378" stroke="#FFFFFF" stroke-opacity="0.32" stroke-width="3"/>
+
+  <path d="M256 118 L420 236 Q424 248 410 248 H102 Q88 248 92 236 Z" fill="url(#roof)"/>
+  <path d="M256 118 L420 236 Q424 248 410 248 H372 L256 150 Z" fill="#FFFFFF" opacity="0.14"/>
+  <path d="M256 124 L256 246" stroke="#FFFFFF" stroke-opacity="0.34" stroke-width="9"
+        stroke-linecap="round"/>
+  <path d="M256 124 L256 246" stroke="#FDEBC8" stroke-opacity="0.55" stroke-width="3"
+        stroke-linecap="round"/>
+</svg>

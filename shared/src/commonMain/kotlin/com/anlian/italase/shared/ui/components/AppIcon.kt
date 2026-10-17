@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.add
 import italase.shared.generated.resources.arrow_back
+import italase.shared.generated.resources.arrow_back_ios_new
 import italase.shared.generated.resources.chevron_right
 import italase.shared.generated.resources.delete
 import italase.shared.generated.resources.edit
@@ -25,6 +26,7 @@ import org.jetbrains.compose.resources.painterResource
 // (DrawableResource/Painter sebagai parameter membuat composable non-skippable).
 enum class AppIcon {
     ARROW_BACK,
+    ARROW_BACK_IOS_NEW,
     HOME,    SHOPPING_CART,
     INVENTORY,
     RECEIPT,
@@ -45,6 +47,7 @@ enum class AppIcon {
 fun AppIcon.painter(): Painter = painterResource(
     when (this) {
         AppIcon.ARROW_BACK -> Res.drawable.arrow_back
+        AppIcon.ARROW_BACK_IOS_NEW -> Res.drawable.arrow_back_ios_new
         AppIcon.HOME -> Res.drawable.home
         AppIcon.SHOPPING_CART -> Res.drawable.shopping_cart
         AppIcon.INVENTORY -> Res.drawable.inventory_2
