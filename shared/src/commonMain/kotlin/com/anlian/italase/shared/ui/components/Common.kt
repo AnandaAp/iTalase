@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,9 +38,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
@@ -390,6 +393,120 @@ private fun GlassTextButton(
     }
 }
 
+
+// ════════════════════════════════════════════════════════════════════════
+//  GLASS SURFACE — untuk konten yang IKUT SCROLL
+// ════════════════════════════════════════════════════════════════════════
+//  Sengaja TIDAK memakai Modifier.blur / renderEffect. Aturan mobile-fluid-ui
+//  2026: blur live hanya boleh di overlay statis (navbar, sheet diam, scrim).
+//  Kartu yang bergerak di dalam container scroll akan me-raster ulang tiap
+//  frame → frame budget jebol di HP mid-range. Jadi "kaca" di sini dibentuk
+//  dari translucency + specular sheen + shadow bertint: seluruhnya komposit
+//  statis, nol biaya per-frame.
+//
+//  Kaca = translucency, bukan stroke. Karena itu TIDAK ada BorderStroke:
+//  garis tepi adalah penanda paling kentara sebuah kartu Material murah.
+//
+//  Kenapa alpha 0.88, bukan 0.54 seperti dialog? Dialog berdiri di atas backdrop
+//  yang SUDAH di-blur 20dp → warnanya seragam, jadi alpha rendah tetap bersih.
+//  Kartu tidak boleh di-blur (aturan fluid-ui: jangan blur di layer yang
+//  scroll), jadi ia berdiri di atas background tajam multi-warna + seam. Di
+//  alpha 0.54 background itu bocor ke dalam dan kartunya jadi "kaca kotor".
+//  Jadi di sini alpha tinggi, dan kesan kaca datang dari specular sheen +
+//  shadow diffuse + edge tint — bukan dari see-through background.
+@Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(24.dp),
+    tint: Color = MaterialTheme.colorScheme.surface,
+    alpha: Float = 0.88f,
+    onClick: (() -> Unit)? = null,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val isDark = scheme.surface.luminance() < 0.5f
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+
+    Box(
+        modifier
+            .graphicsLayer {
+                val s = if (pressed) 0.975f else 1f
+                scaleX = s
+                scaleY = s
+            }
+            .shadow(
+                elevation = 22.dp,
+                shape = shape,
+                ambientColor = scheme.onSurface.copy(alpha = 0.12f),
+                spotColor = scheme.onSurface.copy(alpha = 0.20f),
+            )
+            .clip(shape)
+            .background(tint.copy(alpha = alpha))
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(interaction, indication = null) { onClick() }
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        // Edge glass — sorot warna brand di sudut, lalu specular sheen atas.
+        // Sama persis bahasa visualnya dengan ExitConfirmDialog.
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.radialGradient(
+                        center = Offset(0f, 0f),
+                        radius = 900f,
+                        colors = listOf(scheme.primary.copy(alpha = 0.05f), Color.Transparent),
+                    ),
+                ),
+        )
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.White.copy(alpha = if (isDark) 0.14f else 0.34f),
+                        0.30f to Color.Transparent,
+                    ),
+                ),
+        )
+        content()
+    }
+}
+
+/** Empty state bergaya glass. Varian aditif — [EmptyState] lama tidak diubah. */
+@Composable
+fun GlassEmptyState(text: String, hint: String = "") {
+    val scheme = MaterialTheme.colorScheme
+    GlassCard(shape = RoundedCornerShape(20.dp)) {
+        Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).background(scheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    AppIcon.WARNING.painter(),
+                    contentDescription = null,
+                    tint = scheme.onSecondaryContainer,
+                )
+            }
+            Column(Modifier.padding(start = 14.dp)) {
+                Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                if (hint.isNotBlank()) {
+                    Text(
+                        hint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun CategoryChips(
