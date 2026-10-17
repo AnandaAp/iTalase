@@ -37,6 +37,8 @@ import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.StatusChip
+import com.anlian.italase.shared.ui.components.enter
+import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.ACTION_FAB_HEIGHT
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
@@ -115,6 +117,7 @@ fun DebtContent(
     Box(Modifier.fillMaxSize()) {
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
+        val appeared = rememberAppear()
         TopBarInfoEffect(
             eyebrow = stringResource(Res.string.debt_running, active.size),
             title = stringResource(Res.string.title_debts),
@@ -128,7 +131,7 @@ fun DebtContent(
         ) {
             Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().enter(appeared, 0),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
             ) {
                 Column(Modifier.padding(16.dp)) {
@@ -162,7 +165,7 @@ fun DebtContent(
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).enter(appeared, 1),
                     contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
                 ) {
                     items(debts, key = { it.id }) { d ->
@@ -215,7 +218,7 @@ fun DebtContent(
             icon = AppIcon.ADD,
             contentDescription = stringResource(Res.string.cd_add_debt),
             onClick = onAdd,
-            modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar(),
+            modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar().enter(appeared, 2),
         )
     }
 }

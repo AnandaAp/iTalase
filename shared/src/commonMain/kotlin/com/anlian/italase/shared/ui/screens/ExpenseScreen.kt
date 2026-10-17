@@ -36,7 +36,9 @@ import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
 import com.anlian.italase.shared.ui.components.PrimaryFab
+import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.ACTION_FAB_HEIGHT
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
@@ -99,6 +101,7 @@ fun ExpenseContent(
     Box(Modifier.fillMaxSize()) {
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
+        val appeared = rememberAppear()
         TopBarInfoEffect(
             eyebrow = stringResource(Res.string.exp_count, items.size),
             title = stringResource(Res.string.title_expenses),
@@ -112,7 +115,7 @@ fun ExpenseContent(
         ) {
             Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().enter(appeared, 0),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
             ) {
                 Column(Modifier.padding(16.dp)) {
@@ -146,7 +149,7 @@ fun ExpenseContent(
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).enter(appeared, 1),
                     contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
                 ) {
                     items(items, key = { it.id }) { e ->
@@ -189,7 +192,7 @@ fun ExpenseContent(
             icon = AppIcon.ADD,
             contentDescription = stringResource(Res.string.cd_add_expense),
             onClick = onAdd,
-            modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar(),
+            modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar().enter(appeared, 2),
         )
     }
 }

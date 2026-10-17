@@ -39,7 +39,9 @@ import com.anlian.italase.shared.ui.components.ListCard
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.StatusChip
+import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.ACTION_FAB_HEIGHT
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
@@ -85,6 +87,10 @@ fun SaleDetailScreen(
     onSaveEdit: (String, String) -> Unit = { _, _ -> },
 ) {
     Box(Modifier.fillMaxSize()) {
+        // FAB di sini milik composable ini; list-nya ada di SaleDetailContent
+        // yang punya flag sendiri. Masing-masing scope komposisi, jadi tidak bisa
+        // berbagi `remember`.
+        val appeared = rememberAppear()
         Column(
             Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -115,7 +121,7 @@ fun SaleDetailScreen(
                 icon = AppIcon.EDIT,
                 contentDescription = stringResource(Res.string.detail_edit_title),
                 onClick = onEdit,
-                modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar(),
+                modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar().enter(appeared, 2),
             )
         }
     }
@@ -148,6 +154,7 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
     // Header struk dipindah ke top bar supaya tidak dobel. Diletakkan di sini
     // (di luar LazyColumn) agar nilainya tetap tertulis walau item list
     // ter-recycle saat menggulir.
+    val appeared = rememberAppear()
     TopBarInfoEffect(
         eyebrow = formatDateTime(sale.dateMillis),
         title = stringResource(Res.string.hist_receipt, sale.id),
@@ -161,7 +168,7 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
             .weight(1f)
-            .nestedScrollConnection(scrollBehavior, listState),
+            .nestedScrollConnection(scrollBehavior, listState).enter(appeared, 1),
         // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
         contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
     ) {

@@ -24,8 +24,11 @@ import com.anlian.italase.shared.data.local.entity.SaleEntity
 import com.anlian.italase.shared.data.local.entity.TxnStatus
 import com.anlian.italase.shared.ui.components.CategoryChips
 import com.anlian.italase.shared.ui.components.EmptyState
+import com.anlian.italase.shared.ui.components.Enter
 import com.anlian.italase.shared.ui.components.ListCard
 import com.anlian.italase.shared.ui.components.StatusChip
+import com.anlian.italase.shared.ui.components.enter
+import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
@@ -73,6 +76,7 @@ fun HistoryContent(
 ) {
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val listState = rememberLazyListState()
+    val appeared = rememberAppear()
     TopBarInfoEffect(
         eyebrow = stringResource(Res.string.hist_count, sales.size),
         title = stringResource(Res.string.title_history),
@@ -85,11 +89,13 @@ fun HistoryContent(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-        CategoryChips(
-            categories = categories,
-            active = activeCategory,
-            onSelect = onCategory,
-        )
+        Enter(appeared, 0) {
+            CategoryChips(
+                categories = categories,
+                active = activeCategory,
+                onSelect = onCategory,
+            )
+        }
         if (sales.isEmpty()) {
             EmptyState(
                 stringResource(Res.string.hist_empty_t),
@@ -99,7 +105,7 @@ fun HistoryContent(
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).enter(appeared, 1),
                 // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
                 contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current),
             ) {

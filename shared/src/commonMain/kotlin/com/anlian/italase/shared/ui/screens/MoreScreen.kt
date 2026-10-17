@@ -22,7 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.ui.components.AppIcon
+import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.Routes
@@ -43,6 +45,7 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MoreScreen(onNavigate: (String) -> Unit = {}) {
+    val appeared = rememberAppear()
     TopBarInfoEffect(
         eyebrow = stringResource(Res.string.more_sub),
         title = stringResource(Res.string.title_more),
@@ -50,6 +53,7 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
     Column(
         Modifier
             .fillMaxSize()
+            .enter(appeared, 0)
             // Inset atas di LUAR scrollable. Konten mulai DI BAWAH top bar dan
             // tidak pernah masuk ke belakangnya — sama seperti layar dalam lain
             // yang scrollable-nya LazyColumn ber-weight. Ini wajib karena layar

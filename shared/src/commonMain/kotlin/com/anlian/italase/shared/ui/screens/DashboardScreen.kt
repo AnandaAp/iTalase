@@ -1,8 +1,5 @@
 package com.anlian.italase.shared.ui.screens
 
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,16 +21,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,10 +33,12 @@ import com.anlian.italase.shared.data.local.dao.TopRow
 import com.anlian.italase.shared.data.local.entity.ProductEntity
 import com.anlian.italase.shared.data.repository.DaySummary
 import com.anlian.italase.shared.ui.components.AppIcon
+import com.anlian.italase.shared.ui.components.Enter
 import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.GlassEmptyState
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
@@ -122,8 +116,7 @@ fun DashboardContent(
     // Entry sekali saja per komposisi. Destination di-restore saat pindah tab,
     // jadi `remember` bertahan → animasi tidak diputar ulang tiap balik ke
     // Beranda (yang terasa lambat dan mengganggu).
-    var appeared by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { appeared = true }
+    val appeared = rememberAppear()
 
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     TopBarInfoEffect(
@@ -224,37 +217,6 @@ fun DashboardContent(
         // Ruang gulir ekstra: tarik baris terakhir melewati bar kaca yang
         // mengambang, supaya tidak tertutup permanen di bawahnya.
         Spacer(Modifier.height(overlayBottom))
-    }
-}
-
-/**
- * Entry bertingkat. Hanya menyentuh `alpha` + `translationY` di dalam
- * graphicsLayer — tidak ada properti layout yang dianimasikan, jadi tidak
- * memicu re-layout/reflow selama animasi berjalan.
- */
-@Composable
-private fun Enter(
-    visible: Boolean,
-    index: Int,
-    content: @Composable () -> Unit,
-) {
-    val progress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = 420,
-            delayMillis = index * 70,
-            // Decelerate: cepat di awal, melambat halus di akhir.
-            easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f),
-        ),
-        label = "enter$index",
-    )
-    Box(
-        Modifier.graphicsLayer {
-            alpha = progress
-            translationY = (1f - progress) * 28.dp.toPx()
-        },
-    ) {
-        content()
     }
 }
 

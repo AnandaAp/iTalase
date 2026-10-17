@@ -1,7 +1,9 @@
 package com.anlian.italase.shared.ui.components
 
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -164,6 +166,58 @@ fun MoneyBig(amount: String, label: String, light: Boolean = false) {
     Column {
         Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = labelColor, fontWeight = FontWeight.Bold)
         Text(amount, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = valueColor)
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  MOTION — animasi masuk yang dipakai SEMUA layar
+// ════════════════════════════════════════════════════════════════════════
+//  Satu bahasa gerak untuk seluruh app: fade + naik 28dp, 420ms, decelerate,
+//  bertahap 70ms per blok. Dipakai lewat [Enter] (pembungkus) atau
+//  [Modifier.enter] kalau node-nya tidak boleh dibungkus — anak ber-`weight(1f)`
+//  atau node ber-`align` akan kehilangan parent data-nya kalau dibungkus Box.
+
+/**
+ * Flag "layar sudah tampil". Satu per layar.
+ * `remember` di dalam destinasi bertahan saat tab berpindah, jadi animasinya
+ * main sekali per komposisi, bukan setiap kembali ke tab.
+ */
+@Composable
+fun rememberAppear(): Boolean {
+    var appeared by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { appeared = true }
+    return appeared
+}
+
+/** Animasi masuk sebagai pembungkus. Jangan pakai untuk anak ber-weight/align. */
+@Composable
+fun Enter(
+    visible: Boolean,
+    index: Int,
+    content: @Composable () -> Unit,
+) {
+    Box(Modifier.enter(visible, index)) { content() }
+}
+
+/**
+ * Animasi masuk sebagai modifier — untuk node yang tidak boleh dibungkus:
+ * anak `weight(1f)` di Column/Row, atau node ber-`align` di Box.
+ */
+@Composable
+fun Modifier.enter(visible: Boolean, index: Int): Modifier {
+    val progress by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 420,
+            delayMillis = index * 70,
+            // Decelerate: cepat di awal, melambat halus di akhir.
+            easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f),
+        ),
+        label = "enter$index",
+    )
+    return this.graphicsLayer {
+        alpha = progress
+        translationY = (1f - progress) * 28.dp.toPx()
     }
 }
 
@@ -418,20 +472,30 @@ fun ExitConfirmDialog(
                         Modifier.fillMaxWidth().padding(top = 22.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        // Batal — glass tombol: translucent, tanpa stroke.
+                        // Batal — ghost: isi sangat tipis (0.06 cuma 1.12:1 terhadap
+                        // panel, jadi tombolnya nyaris tak berbentuk). 0.12 → 1.28:1
+                        // dan tetap terbaca sebagai pil kaca, bukan teks telanjang.
                         GlassButton(
                             text = stringResource(Res.string.exit_cancel),
                             onClick = onDismiss,
-                            container = scheme.onSurface.copy(alpha = if (isDark) 0.10f else 0.06f),
+                            container = scheme.onSurface.copy(alpha = if (isDark) 0.16f else 0.12f),
                             content = scheme.onSurface,
+                            elevation = 0.dp,
+                            specular = 0.18f,
                             modifier = Modifier.weight(1f),
                         )
-                        // Ya, keluar — glass destruktif: tint error translucent.
+                        // Ya, keluar — destruktif TAPI tetap kaca. `error` pada 0.88
+                        // praktis opak: ia jadi satu-satunya bidang pekat di dalam
+                        // dialog yang serba translusen, sehingga "keluar dari tema".
+                        // 0.80 menahan label putih di 4.63:1 (AA) sambil membiarkan
+                        // panel menembus, dan sheen 0.30 terbaca di atas merah.
                         GlassButton(
                             text = stringResource(Res.string.exit_confirm),
                             onClick = onConfirm,
-                            container = scheme.error.copy(alpha = 0.88f),
+                            container = scheme.error.copy(alpha = 0.80f),
                             content = scheme.onError,
+                            elevation = 8.dp,
+                            specular = 0.30f,
                             modifier = Modifier.weight(1f),
                         )
                     }

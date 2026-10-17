@@ -38,8 +38,10 @@ import com.anlian.italase.shared.ui.components.GlassEmptyState
 import com.anlian.italase.shared.ui.components.GlassIconButton
 import com.anlian.italase.shared.ui.components.GlassRow
 import com.anlian.italase.shared.ui.components.GlassTextField
+import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.glassSurface
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
@@ -159,6 +161,7 @@ fun CashierContent(
     // Header layar hidup di top bar. Diletakkan DI LUAR Column: nilai ini tidak
     // merender apa pun, jadi kalau jadi child Column ia tetap memakan jarak
     // Arrangement.spacedBy di dua sisinya.
+    val appeared = rememberAppear()
     TopBarInfoEffect(
         eyebrow = stringResource(Res.string.cash_sub),
         title = stringResource(Res.string.title_cashier),
@@ -182,6 +185,7 @@ fun CashierContent(
                         contentDescription = stringResource(Res.string.cd_search),
                     )
                 },
+                modifier = Modifier.enter(appeared, 0),
             )
             CategoryChips(
                 categories = categories,
@@ -198,7 +202,7 @@ fun CashierContent(
                     state = listState,
                     modifier = Modifier
                         .weight(1f)
-                        .nestedScrollConnection(scrollBehavior, listState),
+                        .nestedScrollConnection(scrollBehavior, listState).enter(appeared, 1),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     // Ruang ekstra di ekor list: item terakhir bisa digulir ke ATAS
                     // tab bar dan checkout card yang mengambang, bukan berhenti
@@ -280,7 +284,8 @@ fun CashierContent(
             onPay = onPay,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .aboveTabBar(),
+                .aboveTabBar()
+                    .enter(appeared, 2),
         )
     } // Box
 }
@@ -348,6 +353,11 @@ private fun CheckoutCard(
         // state enabled (sand) sehingga transisi mati → menyala sangat jelas.
         val barEnabled = lines > 0
         val disabledFill = scheme.onSurface.copy(alpha = 0.30f)
+        // Label disabled ikut diredupkan. Sebelumnya putih PENUH di atas fill
+        // gelap (9.00:1) — kontrasnya bagus, tapi labelnya jadi terlihat solid
+        // sehingga tombolnya terbaca masih aktif. 0.66 → 4.96:1: jelas redup,
+        // masih lolos AA. Batasnya 0.60 (4.38:1) — di bawah itu gagal.
+        val disabledInk = scheme.onPrimary.copy(alpha = 0.66f)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             // SEKUNDER — ghost: tint tipis 0.10, TANPA gloss dan TANPA bayangan.
             // Sebelumnya 0.16: fill terlalu terang sehingga teks putih cuma
@@ -362,7 +372,7 @@ private fun CheckoutCard(
                 elevation = 0.dp,
                 specular = 0f,
                 disabledContainer = disabledFill,
-                disabledContent = scheme.onPrimary,
+                disabledContent = disabledInk,
                 modifier = Modifier.weight(1f),
             )
             // PRIMER — satu-satunya elemen yang menyala: sand @8.86:1, bergloss,
@@ -375,7 +385,7 @@ private fun CheckoutCard(
                 content = scheme.onSecondaryContainer,
                 elevation = 14.dp,
                 disabledContainer = disabledFill,
-                disabledContent = scheme.onPrimary,
+                disabledContent = disabledInk,
                 modifier = Modifier.weight(1f),
             )
         }

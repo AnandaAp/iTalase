@@ -44,7 +44,9 @@ import com.anlian.italase.shared.ui.components.GlassEmptyState
 import com.anlian.italase.shared.ui.components.GlassTextField
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.StatusChip
+import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.ACTION_FAB_HEIGHT
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
@@ -137,6 +139,7 @@ fun ProductContent(
     Box(Modifier.fillMaxSize()) {
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
+        val appeared = rememberAppear()
         TopBarInfoEffect(
             eyebrow = stringResource(Res.string.prod_count, products.size),
             title = stringResource(Res.string.title_products),
@@ -158,6 +161,7 @@ fun ProductContent(
                         contentDescription = stringResource(Res.string.cd_search),
                     )
                 },
+                modifier = Modifier.enter(appeared, 0),
             )
             CategoryChips(
                 categories = categories,
@@ -181,7 +185,7 @@ fun ProductContent(
                     state = listState,
                     modifier = Modifier
                         .weight(1f)
-                        .nestedScrollConnection(scrollBehavior, listState),
+                        .nestedScrollConnection(scrollBehavior, listState).enter(appeared, 1),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
                     contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
@@ -269,7 +273,7 @@ fun ProductContent(
             icon = AppIcon.ADD,
             contentDescription = stringResource(Res.string.cd_add_product),
             onClick = onAdd,
-            modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar(),
+            modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar().enter(appeared, 2),
         )
     }
 }
