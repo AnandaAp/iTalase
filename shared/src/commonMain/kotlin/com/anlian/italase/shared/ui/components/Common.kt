@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -239,6 +240,7 @@ fun LazyListState.onBottomReached(
  * `remember` di dalam destinasi bertahan saat tab berpindah, jadi animasinya
  * main sekali per komposisi, bukan setiap kembali ke tab.
  */
+@Stable
 @Composable
 fun rememberAppear(): Boolean {
     var appeared by remember { mutableStateOf(false) }
@@ -831,7 +833,7 @@ fun GlassChip(text: String, selected: Boolean, onClick: () -> Unit) {
  *    adalah FILL, label tetap full strength.
  *
  * 2. Warna disabled harus tergantung permukaan tempatnya duduk:
- *    • permukaan TERANG (baris/kartu putih) → fill netral [surfaceContainerHigh]
+ *    • permukaan TERANG (baris/kartu putih) → fill netral `surfaceContainerHigh`
  *      + teks gelap. Fill brand yang dipudarkan menyisakan teks putih di atas
  *      bidang pucat (terukur 1.62:1), dan sisa hijaunya terbaca "tersedia".
  *    • permukaan GELAP (kartu brand) → fill lebih GELAP (recessed), bukan lebih
