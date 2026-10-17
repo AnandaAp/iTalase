@@ -24,11 +24,11 @@ import com.anlian.italase.shared.data.local.entity.TxnStatus
 import com.anlian.italase.shared.ui.components.CategoryChips
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
-import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import italase.shared.generated.resources.Res
@@ -72,6 +72,10 @@ fun HistoryContent(
 ) {
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val listState = rememberLazyListState()
+    TopBarInfoEffect(
+        eyebrow = stringResource(Res.string.hist_count, sales.size),
+        title = stringResource(Res.string.title_history),
+    )
     Column(
         Modifier
             .fillMaxSize()
@@ -80,10 +84,6 @@ fun HistoryContent(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-        ScreenHeader(
-            title = stringResource(Res.string.title_history),
-            subtitle = stringResource(Res.string.hist_count, sales.size),
-        )
         CategoryChips(
             categories = categories,
             active = activeCategory,

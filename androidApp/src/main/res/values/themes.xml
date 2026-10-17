@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Warna latar launch: sama dengan permukaan app, supaya tidak ada kedip
+         hitam antara splash sistem dan frame Compose pertama. windowBackground
+         TIDAK boleh transparan untuk tujuan itu. -->
+    <color name="app_window_background">#FAF6EE</color>
+
+    <!-- Theme dasar. System bar transparan + scrim kontras dimatikan, sehingga
+         background app benar-benar menembus sampai ke status bar dan nav bar.
+         Scrim navigation bar juga diatur di MainActivity lewat
+         enableEdgeToEdge(SystemBarStyle.auto(scrim = TRANSPARENT)) — atribut
+         theme saja tidak cukup di perangkat yang memasang scrim otomatis. -->
+    <style name="Theme.ITalase" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/app_window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+</resources>

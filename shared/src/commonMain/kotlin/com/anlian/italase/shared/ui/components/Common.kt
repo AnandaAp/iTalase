@@ -61,19 +61,6 @@ import italase.shared.generated.resources.exit_title
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun ScreenHeader(title: String, subtitle: String) {
-    Column(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
-        Text(
-            subtitle.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
 fun SectionHeader(title: String, trailing: String = "") {
     Row(
         Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),

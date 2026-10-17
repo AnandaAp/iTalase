@@ -38,13 +38,13 @@ import com.anlian.italase.shared.data.repository.ShopRepository.SaleDetail
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
-import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatDateTime
 import com.anlian.italase.shared.util.formatRupiah
@@ -149,6 +149,13 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
 
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val listState = rememberLazyListState()
+    // Header struk dipindah ke top bar supaya tidak dobel. Diletakkan di sini
+    // (di luar LazyColumn) agar nilainya tetap tertulis walau item list
+    // ter-recycle saat menggulir.
+    TopBarInfoEffect(
+        eyebrow = formatDateTime(sale.dateMillis),
+        title = stringResource(Res.string.hist_receipt, sale.id),
+    )
     Column(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -162,12 +169,6 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
         // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current),
     ) {
-        item {
-            ScreenHeader(
-                title = stringResource(Res.string.hist_receipt, sale.id),
-                subtitle = formatDateTime(sale.dateMillis),
-            )
-        }
         item {
             ListCard {
                 Row(

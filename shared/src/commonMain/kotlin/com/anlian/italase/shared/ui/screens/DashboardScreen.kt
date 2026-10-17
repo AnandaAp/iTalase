@@ -43,13 +43,13 @@ import com.anlian.italase.shared.data.repository.DaySummary
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.GlassEmptyState
-import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.Routes
+import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import italase.shared.generated.resources.Res
@@ -126,6 +126,10 @@ fun DashboardContent(
     LaunchedEffect(Unit) { appeared = true }
 
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
+    TopBarInfoEffect(
+        eyebrow = stringResource(Res.string.dash_hello_sub),
+        title = stringResource(Res.string.dash_hello),
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -139,12 +143,6 @@ fun DashboardContent(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Spacer(Modifier.height(overlayTop + 4.dp))
-        Enter(appeared, 0) {
-            ScreenHeader(
-                title = stringResource(Res.string.dash_hello),
-                subtitle = stringResource(Res.string.dash_hello_sub),
-            )
-        }
         if (error.isNotEmpty()) {
             Enter(appeared, 1) {
                 Text(

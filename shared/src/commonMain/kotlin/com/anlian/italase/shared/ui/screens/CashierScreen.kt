@@ -43,11 +43,11 @@ import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.CategoryChips
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
-import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import com.anlian.italase.shared.util.parseRupiah
@@ -155,6 +155,10 @@ fun CashierContent(
     val checkoutSpace = overlayBottom + 132.dp + 16.dp
 
     Box(Modifier.fillMaxSize()) {
+    TopBarInfoEffect(
+        eyebrow = stringResource(Res.string.cash_sub),
+        title = stringResource(Res.string.title_cashier),
+    )
     Column(
         Modifier
             .fillMaxSize()
@@ -162,10 +166,6 @@ fun CashierContent(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-        ScreenHeader(
-            title = stringResource(Res.string.title_cashier),
-            subtitle = stringResource(Res.string.cash_sub),
-        )
         OutlinedTextField(
             value = query,
             onValueChange = onQuery,

@@ -37,11 +37,11 @@ import com.anlian.italase.shared.data.local.entity.ExpenseEntity
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
-import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import com.anlian.italase.shared.util.parseRupiah
@@ -98,6 +98,10 @@ fun ExpenseContent(
     Box(Modifier.fillMaxSize()) {
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
+        TopBarInfoEffect(
+            eyebrow = stringResource(Res.string.exp_count, items.size),
+            title = stringResource(Res.string.title_expenses),
+        )
         Column(
             Modifier
                 .fillMaxSize()
@@ -106,10 +110,6 @@ fun ExpenseContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-            ScreenHeader(
-                title = stringResource(Res.string.title_expenses),
-                subtitle = stringResource(Res.string.exp_count, items.size),
-            )
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),

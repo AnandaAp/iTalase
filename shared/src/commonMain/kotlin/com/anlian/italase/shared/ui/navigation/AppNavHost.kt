@@ -19,9 +19,9 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +30,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -49,6 +51,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -82,14 +85,6 @@ import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.tab_home
 import italase.shared.generated.resources.tab_more
 import italase.shared.generated.resources.tab_stock
-import italase.shared.generated.resources.title_app
-import italase.shared.generated.resources.title_cashier
-import italase.shared.generated.resources.title_debts
-import italase.shared.generated.resources.title_detail
-import italase.shared.generated.resources.title_expenses
-import italase.shared.generated.resources.title_history
-import italase.shared.generated.resources.title_more
-import italase.shared.generated.resources.title_products
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 import org.jetbrains.compose.resources.StringResource
@@ -106,17 +101,8 @@ private val TABS = listOf(
     Tab(Routes.MORE, Res.string.tab_more, AppIcon.MORE),
 )
 
-@Composable
-private fun titleFor(route: String?): String = when (route) {
-    Routes.CASHIER -> stringResource(Res.string.title_cashier)
-    Routes.STOCK -> stringResource(Res.string.title_products)
-    Routes.HISTORY -> stringResource(Res.string.title_history)
-    Routes.HISTORY_DETAIL -> stringResource(Res.string.title_detail)
-    Routes.DEBT -> stringResource(Res.string.title_debts)
-    Routes.EXPENSE -> stringResource(Res.string.title_expenses)
-    Routes.MORE -> stringResource(Res.string.title_more)
-    else -> stringResource(Res.string.title_app)
-}
+// Info top bar kini datang dari layar aktif (TopBarInfoEffect), jadi tabel
+// judul-per-route di sini tidak diperlukan lagi — ia justru penyebab duplikasi.
 
 // CompositionLocal to provide top app bar scroll behavior to descendant screens
 val LocalTopAppBarScrollBehavior = compositionLocalOf<TopAppBarScrollBehavior?> { null }
@@ -129,6 +115,41 @@ val LocalTopOverlayPadding = compositionLocalOf { 64.dp }
 // screens can add trailing padding and scroll their last row ABOVE the floating
 // glass bar instead of leaving it permanently hidden underneath.
 val LocalBottomOverlayPadding = compositionLocalOf { 0.dp }
+
+// Tinggi konten top bar (di bawah status bar), dihitung dari isinya:
+// 10 top + 16 labelSmall + 2 gap + 32 headlineSmall + 14 bottom = 74dp.
+// Nilai ini harus PRESISI: kalau lebih besar, akan muncul celah kosong besar
+// antara judul dan konten pertama.
+private val TOP_BAR_CONTENT_HEIGHT = 74.dp
+
+/**
+ * Info judul yang ditampilkan top bar. Dimiliki AppNavHost; layar menulisnya
+ * lewat [TopBarInfoEffect] supaya eyebrow + judul layar hidup DI DALAM top bar
+ * dan tidak lagi dirender dobel sebagai header di badan layar.
+ */
+class TopBarInfo {
+    var eyebrow by mutableStateOf("")
+    var title by mutableStateOf("")
+}
+
+val LocalTopBarInfo = compositionLocalOf { TopBarInfo() }
+
+/**
+ * Pindahkan header layar ke top bar.
+ * Ganti pemakaian `ScreenHeader(title, subtitle)` dengan ini:
+ * `TopBarInfoEffect(eyebrow = subtitle, title = title)`.
+ */
+@Composable
+fun TopBarInfoEffect(eyebrow: String, title: String) {
+    val info = LocalTopBarInfo.current
+    // SideEffect: tulis state setelah komposisi sukses. Menulis nilai yang sama
+    // tidak memicu invalidasi (state memakai perbandingan struktural), jadi
+    // tidak ada recomposisi tambahan saat nilai tidak berubah.
+    SideEffect {
+        info.eyebrow = eyebrow
+        info.title = title
+    }
+}
 
 // Komponen navigasi utama. NavController dimiliki di dalam body
 // (bukan parameter) agar semua parameter composable tetap stabil.
@@ -147,6 +168,8 @@ fun AppNavHost(
     // Back di tab root = konfirmasi keluar, bukan kembali ke tab sebelumnya.
     var confirmExit by remember { mutableStateOf(false) }
     val exit = rememberAppExit()
+    // Judul top bar dimiliki di sini; layar menulisnya via TopBarInfoEffect.
+    val topBarInfo = remember { TopBarInfo() }
 
     // Zhitung kunjungan ke Beranda; naik lagi setiap kali tab diaktifkan kembali.
     var homeVisit by remember { mutableIntStateOf(0) }
@@ -196,235 +219,240 @@ fun AppNavHost(
     }
 
     Box(Modifier.fillMaxSize()) {
-    Scaffold(
-        // Backdrop blur: Modifier.blur memburam SELURUH subtree Scaffold, yaitu
-        // konten app di belakang dialog. Dialog-nya sendiri adalah jendela
-        // terpisah (android.ui.window.Dialog) sehingga TIDAK ikut ter-blur —
-        // ini satu-satunya komposisi blur yang benar di Compose Multiplatform.
-        modifier = Modifier.blur(if (confirmExit) 20.dp else 0.dp),
-        containerColor = Color.Transparent,
-        // No automatic insets: content draws full-bleed behind the status bar,
-        // top bar overlays it translucency-style (YouTube). Bottom bar is NOT
-        // in the Scaffold slot — see below. IME handled per-screen on Android.
-        contentWindowInsets = WindowInsets(0.dp),
-        topBar = {},
-        // bottomBar sengaja KOSONG. Kalau ditaruh di sini, Scaffold memesan
-        // layout space setinggi bar sehingga konten berhenti di atasnya dan
-        // tidak pernah lewat di BELAKANG kaca. Bar dirender sebagai overlay
-        // sibling supaya konten bisa menggulir menembusnya.
-        bottomBar = {},
-    ) {
-        // Overlay: full-bleed content behind the status bar + translucent top bar on top.
-        // Only the bottom bar reserves layout space; top offset is handled per-screen
-        // as scrollable content padding so lists slide underneath it.
-        Box(Modifier.fillMaxSize()) {
-            val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
-            // Footprint tab bar yang mengambang: margin bawah 12dp + tinggi bar 64dp,
-            // di atas system nav bar. Ditambah jeda 8dp jadi ruang gulir minimum.
-            val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            val bottomBarFootprint = navInset + 12.dp + 64.dp
-            val overlayBottom = bottomBarFootprint + 8.dp
-            // Provide scroll behavior to all screens via CompositionLocal
-            androidx.compose.runtime.CompositionLocalProvider(
-                LocalTopAppBarScrollBehavior provides scrollBehavior,
-                LocalTopOverlayPadding provides overlayTop,
-                LocalBottomOverlayPadding provides overlayBottom,
-            ) {
-                NavHost(
-                    navController = navController,
-                    startDestination = startRoute,
-                    modifier = modifier.fillMaxSize(),
+        Scaffold(
+            // Backdrop blur: Modifier.blur memburam SELURUH subtree Scaffold, yaitu
+            // konten app di belakang dialog. Dialog-nya sendiri adalah jendela
+            // terpisah (android.ui.window.Dialog) sehingga TIDAK ikut ter-blur —
+            // ini satu-satunya komposisi blur yang benar di Compose Multiplatform.
+            modifier = Modifier.blur(if (confirmExit) 20.dp else 0.dp),
+            containerColor = Color.Transparent,
+            // No automatic insets: content draws full-bleed behind the status bar,
+            // top bar overlays it translucency-style (YouTube). Bottom bar is NOT
+            // in the Scaffold slot — see below. IME handled per-screen on Android.
+            contentWindowInsets = WindowInsets(0.dp),
+            topBar = {},
+            // bottomBar sengaja KOSONG. Kalau ditaruh di sini, Scaffold memesan
+            // layout space setinggi bar sehingga konten berhenti di atasnya dan
+            // tidak pernah lewat di BELAKANG kaca. Bar dirender sebagai overlay
+            // sibling supaya konten bisa menggulir menembusnya.
+            bottomBar = {},
+        ) {
+            // Overlay: full-bleed content behind the status bar + translucent top bar on top.
+            // Only the bottom bar reserves layout space; top offset is handled per-screen
+            // as scrollable content padding so lists slide underneath it.
+            Box(Modifier.fillMaxSize()) {
+                val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TOP_BAR_CONTENT_HEIGHT
+                // Footprint tab bar yang mengambang: margin bawah 12dp + tinggi bar 64dp,
+                // di atas system nav bar. Ditambah jeda 8dp jadi ruang gulir minimum.
+                val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val bottomBarFootprint = navInset + 12.dp + 64.dp
+                val overlayBottom = bottomBarFootprint + 8.dp
+                // Provide scroll behavior to all screens via CompositionLocal
+                CompositionLocalProvider(
+                    LocalTopAppBarScrollBehavior provides scrollBehavior,
+                    LocalTopOverlayPadding provides overlayTop,
+                    LocalBottomOverlayPadding provides overlayBottom,
+                    LocalTopBarInfo provides topBarInfo,
                 ) {
-            composable(Routes.HOME) {
-                val vm: DashboardViewModel = koinInject()
-                // Naik tiap kali Beranda menjadi tab aktif, jadi omzet/piutang
-                // selalu segar setelah cashier atau bon berubah di tab lain.
-                LaunchedEffect(Unit) { homeVisit++ }
-                val summary by vm.summary.collectAsState()
-                val top by vm.top.collectAsState()
-                val piutang by vm.piutang.collectAsState()
-                val products by vm.products.collectAsState()
-                val debts by vm.activeDebts.collectAsState()
-                val error by vm.error.collectAsState()
+                    NavHost(
+                        navController = navController,
+                        startDestination = startRoute,
+                        modifier = modifier.fillMaxSize(),
+                    ) {
+                        composable(Routes.HOME) {
+                            val vm: DashboardViewModel = koinInject()
+                            // Naik tiap kali Beranda menjadi tab aktif, jadi omzet/piutang
+                            // selalu segar setelah cashier atau bon berubah di tab lain.
+                            LaunchedEffect(Unit) { homeVisit++ }
+                            val summary by vm.summary.collectAsState()
+                            val top by vm.top.collectAsState()
+                            val piutang by vm.piutang.collectAsState()
+                            val products by vm.products.collectAsState()
+                            val debts by vm.activeDebts.collectAsState()
+                            val error by vm.error.collectAsState()
 
-                DashboardScreen(
-                    summary = summary,
-                    top = top,
-                    piutang = piutang,
-                    lowStock = products.filter { it.stock <= it.minStock || it.stock <= StockRules.LOW_STOCK_FALLBACK },
-                    activeDebtCount = debts.size,
-                    error = error?.text().orEmpty(),
-                    onRefresh = vm::refresh,
-                    onQuickAction = goToRoute,
-                    refreshKey = homeVisit,
-                )
-            }
-            composable(Routes.CASHIER) {
-                val vm: CashierViewModel = koinInject()
-                val cart by vm.cart.collectAsState()
-                val query by vm.query.collectAsState()
-                val category by vm.category.collectAsState()
-                val categories by vm.categories.collectAsState()
-                val visible by vm.visibleProducts.collectAsState()
-                val message by vm.message.collectAsState()
-                var showPay by remember { mutableStateOf(false) }
+                            DashboardScreen(
+                                summary = summary,
+                                top = top,
+                                piutang = piutang,
+                                lowStock = products.filter { it.stock <= it.minStock || it.stock <= StockRules.LOW_STOCK_FALLBACK },
+                                activeDebtCount = debts.size,
+                                error = error?.text().orEmpty(),
+                                onRefresh = vm::refresh,
+                                onQuickAction = goToRoute,
+                                refreshKey = homeVisit,
+                            )
+                        }
+                        composable(Routes.CASHIER) {
+                            val vm: CashierViewModel = koinInject()
+                            val cart by vm.cart.collectAsState()
+                            val query by vm.query.collectAsState()
+                            val category by vm.category.collectAsState()
+                            val categories by vm.categories.collectAsState()
+                            val visible by vm.visibleProducts.collectAsState()
+                            val message by vm.message.collectAsState()
+                            var showPay by remember { mutableStateOf(false) }
 
-                CashierScreen(
-                    query = query,
-                    onQuery = vm::search,
-                    categories = categories.toImmutableList(),
-                    activeCategory = category,
-                    onCategory = vm::selectCategory,
-                    list = visible.toImmutableList(),
-                    cart = cart.toImmutableMap(),
-                    lines = vm.cartLines().toImmutableList(),
-                    total = vm.cartTotal(),
-                    message = message?.text().orEmpty(),
-                    showPayDialog = showPay,
-                    onAdd = vm::add,
-                    onSetQty = vm::setQty,
-                    onClear = vm::clearCart,
-                    onPay = { showPay = true },
-                    onDismissPay = { showPay = false },
-                    onConfirmPay = { paid, method, customer ->
-                        vm.checkout(paid, method, customer)
-                        showPay = false
-                    },
-                )
-            }
-            composable(Routes.STOCK) {
-                val vm: ProductViewModel = koinInject()
-                val visible by vm.visibleProducts.collectAsState()
-                val query by vm.query.collectAsState()
-                val category by vm.category.collectAsState()
-                val categories by vm.categories.collectAsState()
-                val message by vm.message.collectAsState()
-                var showForm by remember { mutableStateOf(false) }
-                var edit: ProductEntity? by remember { mutableStateOf(null) }
+                            CashierScreen(
+                                query = query,
+                                onQuery = vm::search,
+                                categories = categories.toImmutableList(),
+                                activeCategory = category,
+                                onCategory = vm::selectCategory,
+                                list = visible.toImmutableList(),
+                                cart = cart.toImmutableMap(),
+                                lines = vm.cartLines().toImmutableList(),
+                                total = vm.cartTotal(),
+                                message = message?.text().orEmpty(),
+                                showPayDialog = showPay,
+                                onAdd = vm::add,
+                                onSetQty = vm::setQty,
+                                onClear = vm::clearCart,
+                                onPay = { showPay = true },
+                                onDismissPay = { showPay = false },
+                                onConfirmPay = { paid, method, customer ->
+                                    vm.checkout(paid, method, customer)
+                                    showPay = false
+                                },
+                            )
+                        }
+                        composable(Routes.STOCK) {
+                            val vm: ProductViewModel = koinInject()
+                            val visible by vm.visibleProducts.collectAsState()
+                            val query by vm.query.collectAsState()
+                            val category by vm.category.collectAsState()
+                            val categories by vm.categories.collectAsState()
+                            val message by vm.message.collectAsState()
+                            var showForm by remember { mutableStateOf(false) }
+                            var edit: ProductEntity? by remember { mutableStateOf(null) }
 
-                ProductScreen(
-                    products = visible,
-                    query = query,
-                    onQuery = vm::search,
-                    categories = categories,
-                    activeCategory = category,
-                    onCategory = vm::selectCategory,
-                    message = message?.text().orEmpty(),
-                    showForm = showForm,
-                    edit = edit,
-                    onAdd = { edit = null; showForm = true },
-                    onEdit = { edit = it; showForm = true },
-                    onDelete = vm::delete,
-                    onDismissForm = { showForm = false },
-                    onSaveForm = { name, buy, sell, stock, unit, barcode, cat ->
-                        vm.save(name, buy, sell, stock, unit, barcode, cat, edit?.id ?: 0)
-                        showForm = false
-                    },
-                )
-            }
-            composable(Routes.HISTORY) {
-                val vm: HistoryViewModel = koinInject()
-                val sales by vm.sales.collectAsState()
-                val category by vm.category.collectAsState()
-                val categories by vm.categories.collectAsState()
+                            ProductScreen(
+                                products = visible,
+                                query = query,
+                                onQuery = vm::search,
+                                categories = categories,
+                                activeCategory = category,
+                                onCategory = vm::selectCategory,
+                                message = message?.text().orEmpty(),
+                                showForm = showForm,
+                                edit = edit,
+                                onAdd = { edit = null; showForm = true },
+                                onEdit = { edit = it; showForm = true },
+                                onDelete = vm::delete,
+                                onDismissForm = { showForm = false },
+                                onSaveForm = { name, buy, sell, stock, unit, barcode, cat ->
+                                    vm.save(name, buy, sell, stock, unit, barcode, cat, edit?.id ?: 0)
+                                    showForm = false
+                                },
+                            )
+                        }
+                        composable(Routes.HISTORY) {
+                            val vm: HistoryViewModel = koinInject()
+                            val sales by vm.sales.collectAsState()
+                            val category by vm.category.collectAsState()
+                            val categories by vm.categories.collectAsState()
 
-                HistoryScreen(
-                    sales = sales,
-                    categories = categories,
-                    activeCategory = category,
-                    onCategory = vm::selectCategory,
-                    onOpen = {
-                        vm.selectSale(it)
-                        goToScreen(Routes.HISTORY_DETAIL)
-                    },
-                )
-            }
-            composable(Routes.HISTORY_DETAIL) {
-                val vm: HistoryViewModel = koinInject()
-                val selectedId by vm.selectedId.collectAsState()
-                val detail by vm.detail.collectAsState()
-                val message by vm.detailMessage.collectAsState()
-                var showEdit by remember { mutableStateOf(false) }
+                            HistoryScreen(
+                                sales = sales,
+                                categories = categories,
+                                activeCategory = category,
+                                onCategory = vm::selectCategory,
+                                onOpen = {
+                                    vm.selectSale(it)
+                                    goToScreen(Routes.HISTORY_DETAIL)
+                                },
+                            )
+                        }
+                        composable(Routes.HISTORY_DETAIL) {
+                            val vm: HistoryViewModel = koinInject()
+                            val selectedId by vm.selectedId.collectAsState()
+                            val detail by vm.detail.collectAsState()
+                            val message by vm.detailMessage.collectAsState()
+                            var showEdit by remember { mutableStateOf(false) }
 
-                LaunchedEffect(selectedId) { vm.loadDetail(selectedId) }
+                            LaunchedEffect(selectedId) { vm.loadDetail(selectedId) }
 
-                SaleDetailScreen(
-                    detail = detail,
-                    message = message?.text().orEmpty(),
-                    showEditDialog = showEdit,
-                    onBack = { navController.popBackStack() },
-                    onEdit = { showEdit = true },
-                    onDismissEdit = { showEdit = false },
-                    onSaveEdit = { customer, note ->
-                        vm.updateInfo(selectedId, customer, note)
-                        showEdit = false
-                    },
-                )
-            }
-            composable(Routes.DEBT) {
-                val vm: DebtViewModel = koinInject()
-                val debts by vm.debts.collectAsState()
-                val message by vm.message.collectAsState()
-                var showAdd by remember { mutableStateOf(false) }
-                var payId by remember { mutableStateOf<Long?>(null) }
+                            SaleDetailScreen(
+                                detail = detail,
+                                message = message?.text().orEmpty(),
+                                showEditDialog = showEdit,
+                                onBack = { navController.popBackStack() },
+                                onEdit = { showEdit = true },
+                                onDismissEdit = { showEdit = false },
+                                onSaveEdit = { customer, note ->
+                                    vm.updateInfo(selectedId, customer, note)
+                                    showEdit = false
+                                },
+                            )
+                        }
+                        composable(Routes.DEBT) {
+                            val vm: DebtViewModel = koinInject()
+                            val debts by vm.debts.collectAsState()
+                            val message by vm.message.collectAsState()
+                            var showAdd by remember { mutableStateOf(false) }
+                            var payId by remember { mutableStateOf<Long?>(null) }
 
-                DebtScreen(
-                    debts = debts,
-                    message = message?.text().orEmpty(),
-                    showAddDialog = showAdd,
-                    payId = payId,
-                    onAdd = { showAdd = true },
-                    onPay = { payId = it },
-                    onDismissAdd = { showAdd = false },
-                    onSaveDebt = { name, amount, note ->
-                        vm.saveManual(name, amount, note)
-                        showAdd = false
-                    },
-                    onDismissPay = { payId = null },
-                    onSavePay = { amount ->
-                        payId?.let { vm.pay(it, amount) }
-                        payId = null
-                    },
-                )
-            }
-            composable(Routes.EXPENSE) {
-                val vm: ExpenseViewModel = koinInject()
-                val items by vm.items.collectAsState()
-                val message by vm.message.collectAsState()
-                var showAdd by remember { mutableStateOf(false) }
+                            DebtScreen(
+                                debts = debts,
+                                message = message?.text().orEmpty(),
+                                showAddDialog = showAdd,
+                                payId = payId,
+                                onAdd = { showAdd = true },
+                                onPay = { payId = it },
+                                onDismissAdd = { showAdd = false },
+                                onSaveDebt = { name, amount, note ->
+                                    vm.saveManual(name, amount, note)
+                                    showAdd = false
+                                },
+                                onDismissPay = { payId = null },
+                                onSavePay = { amount ->
+                                    payId?.let { vm.pay(it, amount) }
+                                    payId = null
+                                },
+                            )
+                        }
+                        composable(Routes.EXPENSE) {
+                            val vm: ExpenseViewModel = koinInject()
+                            val items by vm.items.collectAsState()
+                            val message by vm.message.collectAsState()
+                            var showAdd by remember { mutableStateOf(false) }
 
-                ExpenseScreen(
-                    items = items,
-                    message = message?.text().orEmpty(),
-                    showAddDialog = showAdd,
-                    onAdd = { showAdd = true },
-                    onDelete = vm::delete,
-                    onDismissAdd = { showAdd = false },
-                    onSaveExpense = { name, category, amount, note ->
-                        vm.save(name, category, amount, note)
-                        showAdd = false
-                    },
-                )
-            }
-            composable(Routes.MORE) {
-                MoreScreen(onNavigate = goToRoute)
-            }
-                }
-                // Premium frosted-glass overlay top bar (drawn after NavHost = on top).
-                // TopAppBar keeps its default statusBars window inset, so it sits
-                // below the system icons.
-                PremiumTopBar(title = titleFor(current), scrollBehavior = scrollBehavior)
+                            ExpenseScreen(
+                                items = items,
+                                message = message?.text().orEmpty(),
+                                showAddDialog = showAdd,
+                                onAdd = { showAdd = true },
+                                onDelete = vm::delete,
+                                onDismissAdd = { showAdd = false },
+                                onSaveExpense = { name, category, amount, note ->
+                                    vm.save(name, category, amount, note)
+                                    showAdd = false
+                                },
+                            )
+                        }
+                        composable(Routes.MORE) {
+                            MoreScreen(onNavigate = goToRoute)
+                        }
+                            }
+                            // Top bar overlay (dibaca setelah NavHost = di atas konten).
+                            // Judul + eyebrow berasal dari info yang ditulis layar aktif,
+                            // jadi header layar tidak lagi dirender dobel di badan layar.
+                            PremiumTopBar(
+                                eyebrow = topBarInfo.eyebrow,
+                                title = topBarInfo.title,
+                                scrollOffset = scrollBehavior.state.contentOffset,
+                            )
+                        }
             }
         }
-    }
-    // Tab bar sebagai overlay SIBLING — dirender setelah NavHost, di atasnya.
-    // Karena Scaffold.bottomBar dikosongkan, konten sekarang bisa menggulir
-    // menembus bar. Bar tetap mengambang di bagian bawah layar.
-    LiquidGlassTabBar(
-        current = current,
-        onSelect = goToTab,
-        modifier = Modifier.align(Alignment.BottomCenter),
-    )
+        // Tab bar sebagai overlay SIBLING — dirender setelah NavHost, di atasnya.
+        // Karena Scaffold.bottomBar dikosongkan, konten sekarang bisa menggulir
+        // menembus bar. Bar tetap mengambang di bagian bawah layar.
+        LiquidGlassTabBar(
+            current = current,
+            onSelect = goToTab,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }  // Box(Modifier.fillMaxSize())
     ExitOnBackFromTab(
         currentRoute = current,
@@ -597,38 +625,39 @@ private fun GlassTabItem(
 }
 
 /**
- * Top bar overlay. Dua keadaan:
+ * Top bar overlay: menampilkan IDENTITAS LAYAR (eyebrow + judul) yang ditulis
+ * layar aktif lewat [TopBarInfoEffect]. Karena itu setiap layar tidak lagi
+ * merender `ScreenHeader` sendiri — dulu judul tampil dua kali (sekali di top
+ * bar, sekali di badan layar).
  *
- *  • Di paling atas (collapse 0): TANPA latar → background app menembus sampai
- *    ke status bar (sesuai catatan: top system bar harus tembus).
+ * Dua keadaan:
+ *  • Di paling atas (scroll 0): TANPA latar → background app menembus sampai
+ *    ke status bar.
+ *  • Setelah di-scroll: FROSTED GLASS dengan bahasa visual yang sama seperti
+ *    bottom tab bar — surface α 0.85 + rim specular + shadow diffuse. Tanpa ini
+ *    konten menabrak jam status bar dan judulnya tidak terbaca.
  *
- *  • Setelah di-scroll (collapse naik): menjadi FROSTED GLASS dengan bahasa
- *    visual yang sama seperti bottom tab bar — surface α 0.85 + rim specular +
- *    shadow diffuse. Tanpa ini konten yang menggulir menabrak jam status bar
- *    dan judul (jelek, dan judul jadi tidak terbaca).
+ * Sinyal frosted diambil dari `contentOffset`, BUKAN `collapsedFraction`:
+ * PinnedScrollBehavior hanya memperbarui contentOffset dan tidak pernah
+ * menyentuh heightOffset, sehingga collapsedFraction selalu 0 (lihat material3
+ * AppBar.kt). contentOffset bertambah seiring scroll dan tidak butuh TopAppBar
+ * material untuk ter-update.
  *
- * CATATAN PENTING: nilai `collapse` hanya bergerak kalau layar memanggil
+ * `scrollOffset` hanya bergerak kalau layar memanggil
  * Modifier.nestedScrollConnection(scrollBehavior, ...) pada container
- * scroll-nya. Layar yang tidak memasangnya akan selalu collapse = 0, sehingga
- * top bar tetap tembus dan konten menabrak status bar.
+ * scroll-nya.
  */
 @Composable
 private fun PremiumTopBar(
+    eyebrow: String,
     title: String,
-    scrollBehavior: TopAppBarScrollBehavior?,
+    scrollOffset: Float,
 ) {
     val scheme = MaterialTheme.colorScheme
     val surface = scheme.surface
     val isDark = surface.luminance() < 0.5f
-    // PENTING — kenapa overlappedFraction, bukan collapsedFraction:
-    // PinnedScrollBehavior hanya memperbarui contentOffset dan TIDAK pernah
-    // menyentuh heightOffset (lihat material3 AppBar.kt, PinnedScrollBehavior).
-    // collapsedFraction = heightOffset / heightOffsetLimit = 0 / -barHeight,
-    // jadi SELALU 0 → frosted glass tidak pernah terpicu.
-    // overlappedFraction justru didefinisikan sebagai "persentase area app bar
-    // yang ter-overlap konten yang di-scroll di belakangnya": 0 saat di paling
-    // atas, naik ke 1 saat konten mulai lewat. Persis sinyal yang dibutuhkan.
-    val glass = (scrollBehavior?.state?.overlappedFraction ?: 0f).coerceIn(0f, 1f)
+    // Kaca penuh setelah ±120px scroll; di bawah itu bertahap.
+    val glass = (kotlin.math.abs(scrollOffset) / 120f).coerceIn(0f, 1f)
 
     Box(
         Modifier
@@ -646,8 +675,9 @@ private fun PremiumTopBar(
                 },
             ),
     ) {
-            // Panel kaca: satu bidang menutup status bar + bar, sama seperti
-            // perlakuan pada tab bar bawah.
+        // Panel kaca: satu bidang menutup status bar + bar, sama seperti
+        // perlakuan pada tab bar bawah.
+        if (glass > 0.01f) {
             Box(
                 Modifier
                     .matchParentSize()
@@ -668,23 +698,34 @@ private fun PremiumTopBar(
                         ),
                     ),
             )
-        CenterAlignedTopAppBar(
-            title = {
+        }
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            if (eyebrow.isNotBlank()) {
                 Text(
-                    title,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.25.sp,
+                    eyebrow.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp,
+                    color = scheme.primary,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            },
-            scrollBehavior = scrollBehavior,
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                scrolledContainerColor = Color.Transparent,
-                navigationIconContentColor = Color.Unspecified,
-                titleContentColor = scheme.onSurface,
-                actionIconContentColor = Color.Unspecified,
-            ),
-        )
+            }
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.25).sp,
+                color = scheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }

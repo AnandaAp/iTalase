@@ -22,11 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.ui.components.AppIcon
-import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.Routes
+import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.cd_open
 import italase.shared.generated.resources.more_about_d
@@ -43,6 +43,10 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MoreScreen(onNavigate: (String) -> Unit = {}) {
+    TopBarInfoEffect(
+        eyebrow = stringResource(Res.string.more_sub),
+        title = stringResource(Res.string.title_more),
+    )
     Column(
         Modifier
             .fillMaxSize()
@@ -51,10 +55,6 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-        ScreenHeader(
-            title = stringResource(Res.string.title_more),
-            subtitle = stringResource(Res.string.more_sub),
-        )
         MoreRow(
             title = stringResource(Res.string.title_history),
             desc = stringResource(Res.string.more_history_d),
