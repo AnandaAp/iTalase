@@ -37,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -123,16 +124,46 @@ val LocalBottomOverlayPadding = compositionLocalOf { 0.dp }
 private val TOP_BAR_CONTENT_HEIGHT = 74.dp
 
 /**
- * Info judul yang ditampilkan top bar. Dimiliki AppNavHost; layar menulisnya
- * lewat [TopBarInfoEffect] supaya eyebrow + judul layar hidup DI DALAM top bar
- * dan tidak lagi dirender dobel sebagai header di badan layar.
+ * State top bar, DIPISAH PER ROUTE.
+ *
+ * Kenapa per-route dan bukan satu holder global: saat navigasi, dua destinasi
+ * hidup bersamaan selama transisi NavHost. Dengan satu holder, penulis terakhir
+ * menang — jadi judul layar lama nyangkut di layar baru (bug "pindah cepat").
+ * Dengan peta per-route, urutan penulisan tidak lagi menentukan: top bar selalu
+ * membaca milik route yang sedang aktif.
+ *
+ * `behaviors` juga per-destinasi. Kalau behavior dipakai bersama, `contentOffset`
+ * menumpuk lintas layar sehingga bar tetap frosted setelah pindah screen dan
+ * baru reset kalau layar digulir dulu.
  */
-class TopBarInfo {
-    var eyebrow by mutableStateOf("")
-    var title by mutableStateOf("")
+class TopBarState {
+    val eyebrow = mutableStateMapOf<String, String>()
+    val title = mutableStateMapOf<String, String>()
+    val behaviors = mutableStateMapOf<String, TopAppBarScrollBehavior>()
 }
 
-val LocalTopBarInfo = compositionLocalOf { TopBarInfo() }
+val LocalTopBarState = compositionLocalOf { TopBarState() }
+
+/** Route destinasi yang sedang merender — kunci penulisan state top bar. */
+val LocalScreenRoute = compositionLocalOf { "" }
+
+/**
+ * Lingkup per-destinasi. Di-remember DI DALAM back stack entry NavHost, jadi
+ * `contentOffset` ikut di-restore bersama posisi scroll layar saat tab berpindah
+ * (behavior default memakai rememberSaveable).
+ */
+@Composable
+private fun ScreenScope(route: String, content: @Composable () -> Unit) {
+    val state = LocalTopBarState.current
+    val behavior = TopAppBarDefaults.pinnedScrollBehavior()
+    // Daftarkan supaya top bar bisa membaca offset destinasi ini. Menulis
+    // referensi yang sama tidak memicu invalidasi state map.
+    SideEffect { state.behaviors[route] = behavior }
+    CompositionLocalProvider(
+        LocalTopAppBarScrollBehavior provides behavior,
+        LocalScreenRoute provides route,
+    ) { content() }
+}
 
 /**
  * Pindahkan header layar ke top bar.
@@ -141,13 +172,11 @@ val LocalTopBarInfo = compositionLocalOf { TopBarInfo() }
  */
 @Composable
 fun TopBarInfoEffect(eyebrow: String, title: String) {
-    val info = LocalTopBarInfo.current
-    // SideEffect: tulis state setelah komposisi sukses. Menulis nilai yang sama
-    // tidak memicu invalidasi (state memakai perbandingan struktural), jadi
-    // tidak ada recomposisi tambahan saat nilai tidak berubah.
+    val state = LocalTopBarState.current
+    val route = LocalScreenRoute.current
     SideEffect {
-        info.eyebrow = eyebrow
-        info.title = title
+        state.eyebrow[route] = eyebrow
+        state.title[route] = title
     }
 }
 
@@ -168,8 +197,8 @@ fun AppNavHost(
     // Back di tab root = konfirmasi keluar, bukan kembali ke tab sebelumnya.
     var confirmExit by remember { mutableStateOf(false) }
     val exit = rememberAppExit()
-    // Judul top bar dimiliki di sini; layar menulisnya via TopBarInfoEffect.
-    val topBarInfo = remember { TopBarInfo() }
+    // State top bar per-route; layar menulisnya via TopBarInfoEffect.
+    val topBarState = remember { TopBarState() }
 
     // Zhitung kunjungan ke Beranda; naik lagi setiap kali tab diaktifkan kembali.
     var homeVisit by remember { mutableIntStateOf(0) }
@@ -202,21 +231,8 @@ fun AppNavHost(
         if (Routes.isTabRoute(route)) goToTab(route) else goToScreen(route)
     }
 
-    // YouTube-style: top app bar hides on scroll down, shows on scroll up
-    // pinnedScrollBehavior, bukan enterAlways: bar tidak lagi menyembunyikan
-    // diri saat scroll. Ia tetap di tempat dan bertransisi dari tembus
-    // (di atas) menjadi frosted glass (saat konten lewat di belakangnya).
-    // enterAlways membuat judul hilang lalu konten menabrak status bar —
-    // persis masalah yang muncul di screenshot.
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-
-    // Each destination starts with an expanded bar: the behavior is shared
-    // across routes, so reset it on navigation. Otherwise a bar hidden on
-    // Home would stay hidden on Kasir/Stok.
-    LaunchedEffect(current) {
-        scrollBehavior.state.heightOffset = 0f
-        scrollBehavior.state.contentOffset = 0f
-    }
+    // Tiap destinasi punya scroll behavior sendiri (lihat ScreenScope), jadi
+    // tidak ada lagi behavior bersama yang perlu di-reset saat navigasi.
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(
@@ -247,12 +263,11 @@ fun AppNavHost(
                 val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 val bottomBarFootprint = navInset + 12.dp + 64.dp
                 val overlayBottom = bottomBarFootprint + 8.dp
-                // Provide scroll behavior to all screens via CompositionLocal
+                // Behavior scroll diberikan per-destinasi lewat ScreenScope, bukan di sini.
                 CompositionLocalProvider(
-                    LocalTopAppBarScrollBehavior provides scrollBehavior,
                     LocalTopOverlayPadding provides overlayTop,
                     LocalBottomOverlayPadding provides overlayBottom,
-                    LocalTopBarInfo provides topBarInfo,
+                    LocalTopBarState provides topBarState,
                 ) {
                     NavHost(
                         navController = navController,
@@ -260,187 +275,206 @@ fun AppNavHost(
                         modifier = modifier.fillMaxSize(),
                     ) {
                         composable(Routes.HOME) {
-                            val vm: DashboardViewModel = koinInject()
-                            // Naik tiap kali Beranda menjadi tab aktif, jadi omzet/piutang
-                            // selalu segar setelah cashier atau bon berubah di tab lain.
-                            LaunchedEffect(Unit) { homeVisit++ }
-                            val summary by vm.summary.collectAsState()
-                            val top by vm.top.collectAsState()
-                            val piutang by vm.piutang.collectAsState()
-                            val products by vm.products.collectAsState()
-                            val debts by vm.activeDebts.collectAsState()
-                            val error by vm.error.collectAsState()
+                            ScreenScope(Routes.HOME) {
+                                val vm: DashboardViewModel = koinInject()
+                                // Naik tiap kali Beranda menjadi tab aktif, jadi omzet/piutang
+                                // selalu segar setelah cashier atau bon berubah di tab lain.
+                                LaunchedEffect(Unit) { homeVisit++ }
+                                val summary by vm.summary.collectAsState()
+                                val top by vm.top.collectAsState()
+                                val piutang by vm.piutang.collectAsState()
+                                val products by vm.products.collectAsState()
+                                val debts by vm.activeDebts.collectAsState()
+                                val error by vm.error.collectAsState()
 
-                            DashboardScreen(
-                                summary = summary,
-                                top = top,
-                                piutang = piutang,
-                                lowStock = products.filter { it.stock <= it.minStock || it.stock <= StockRules.LOW_STOCK_FALLBACK },
-                                activeDebtCount = debts.size,
-                                error = error?.text().orEmpty(),
-                                onRefresh = vm::refresh,
-                                onQuickAction = goToRoute,
-                                refreshKey = homeVisit,
-                            )
+                                DashboardScreen(
+                                    summary = summary,
+                                    top = top,
+                                    piutang = piutang,
+                                    lowStock = products.filter { it.stock <= it.minStock || it.stock <= StockRules.LOW_STOCK_FALLBACK },
+                                    activeDebtCount = debts.size,
+                                    error = error?.text().orEmpty(),
+                                    onRefresh = vm::refresh,
+                                    onQuickAction = goToRoute,
+                                    refreshKey = homeVisit,
+                                )
+                            }
                         }
                         composable(Routes.CASHIER) {
-                            val vm: CashierViewModel = koinInject()
-                            val cart by vm.cart.collectAsState()
-                            val query by vm.query.collectAsState()
-                            val category by vm.category.collectAsState()
-                            val categories by vm.categories.collectAsState()
-                            val visible by vm.visibleProducts.collectAsState()
-                            val message by vm.message.collectAsState()
-                            var showPay by remember { mutableStateOf(false) }
+                            ScreenScope(Routes.CASHIER) {
+                                val vm: CashierViewModel = koinInject()
+                                val cart by vm.cart.collectAsState()
+                                val query by vm.query.collectAsState()
+                                val category by vm.category.collectAsState()
+                                val categories by vm.categories.collectAsState()
+                                val visible by vm.visibleProducts.collectAsState()
+                                val message by vm.message.collectAsState()
+                                var showPay by remember { mutableStateOf(false) }
 
-                            CashierScreen(
-                                query = query,
-                                onQuery = vm::search,
-                                categories = categories.toImmutableList(),
-                                activeCategory = category,
-                                onCategory = vm::selectCategory,
-                                list = visible.toImmutableList(),
-                                cart = cart.toImmutableMap(),
-                                lines = vm.cartLines().toImmutableList(),
-                                total = vm.cartTotal(),
-                                message = message?.text().orEmpty(),
-                                showPayDialog = showPay,
-                                onAdd = vm::add,
-                                onSetQty = vm::setQty,
-                                onClear = vm::clearCart,
-                                onPay = { showPay = true },
-                                onDismissPay = { showPay = false },
-                                onConfirmPay = { paid, method, customer ->
-                                    vm.checkout(paid, method, customer)
-                                    showPay = false
-                                },
-                            )
+                                CashierScreen(
+                                    query = query,
+                                    onQuery = vm::search,
+                                    categories = categories.toImmutableList(),
+                                    activeCategory = category,
+                                    onCategory = vm::selectCategory,
+                                    list = visible.toImmutableList(),
+                                    cart = cart.toImmutableMap(),
+                                    lines = vm.cartLines().toImmutableList(),
+                                    total = vm.cartTotal(),
+                                    message = message?.text().orEmpty(),
+                                    showPayDialog = showPay,
+                                    onAdd = vm::add,
+                                    onSetQty = vm::setQty,
+                                    onClear = vm::clearCart,
+                                    onPay = { showPay = true },
+                                    onDismissPay = { showPay = false },
+                                    onConfirmPay = { paid, method, customer ->
+                                        vm.checkout(paid, method, customer)
+                                        showPay = false
+                                    },
+                                )
+                            }
                         }
                         composable(Routes.STOCK) {
-                            val vm: ProductViewModel = koinInject()
-                            val visible by vm.visibleProducts.collectAsState()
-                            val query by vm.query.collectAsState()
-                            val category by vm.category.collectAsState()
-                            val categories by vm.categories.collectAsState()
-                            val message by vm.message.collectAsState()
-                            var showForm by remember { mutableStateOf(false) }
-                            var edit: ProductEntity? by remember { mutableStateOf(null) }
+                            ScreenScope(Routes.STOCK) {
+                                val vm: ProductViewModel = koinInject()
+                                val visible by vm.visibleProducts.collectAsState()
+                                val query by vm.query.collectAsState()
+                                val category by vm.category.collectAsState()
+                                val categories by vm.categories.collectAsState()
+                                val message by vm.message.collectAsState()
+                                var showForm by remember { mutableStateOf(false) }
+                                var edit: ProductEntity? by remember { mutableStateOf(null) }
 
-                            ProductScreen(
-                                products = visible,
-                                query = query,
-                                onQuery = vm::search,
-                                categories = categories,
-                                activeCategory = category,
-                                onCategory = vm::selectCategory,
-                                message = message?.text().orEmpty(),
-                                showForm = showForm,
-                                edit = edit,
-                                onAdd = { edit = null; showForm = true },
-                                onEdit = { edit = it; showForm = true },
-                                onDelete = vm::delete,
-                                onDismissForm = { showForm = false },
-                                onSaveForm = { name, buy, sell, stock, unit, barcode, cat ->
-                                    vm.save(name, buy, sell, stock, unit, barcode, cat, edit?.id ?: 0)
-                                    showForm = false
-                                },
-                            )
+                                ProductScreen(
+                                    products = visible,
+                                    query = query,
+                                    onQuery = vm::search,
+                                    categories = categories,
+                                    activeCategory = category,
+                                    onCategory = vm::selectCategory,
+                                    message = message?.text().orEmpty(),
+                                    showForm = showForm,
+                                    edit = edit,
+                                    onAdd = { edit = null; showForm = true },
+                                    onEdit = { edit = it; showForm = true },
+                                    onDelete = vm::delete,
+                                    onDismissForm = { showForm = false },
+                                    onSaveForm = { name, buy, sell, stock, unit, barcode, cat ->
+                                        vm.save(name, buy, sell, stock, unit, barcode, cat, edit?.id ?: 0)
+                                        showForm = false
+                                    },
+                                )
+                            }
                         }
                         composable(Routes.HISTORY) {
-                            val vm: HistoryViewModel = koinInject()
-                            val sales by vm.sales.collectAsState()
-                            val category by vm.category.collectAsState()
-                            val categories by vm.categories.collectAsState()
+                            ScreenScope(Routes.HISTORY) {
+                                val vm: HistoryViewModel = koinInject()
+                                val sales by vm.sales.collectAsState()
+                                val category by vm.category.collectAsState()
+                                val categories by vm.categories.collectAsState()
 
-                            HistoryScreen(
-                                sales = sales,
-                                categories = categories,
-                                activeCategory = category,
-                                onCategory = vm::selectCategory,
-                                onOpen = {
-                                    vm.selectSale(it)
-                                    goToScreen(Routes.HISTORY_DETAIL)
-                                },
-                            )
+                                HistoryScreen(
+                                    sales = sales,
+                                    categories = categories,
+                                    activeCategory = category,
+                                    onCategory = vm::selectCategory,
+                                    onOpen = {
+                                        vm.selectSale(it)
+                                        goToScreen(Routes.HISTORY_DETAIL)
+                                    },
+                                )
+                            }
                         }
                         composable(Routes.HISTORY_DETAIL) {
-                            val vm: HistoryViewModel = koinInject()
-                            val selectedId by vm.selectedId.collectAsState()
-                            val detail by vm.detail.collectAsState()
-                            val message by vm.detailMessage.collectAsState()
-                            var showEdit by remember { mutableStateOf(false) }
+                            ScreenScope(Routes.HISTORY_DETAIL) {
+                                val vm: HistoryViewModel = koinInject()
+                                val selectedId by vm.selectedId.collectAsState()
+                                val detail by vm.detail.collectAsState()
+                                val message by vm.detailMessage.collectAsState()
+                                var showEdit by remember { mutableStateOf(false) }
 
-                            LaunchedEffect(selectedId) { vm.loadDetail(selectedId) }
+                                LaunchedEffect(selectedId) { vm.loadDetail(selectedId) }
 
-                            SaleDetailScreen(
-                                detail = detail,
-                                message = message?.text().orEmpty(),
-                                showEditDialog = showEdit,
-                                onBack = { navController.popBackStack() },
-                                onEdit = { showEdit = true },
-                                onDismissEdit = { showEdit = false },
-                                onSaveEdit = { customer, note ->
-                                    vm.updateInfo(selectedId, customer, note)
-                                    showEdit = false
-                                },
-                            )
+                                SaleDetailScreen(
+                                    detail = detail,
+                                    message = message?.text().orEmpty(),
+                                    showEditDialog = showEdit,
+                                    onBack = { navController.popBackStack() },
+                                    onEdit = { showEdit = true },
+                                    onDismissEdit = { showEdit = false },
+                                    onSaveEdit = { customer, note ->
+                                        vm.updateInfo(selectedId, customer, note)
+                                        showEdit = false
+                                    },
+                                )
+                            }
                         }
                         composable(Routes.DEBT) {
-                            val vm: DebtViewModel = koinInject()
-                            val debts by vm.debts.collectAsState()
-                            val message by vm.message.collectAsState()
-                            var showAdd by remember { mutableStateOf(false) }
-                            var payId by remember { mutableStateOf<Long?>(null) }
+                            ScreenScope(Routes.DEBT) {
+                                val vm: DebtViewModel = koinInject()
+                                val debts by vm.debts.collectAsState()
+                                val message by vm.message.collectAsState()
+                                var showAdd by remember { mutableStateOf(false) }
+                                var payId by remember { mutableStateOf<Long?>(null) }
 
-                            DebtScreen(
-                                debts = debts,
-                                message = message?.text().orEmpty(),
-                                showAddDialog = showAdd,
-                                payId = payId,
-                                onAdd = { showAdd = true },
-                                onPay = { payId = it },
-                                onDismissAdd = { showAdd = false },
-                                onSaveDebt = { name, amount, note ->
-                                    vm.saveManual(name, amount, note)
-                                    showAdd = false
-                                },
-                                onDismissPay = { payId = null },
-                                onSavePay = { amount ->
-                                    payId?.let { vm.pay(it, amount) }
-                                    payId = null
-                                },
-                            )
+                                DebtScreen(
+                                    debts = debts,
+                                    message = message?.text().orEmpty(),
+                                    showAddDialog = showAdd,
+                                    payId = payId,
+                                    onAdd = { showAdd = true },
+                                    onPay = { payId = it },
+                                    onDismissAdd = { showAdd = false },
+                                    onSaveDebt = { name, amount, note ->
+                                        vm.saveManual(name, amount, note)
+                                        showAdd = false
+                                    },
+                                    onDismissPay = { payId = null },
+                                    onSavePay = { amount ->
+                                        payId?.let { vm.pay(it, amount) }
+                                        payId = null
+                                    },
+                                )
+                            }
                         }
                         composable(Routes.EXPENSE) {
-                            val vm: ExpenseViewModel = koinInject()
-                            val items by vm.items.collectAsState()
-                            val message by vm.message.collectAsState()
-                            var showAdd by remember { mutableStateOf(false) }
+                            ScreenScope(Routes.EXPENSE) {
+                                val vm: ExpenseViewModel = koinInject()
+                                val items by vm.items.collectAsState()
+                                val message by vm.message.collectAsState()
+                                var showAdd by remember { mutableStateOf(false) }
 
-                            ExpenseScreen(
-                                items = items,
-                                message = message?.text().orEmpty(),
-                                showAddDialog = showAdd,
-                                onAdd = { showAdd = true },
-                                onDelete = vm::delete,
-                                onDismissAdd = { showAdd = false },
-                                onSaveExpense = { name, category, amount, note ->
-                                    vm.save(name, category, amount, note)
-                                    showAdd = false
-                                },
-                            )
+                                ExpenseScreen(
+                                    items = items,
+                                    message = message?.text().orEmpty(),
+                                    showAddDialog = showAdd,
+                                    onAdd = { showAdd = true },
+                                    onDelete = vm::delete,
+                                    onDismissAdd = { showAdd = false },
+                                    onSaveExpense = { name, category, amount, note ->
+                                        vm.save(name, category, amount, note)
+                                        showAdd = false
+                                    },
+                                )
+                            }
                         }
                         composable(Routes.MORE) {
-                            MoreScreen(onNavigate = goToRoute)
+                            ScreenScope(Routes.MORE) {
+                                MoreScreen(onNavigate = goToRoute)
+                            }
                         }
                             }
                             // Top bar overlay (dibaca setelah NavHost = di atas konten).
-                            // Judul + eyebrow berasal dari info yang ditulis layar aktif,
-                            // jadi header layar tidak lagi dirender dobel di badan layar.
+                            // Semua nilai diambil dari bucket route AKTIF: judul/eyebrow
+                            // ditulis layar lewat TopBarInfoEffect, frost dari scroll
+                            // behavior milik destinasi itu sendiri — jadi tidak ada
+                            // state yang bocor antar layar.
+                            val activeBehavior = topBarState.behaviors[current]
                             PremiumTopBar(
-                                eyebrow = topBarInfo.eyebrow,
-                                title = topBarInfo.title,
-                                scrollOffset = scrollBehavior.state.contentOffset,
+                                eyebrow = topBarState.eyebrow[current].orEmpty(),
+                                title = topBarState.title[current].orEmpty(),
+                                scrollOffset = activeBehavior?.state?.contentOffset ?: 0f,
                             )
                         }
             }
