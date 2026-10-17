@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -40,6 +40,7 @@ import com.anlian.italase.shared.ui.components.ListCard
 import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.Routes
 import com.anlian.italase.shared.ui.theme.WarungGreenDark
 import com.anlian.italase.shared.util.formatRupiah
@@ -79,9 +80,12 @@ fun DashboardScreen(
     error: String,
     onRefresh: () -> Unit = {},
     onQuickAction: (String) -> Unit = {},
+    // Bertambah tiap kali Beranda dibuka lagi, termasuk setelah pindah tab
+    // (destination di-restore, jadi LaunchedEffect(Unit) tidak akan jalan lagi).
+    // NavHost yang memegang counter-nya; ringkasan di-refresh oleh call site.
+    refreshKey: Int = 0,
 ) {
-
-    LaunchedEffect(Unit) { onRefresh() }
+    LaunchedEffect(refreshKey) { onRefresh() }
 
     DashboardContent(
         summary = summary,
@@ -104,137 +108,144 @@ fun DashboardContent(
     error: String,
     onQuickAction: (String) -> Unit = {},
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+    val overlayTop = LocalTopOverlayPadding.current
+    // Dashboard konten statis (forEach, bukan lazy list) tapi tinggi → perlu
+    // verticalScroll. Top bar fixed (ga wired nestedScroll), cukup scroll konten.
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Spacer(Modifier.height(8.dp))
-            ScreenHeader(
-                title = stringResource(Res.string.dash_hello),
-                subtitle = stringResource(Res.string.dash_hello_sub),
+        Spacer(Modifier.height(overlayTop + 8.dp))
+        ScreenHeader(
+            title = stringResource(Res.string.dash_hello),
+            subtitle = stringResource(Res.string.dash_hello_sub),
+        )
+        if (error.isNotEmpty()) {
+            Text(
+                error,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
             )
-            if (error.isNotEmpty()) {
-                Text(
-                    error,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
         }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(MaterialTheme.colorScheme.primary, WarungGreenDark),
+                        ),
+                    ),
             ) {
                 Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(MaterialTheme.colorScheme.primary, WarungGreenDark),
-                            ),
-                        ),
-                ) {
-                    Box(
-                        Modifier.size(140.dp).offset(x = 60.dp, y = (-40).dp).align(Alignment.TopEnd)
-                            .clip(CircleShape).background(Color.White.copy(alpha = 0.10f)),
-                    )
-                    Box(
-                        Modifier.size(90.dp).offset(x = (-20).dp, y = 50.dp).align(Alignment.BottomStart)
-                            .clip(CircleShape).background(Color.White.copy(alpha = 0.08f)),
-                    )
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                AppIcon.STOREFRONT.painter(),
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.85f),
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(
-                                stringResource(Res.string.dash_omzet),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(start = 6.dp),
-                            )
-                        }
-                        Text(
-                            formatRupiah(summary.omzet),
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                    Modifier.size(140.dp).offset(x = 60.dp, y = (-40).dp).align(Alignment.TopEnd)
+                        .clip(CircleShape).background(Color.White.copy(alpha = 0.10f)),
+                )
+                Box(
+                    Modifier.size(90.dp).offset(x = (-20).dp, y = 50.dp).align(Alignment.BottomStart)
+                        .clip(CircleShape).background(Color.White.copy(alpha = 0.08f)),
+                )
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            AppIcon.STOREFRONT.painter(),
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(16.dp),
                         )
                         Text(
-                            stringResource(Res.string.dash_trx_profit, summary.trxCount, formatRupiah(summary.profit)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.9f),
+                            stringResource(Res.string.dash_omzet),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 6.dp),
                         )
                     }
+                    Text(
+                        formatRupiah(summary.omzet),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                    Text(
+                        stringResource(Res.string.dash_trx_profit, summary.trxCount, formatRupiah(summary.profit)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.9f),
+                    )
                 }
             }
         }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                QuickAction(stringResource(Res.string.tab_cashier), AppIcon.SHOPPING_CART, Modifier.weight(1f)) {
-                    onQuickAction(Routes.CASHIER)
-                }
-                QuickAction(stringResource(Res.string.tab_stock), AppIcon.INVENTORY, Modifier.weight(1f)) {
-                    onQuickAction(Routes.STOCK)
-                }
-                QuickAction(stringResource(Res.string.tab_debt), AppIcon.HANDSHAKE, Modifier.weight(1f)) {
-                    onQuickAction(Routes.DEBT)
-                }
-                QuickAction(stringResource(Res.string.title_expenses), AppIcon.PAYMENTS, Modifier.weight(1f)) {
-                    onQuickAction(Routes.EXPENSE)
-                }
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            QuickAction(stringResource(Res.string.tab_cashier), AppIcon.SHOPPING_CART, Modifier.weight(1f)) {
+                onQuickAction(Routes.CASHIER)
+            }
+            QuickAction(stringResource(Res.string.tab_stock), AppIcon.INVENTORY, Modifier.weight(1f)) {
+                onQuickAction(Routes.STOCK)
+            }
+            QuickAction(stringResource(Res.string.tab_debt), AppIcon.HANDSHAKE, Modifier.weight(1f)) {
+                onQuickAction(Routes.DEBT)
+            }
+            QuickAction(stringResource(Res.string.title_expenses), AppIcon.PAYMENTS, Modifier.weight(1f)) {
+                onQuickAction(Routes.EXPENSE)
             }
         }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatCard(
-                    stringResource(Res.string.dash_stat_net),
-                    formatRupiah(summary.bersih),
-                    Modifier.weight(1f),
-                )
-                StatCard(
-                    stringResource(Res.string.title_expenses),
-                    formatRupiah(summary.expense),
-                    Modifier.weight(1f),
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatCard(
-                    stringResource(Res.string.dash_stat_debt),
-                    formatRupiah(piutang),
-                    Modifier.weight(1f),
-                    stringResource(Res.string.dash_debt_running, activeDebtCount),
-                )
-                StatCard(
-                    stringResource(Res.string.dash_stat_gross),
-                    formatRupiah(summary.profit),
-                    Modifier.weight(1f),
-                )
-            }
-        }
-        item {
-            SectionHeader(
-                stringResource(Res.string.dash_top),
-                stringResource(Res.string.dash_top_count, top.size),
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            StatCard(
+                stringResource(Res.string.dash_stat_net),
+                formatRupiah(summary.bersih),
+                Modifier.weight(1f),
+            )
+            StatCard(
+                stringResource(Res.string.title_expenses),
+                formatRupiah(summary.expense),
+                Modifier.weight(1f),
             )
         }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            StatCard(
+                stringResource(Res.string.dash_stat_debt),
+                formatRupiah(piutang),
+                Modifier.weight(1f),
+                stringResource(Res.string.dash_debt_running, activeDebtCount),
+            )
+            StatCard(
+                stringResource(Res.string.dash_stat_gross),
+                formatRupiah(summary.profit),
+                Modifier.weight(1f),
+            )
+        }
+
+        SectionHeader(
+            stringResource(Res.string.dash_top),
+            stringResource(Res.string.dash_top_count, top.size),
+        )
         if (top.isEmpty()) {
-            item {
-                EmptyState(
-                    stringResource(Res.string.dash_top_empty_t),
-                    stringResource(Res.string.dash_top_empty_h),
-                )
-            }
+            EmptyState(
+                stringResource(Res.string.dash_top_empty_t),
+                stringResource(Res.string.dash_top_empty_h),
+            )
         } else {
-            items(top, key = { it.productName }) { r ->
+            top.forEach { r ->
                 ListCard {
                     Row(
                         Modifier.fillMaxWidth().padding(14.dp),
@@ -264,21 +275,18 @@ fun DashboardContent(
                 }
             }
         }
-        item {
-            SectionHeader(
-                stringResource(Res.string.dash_low),
-                stringResource(Res.string.dash_low_count, lowStock.size),
-            )
-        }
+
+        SectionHeader(
+            stringResource(Res.string.dash_low),
+            stringResource(Res.string.dash_low_count, lowStock.size),
+        )
         if (lowStock.isEmpty()) {
-            item {
-                EmptyState(
-                    stringResource(Res.string.dash_low_empty_t),
-                    stringResource(Res.string.dash_low_empty_h),
-                )
-            }
+            EmptyState(
+                stringResource(Res.string.dash_low_empty_t),
+                stringResource(Res.string.dash_low_empty_h),
+            )
         } else {
-            items(lowStock.take(10), key = { it.id }) { p ->
+            lowStock.take(10).forEach { p ->
                 ListCard(tonal = true) {
                     Row(
                         Modifier.fillMaxWidth().padding(14.dp),
@@ -302,7 +310,7 @@ fun DashboardContent(
                 }
             }
         }
-        item { Spacer(Modifier.height(8.dp)) }
+        Spacer(Modifier.height(8.dp))
     }
 }
 

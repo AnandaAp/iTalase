@@ -159,6 +159,14 @@
     <string name="more_about_t">iTalase • Offline</string>
     <string name="more_about_d">Data tersimpan aman di HP, tanpa internet.</string>
 
+    <!-- Konfirmasi keluar -->
+    <string name="exit_eyebrow">KONFIRMASI</string>
+    <string name="exit_title">Keluar dari iTalase?</string>
+    <string name="exit_msg">Keranjang dan transaksi yang belum tersimpan akan hilang.</string>
+    <string name="exit_confirm">Ya, keluar</string>
+    <string name="exit_cancel">Batal</string>
+    <string name="cd_exit_warning">Peringatan keluar</string>
+
     <!-- Aksesibilitas -->
     <string name="cd_search">Cari</string>
     <string name="cd_add">Tambah</string>

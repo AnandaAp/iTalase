@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -34,12 +35,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.data.local.entity.DebtEntity
 import com.anlian.italase.shared.data.local.entity.DebtStatus
+import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
-import com.anlian.italase.shared.ui.components.AppIcon
-import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.StatusChip
+import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
+import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import com.anlian.italase.shared.util.parseRupiah
 import italase.shared.generated.resources.Res
@@ -109,11 +113,16 @@ fun DebtContent(
 ) {
     val active = debts.filter { it.status != DebtStatus.LUNAS }
     Box(Modifier.fillMaxSize()) {
+        val scrollBehavior = LocalTopAppBarScrollBehavior.current
+        val listState = rememberLazyListState()
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .nestedScrollConnection(scrollBehavior, listState),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
             ScreenHeader(
                 title = stringResource(Res.string.title_debts),
                 subtitle = stringResource(Res.string.debt_running, active.size),
@@ -151,6 +160,7 @@ fun DebtContent(
                 )
             } else {
                 LazyColumn(
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(bottom = 88.dp),

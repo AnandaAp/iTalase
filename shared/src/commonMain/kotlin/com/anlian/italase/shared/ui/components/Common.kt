@@ -1,18 +1,26 @@
 package com.anlian.italase.shared.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -21,14 +29,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.cat_all
+import italase.shared.generated.resources.cd_exit_warning
+import italase.shared.generated.resources.exit_cancel
+import italase.shared.generated.resources.exit_confirm
+import italase.shared.generated.resources.exit_eyebrow
+import italase.shared.generated.resources.exit_msg
+import italase.shared.generated.resources.exit_title
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -142,6 +168,228 @@ fun MoneyBig(amount: String, label: String, light: Boolean = false) {
         Text(amount, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = valueColor)
     }
 }
+
+// ════════════════════════════════════════════════════════════════════════
+//  GLASS DIALOG — Liquid Glass × M3 Expressive
+// ════════════════════════════════════════════════════════════════════════
+//  PENTING (2Percobaan gagal sebelumnya, catat biar ga diulang):
+//   • JANGAN pakai renderEffect/BlurEffect di node yang berisi konten dialog.
+//     RenderEffect hanya memburam isi node itu sendiri → teks ikut buram.
+//   • JANGANBlur modifier pada container dialog.
+//     Modifier.blur juga hanya memburam children-nya sendiri → sama saja.
+//   • Backdrop blur yang benar dilakukan di sisi LAIN: Scaffold dipanggil
+//     dari AppNavHost dengan Modifier.blur, sedangkan dialog ini tetap memakai
+//     android.ui.window.Dialog (jendela terpisah) sehingga tidak pernah ikut
+//     di-blur. Lihat AppNavHost.
+//
+//  Prinsip Liquid Glass / M3 Expressive yang dipakai di sini:
+//   • TANPA border stroke. Edge glass muncul dari selisih luminance veil.
+//   • Translucency nyata (alpha 0.52) di atas backdrop yang sudah buram.
+//   • Tanpa gradient dekoratif — hanya sorot warna brand + specular sheen.
+//   • Satu radius kontinu 28dp (squircle), tanpa double-bezel.
+//   • Spring entry, press-scale di tombol.
+private val GLASS_RADIUS = 28.dp
+
+/** Dialog konfirmasi keluar. Jendela terpisah → tidak pernah ikut di-blur. */
+@Composable
+fun ExitConfirmDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val isDark = scheme.surface.luminance() < 0.5f
+
+    // Spring entry: fade + scale 0.96 → 1.
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val appear by animateFloatAsState(
+        if (shown) 1f else 0f, spring(dampingRatio = 0.9f, stiffness = 320f),
+        label = "exitAppear",
+    )
+    val scale by animateFloatAsState(
+        if (shown) 1f else 0.96f, spring(dampingRatio = 0.82f, stiffness = 380f),
+        label = "exitScale",
+    )
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false,
+        ),
+    ) {
+        Box(
+            Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                Modifier
+                    .padding(horizontal = 28.dp)
+                    .widthIn(max = 380.dp)
+                    .graphicsLayer {
+                        alpha = appear
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .clip(RoundedCornerShape(GLASS_RADIUS))
+                    // Translucency glass di atas backdrop yang sudah di-blur
+                    // oleh Scaffold → ini bahan baku glassmorphism.
+                    .background(scheme.surface.copy(alpha = if (isDark) 0.58f else 0.54f)),
+            ) {
+            // Tidak ada border. Edge glass muncul dari veil luminance di bawah.
+            Box {
+                // Veil: sorot warna brand samar di sudut atas-kiri + bawah-kanan.
+                // Tanpa stroke, inilah satu-satunya penanda tepi → terbaca glass.
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.radialGradient(
+                                center = Offset(0f, 0f),
+                                radius = 900f,
+                                colors = listOf(
+                                    scheme.primary.copy(alpha = 0.14f),
+                                    Color.Transparent,
+                                ),
+                            ),
+                        ),
+                )
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.radialGradient(
+                                center = Offset.Infinite,
+                                radius = 900f,
+                                colors = listOf(
+                                    scheme.secondary.copy(alpha = 0.10f),
+                                    Color.Transparent,
+                                ),
+                            ),
+                        ),
+                )
+                // Specular sheen atas (cahaya dari atas, ciri kaca).
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0f to Color.White.copy(alpha = if (isDark) 0.14f else 0.22f),
+                                0.25f to Color.Transparent,
+                            ),
+                        ),
+                )
+
+                Column(
+                    Modifier.padding(horizontal = 24.dp, vertical = 24.dp),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    // Ikon: chip translucent, tanpa border stroke.
+                    Box(
+                        Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(scheme.errorContainer.copy(alpha = 0.85f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            AppIcon.WARNING.painter(),
+                            contentDescription = stringResource(Res.string.cd_exit_warning),
+                            tint = scheme.onErrorContainer,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+
+                    Text(
+                        stringResource(Res.string.exit_eyebrow),
+                        modifier = Modifier.padding(top = 16.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.4.sp,
+                        color = scheme.error.copy(alpha = 0.85f),
+                    )
+                    Text(
+                        stringResource(Res.string.exit_title),
+                        modifier = Modifier.padding(top = 4.dp),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.3).sp,
+                        color = scheme.onSurface,
+                    )
+                    Text(
+                        stringResource(Res.string.exit_msg),
+                        modifier = Modifier.padding(top = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = 22.sp,
+                        color = scheme.onSurfaceVariant,
+                    )
+
+                    val cancelI = remember { MutableInteractionSource() }
+                    val confirmI = remember { MutableInteractionSource() }
+                    val cancelP by cancelI.collectIsPressedAsState()
+                    val confirmP by confirmI.collectIsPressedAsState()
+
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 22.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // Batal — glass tombol: translucent, tanpa stroke.
+                        GlassTextButton(
+                            text = stringResource(Res.string.exit_cancel),
+                            onClick = onDismiss,
+                            interactionSource = cancelI,
+                            pressed = cancelP,
+                            container = scheme.onSurface.copy(alpha = if (isDark) 0.10f else 0.06f),
+                            content = scheme.onSurface,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // Ya, keluar — glass destruktif: tint error translucent.
+                        GlassTextButton(
+                            text = stringResource(Res.string.exit_confirm),
+                            onClick = onConfirm,
+                            interactionSource = confirmI,
+                            pressed = confirmP,
+                            container = scheme.error.copy(alpha = 0.88f),
+                            content = scheme.onError,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+    }
+}
+
+/** Tombol teks gaya glass: translucent, press-scale, tanpa border stroke. */
+@Composable
+private fun GlassTextButton(
+    text: String,
+    onClick: () -> Unit,
+    interactionSource: MutableInteractionSource,
+    pressed: Boolean,
+    container: Color,
+    content: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier
+            .height(48.dp)
+            .clip(CircleShape)
+            .background(container)
+            .graphicsLayer {
+                val s = if (pressed) 0.97f else 1f
+                scaleX = s
+                scaleY = s
+            }
+            .clickable(interactionSource, indication = null) { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, fontWeight = FontWeight.SemiBold, color = content, maxLines = 1)
+    }
+}
+
 
 @Composable
 fun CategoryChips(

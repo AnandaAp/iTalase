@@ -110,7 +110,7 @@ fun ProductPreview() {
 @Composable
 fun ProductFormPreview() {
     PreviewWrapper {
-        ProductFormDialog(initial = sampleProducts()[1], onDismiss = {}, onSave = { _, _, _, _, _, _, _ -> })
+        ProductFormDialog(initial = sampleProducts()[1], products = sampleProducts(), onDismiss = {}, onSave = { _, _, _, _, _, _, _ -> })
     }
 }
 

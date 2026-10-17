@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,8 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.ui.components.AppIcon
-import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.components.ScreenHeader
+import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.Routes
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.cd_open
@@ -41,7 +41,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun MoreScreen(onNavigate: (String) -> Unit = {}) {
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
         ScreenHeader(
             title = stringResource(Res.string.title_more),
             subtitle = stringResource(Res.string.more_sub),
@@ -89,7 +89,6 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MoreRow(title: String, desc: String, icon: AppIcon, onClick: () -> Unit) {
     Card(

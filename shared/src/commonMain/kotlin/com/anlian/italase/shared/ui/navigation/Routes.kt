@@ -9,4 +9,10 @@ object Routes {
     const val DEBT = "bon"
     const val EXPENSE = "biaya"
     const val MORE = "more"
+
+    // Lima root tab. Hanya route di sini yang boleh "root" back stack:
+    // tekan back di tab manapun = konfirmasi keluar, bukan kembali ke tab lain.
+    val TAB_ROUTES: Set<String> = setOf(HOME, CASHIER, STOCK, DEBT, MORE)
+
+    fun isTabRoute(route: String?): Boolean = route != null && route in TAB_ROUTES
 }

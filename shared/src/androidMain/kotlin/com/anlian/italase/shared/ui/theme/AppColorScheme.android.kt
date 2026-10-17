@@ -1,15 +1,11 @@
 package com.anlian.italase.shared.ui.theme
 
-import android.os.Build
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
+// Brand scheme everywhere. Material You dynamicColor nge-skip: tiap device
+// dapat palet berbeda sehingga dialog/bottom bar kehilangan identitas warung
+// (terlihat generic Google). Konsisten di semua device = kesan premium.
 @Composable
-actual fun AppColorScheme(dark: Boolean): ColorScheme {
-    if (!dark && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        return dynamicLightColorScheme(LocalContext.current)
-    }
-    return if (dark) DarkColors else LightColors
-}
+actual fun AppColorScheme(dark: Boolean): ColorScheme =
+    if (dark) DarkColors else LightColors

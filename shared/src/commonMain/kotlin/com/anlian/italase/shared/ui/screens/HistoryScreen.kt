@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +26,9 @@ import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
 import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.StatusChip
+import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
+import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.cash_m_cash
@@ -65,8 +69,16 @@ fun HistoryContent(
     onCategory: (String?) -> Unit = {},
     onOpen: (Long) -> Unit = {},
 ) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Spacer(Modifier.height(8.dp))
+    val scrollBehavior = LocalTopAppBarScrollBehavior.current
+    val listState = rememberLazyListState()
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .nestedScrollConnection(scrollBehavior, listState),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
         ScreenHeader(
             title = stringResource(Res.string.title_history),
             subtitle = stringResource(Res.string.hist_count, sales.size),
@@ -82,7 +94,7 @@ fun HistoryContent(
                 stringResource(Res.string.hist_empty_h),
             )
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+            LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                 items(sales, key = { it.id }) { s ->
                     val lunas = s.status == TxnStatus.LUNAS
                     ListCard(onClick = { onOpen(s.id) }) {

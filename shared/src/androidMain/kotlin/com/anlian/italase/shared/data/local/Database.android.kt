@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-fun getDatabaseBuilder(context: Context): RoomDatabase.Builder<ITalaseDatabase> {
+fun getDatabaseBuilder(context: Context, passphrase: ByteArray): RoomDatabase.Builder<ITalaseDatabase> {
     val appContext: Context = context.applicationContext
     val dbFile = appContext.getDatabasePath(DbFiles.NAME)
+    // Room 2.8+ uses driver APIs; SQLCipher requires custom SQLiteDriver (not implemented).
+    // Fallback: plain SQLite with backup protection only.
     return Room.databaseBuilder<ITalaseDatabase>(
         context = appContext,
         name = dbFile.absolutePath,

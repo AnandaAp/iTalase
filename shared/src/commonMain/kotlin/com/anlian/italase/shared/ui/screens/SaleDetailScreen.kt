@@ -41,6 +41,7 @@ import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.util.formatDateTime
 import com.anlian.italase.shared.util.formatRupiah
 import italase.shared.generated.resources.Res
@@ -58,7 +59,6 @@ import italase.shared.generated.resources.detail_item_line
 import italase.shared.generated.resources.detail_items
 import italase.shared.generated.resources.detail_loading
 import italase.shared.generated.resources.detail_not_found
-import italase.shared.generated.resources.detail_payment
 import italase.shared.generated.resources.detail_received
 import italase.shared.generated.resources.detail_remaining
 import italase.shared.generated.resources.detail_total
@@ -84,7 +84,7 @@ fun SaleDetailScreen(
             Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
             TextButton(onClick = onBack) {
                 Icon(
                     AppIcon.ARROW_BACK.painter(),

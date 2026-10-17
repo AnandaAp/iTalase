@@ -11,4 +11,5 @@ plugins {
     alias(libs.plugins.koin.compiler) apply false
     alias(libs.plugins.crashlytics) apply false
     alias(libs.plugins.plugin.serialization) apply false
+    alias(libs.plugins.stability.analyzer) apply false
 }

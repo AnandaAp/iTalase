@@ -9,7 +9,9 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.androidx.room)
     alias(libs.plugins.koin.compiler)
+    alias(libs.plugins.stability.analyzer)
     kotlin("plugin.serialization")
+    kotlin("native.cocoapods")
     id("kotlin-parcelize")
 }
 
@@ -24,7 +26,6 @@ val buildConfigGenerator by tasks.registering(Sync::class) {
         |  private const val PROJECT_VERSION: String = "${project.version}"
         |  const val APP_VERSION: String = PROJECT_VERSION
         |  const val APP_VERSION_CODE: Int = ${libs.versions.app.versioncode.get().toInt()}
-        |  const val YOUTUBE_KEY: String = "${libs.versions.key.youtube.get()}"
         |}
         |
       """.trimMargin()
@@ -55,6 +56,15 @@ kotlin {
             isStatic = true
         }
     }
+
+    // CocoaPods for iOS dependencies (SQLCipher)
+    cocoapods {
+        summary = "Shared framework for iTalase"
+        homepage = "https://github.com/anlian/iTalase"
+        version = "1.1.2"
+        ios.deploymentTarget = "16.0"
+        pod("SQLCipher", "~> 4.6.0")
+    }
     
     android {
         namespace = libs.versions.app.shared.get()
@@ -84,6 +94,7 @@ kotlin {
             implementation(libs.compose.uiTooling)
             implementation(libs.koin.android)
             implementation(libs.koin.androidx.compose)
+            implementation(libs.compose.foundation)
             val bom = project.dependencies.platform(libs.compose.bom)
 
             implementation(bom)
@@ -98,6 +109,9 @@ kotlin {
             implementation(libs.compose.animation.core)
             implementation(libs.compose.animation.graphic)
             implementation(libs.compose.ui)
+            // BackHandler untuk konfirmasi keluar di semua platform (androidMain
+            // hanya punya activity-compose).
+            implementation(libs.compose.ui.backhandler)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
