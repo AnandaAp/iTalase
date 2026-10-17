@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -15,36 +14,7 @@ plugins {
     id("kotlin-parcelize")
 }
 
-val buildConfigGenerator by tasks.registering(Sync::class) {
-    description = "Generate SharedBuildConfig.kt"
-    from(
-        resources.text.fromString(
-            """
-        |package generated.com.anlian.italase.shared
-        |
-        |object SharedBuildConfig {
-        |  private const val PROJECT_VERSION: String = "${project.version}"
-        |  const val APP_VERSION: String = PROJECT_VERSION
-        |  const val APP_VERSION_CODE: Int = ${libs.versions.app.versioncode.get().toInt()}
-        |}
-        |
-      """.trimMargin()
-        )
-    ) {
-        rename { "SharedBuildConfig.kt" } // set the file name
-        into ("com/anlian/italase/shared")
-    }
 
-    into("src/commonMain/kotlin/generated/") // change the directory to match the package
-}
-
-val cleanBuildConfig by tasks.registering(Delete::class) {
-    description = "clean the generated shared build config"
-    val path = buildConfigGenerator.map { it.destinationDir }.get()
-    if (path.exists()) {
-        delete(path)
-    }
-}
 
 kotlin {
     listOf(
@@ -87,7 +57,7 @@ kotlin {
             instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
     }
-    
+
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
@@ -125,7 +95,6 @@ kotlin {
             implementation(libs.compose.navigation.multiplatform)
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)
-
             api(libs.napier)
             api(libs.bundles.ktor.core)
             api(libs.kotlinx.collections.immutable)
@@ -175,13 +144,3 @@ koinCompiler {
     compileSafety = true
 }
 
-tasks {
-    withType(KotlinCompile::class.java) {
-        dependsOn(buildConfigGenerator)
-    }
-}
-
-project.afterEvaluate {
-    tasks.named("generateComposeResClass").get().dependsOn(buildConfigGenerator)
-    tasks.getByName("clean").finalizedBy(cleanBuildConfig)
-}

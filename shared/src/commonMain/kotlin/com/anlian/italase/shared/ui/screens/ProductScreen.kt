@@ -88,6 +88,16 @@ import italase.shared.generated.resources.prod_unit
 import italase.shared.generated.resources.title_products
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * Entry point layar Produk: daftar + pencarian, dan formulir saat [showForm]
+ * true. Dipasang NavHost.
+ *
+ * @param edit produk yang sedang diubah, atau null untuk mode tambah. Ini
+ *   satu-satunya penanda mode, jadi pemanggil wajib mengosongkan state ini saat
+ *   dialog ditutup — kalau tertinggal, "Tambah" akan memunculkan form terisi.
+ * @param onSaveForm urutan argumen: (nama, harga beli, harga jual, stok, unit,
+ *   barcode, kategori).
+ */
 @Composable
 fun ProductScreen(
     products: List<ProductEntity>,
@@ -128,6 +138,17 @@ fun ProductScreen(
     }
 }
 
+/**
+ * Isi layar Produk tanpa formulir — versi yang aman dipratinjau. Dipanggil
+ * [ProductScreen].
+ *
+ * State lokalnya hanya target hapus yang menunggu konfirmasi: menekan Hapus di
+ * baris TIDAK langsung memanggil [onDelete], jadi pemanggil tidak perlu
+ * menyediakan undo.
+ *
+ * @param message umpan balik dari pemanggil (mis. hasil simpan); disembunyikan
+ *   kalau kosong.
+ */
 @Composable
 fun ProductContent(
     products: List<ProductEntity>,
@@ -301,6 +322,19 @@ fun ProductContent(
     }
 }
 
+/**
+ * Formulir tambah/ubah produk, dibuka [ProductScreen]. Field diisi dari
+ * [initial] dan hanya di-reset saat identitas [initial] berubah — jadi pindah
+ * dari "ubah produk A" ke "tambah" mengosongkan form, sedangkan recomposisi
+ * biasa tidak menghapus ketikan user.
+ *
+ * Tombol simpan mati selama nama kosong atau duplikat.
+ *
+ * @param products daftar LENGKAP, bukan hasil filter: produk duplikat yang
+ *   sedang tersembunyi oleh pencarian tetap harus terdeteksi.
+ * @param onSave urutan argumen: (nama, harga beli, harga jual, stok, unit,
+ *   barcode, kategori).
+ */
 @Composable
 fun ProductFormDialog(
     initial: ProductEntity?,

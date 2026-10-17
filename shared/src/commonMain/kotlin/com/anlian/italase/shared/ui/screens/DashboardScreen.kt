@@ -70,28 +70,41 @@ import italase.shared.generated.resources.tab_cashier
 import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.tab_stock
 import italase.shared.generated.resources.title_expenses
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toPersistentList
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * Entry point Beranda: menarik ulang ringkasan tiap [refreshKey] berubah, lalu
+ * menyerahkan state ke [DashboardContent]. Dipasang NavHost.
+ *
+ * Perlu [refreshKey] karena destination di-restore saat kembali dari tab lain,
+ * sehingga `LaunchedEffect(Unit)` tidak akan jalan lagi — counter dari NavHost
+ * yang jadi pemicunya. Efek samping sengaja ditaruh di sini, bukan di Content,
+ * supaya versi pratinjau tidak memanggil repo.
+ */
 @Composable
 fun DashboardScreen(
     summary: DaySummary,
-    top: List<TopRow>,
+    top: ImmutableList<TopRow>,
     piutang: Long,
-    lowStock: List<ProductEntity>,
+    lowStock: ImmutableList<ProductEntity>,
     activeDebtCount: Int,
     error: String,
     onRefresh: () -> Unit = {},
     onQuickAction: (String) -> Unit = {},
-    // Bertambah tiap kali Beranda dibuka lagi, termasuk setelah pindah tab
-    // (destination di-restore, jadi LaunchedEffect(Unit) tidak akan jalan lagi).
-    // NavHost yang memegang counter-nya; ringkasan di-refresh oleh call site.
+    /**
+     * Bertambah tiap kali Beranda dibuka lagi, termasuk setelah pindah tab
+     * (destination di-restore, jadi LaunchedEffect(Unit) tidak akan jalan lagi).
+     * NavHost yang memegang counter-nya; ringkasan di-refresh oleh call site.
+     */
     refreshKey: Int = 0,
 ) {
     LaunchedEffect(refreshKey) { onRefresh() }
 
     DashboardContent(
         summary = summary,
-        top = top,
+        top = top.toPersistentList(),
         piutang = piutang,
         lowStock = lowStock,
         activeDebtCount = activeDebtCount,
@@ -100,12 +113,25 @@ fun DashboardScreen(
     )
 }
 
+/**
+ * Isi Beranda tanpa efek samping — versi yang aman dipratinjau. Dipanggil
+ * [DashboardScreen].
+ *
+ * Satu [Column] scroll biasa, bukan LazyColumn: isinya belasan kartu agregat
+ * dengan biaya komposisi tetap, dan tiap blok dibungkus [Enter] dengan indeks
+ * naik supaya animasi masuknya berurutan.
+ *
+ * @param error ditampilkan apa adanya di atas hero bila tidak kosong; layar ini
+ *   tidak menyembunyikannya di balik snackbar.
+ * @param lowStock pemanggil yang sudah membatasi jumlahnya — di sini di-`take`
+ *   lagi sebagai jaring pengaman terhadap daftar panjang.
+ */
 @Composable
 fun DashboardContent(
     summary: DaySummary,
-    top: List<TopRow>,
+    top: ImmutableList<TopRow>,
     piutang: Long,
-    lowStock: List<ProductEntity>,
+    lowStock: ImmutableList<ProductEntity>,
     activeDebtCount: Int,
     error: String,
     onQuickAction: (String) -> Unit = {},
@@ -223,6 +249,10 @@ fun DashboardContent(
 // ── Hero: omzet hari ini ───────────────────────────────────────────────
 // Satu-satunya permukaan berwarna kuat di layar. Kaca hijau pekat (α 0.94)
 // dengan orb dekoratif — "primary tonal surface" M3 Expressive tanpa gradien.
+/**
+ * Hero omzet hari ini. Tanpa state sendiri: [summary] dianggap sudah mewakili
+ * hari berjalan — layar ini tidak menyaring ulang berdasarkan tanggal.
+ */
 @Composable
 private fun OmzetHero(summary: DaySummary) {
     val scheme = MaterialTheme.colorScheme
@@ -282,6 +312,11 @@ private fun OmzetHero(summary: DaySummary) {
     }
 }
 
+/**
+ * Deretan pintasan tab di bawah hero. Empat aksi selalu sebaris dengan berat
+ * sama, jadi label panjang dipangkas `maxLines = 1`, bukan membungkus dan
+ * mendorong kartu statistik turun.
+ */
 @Composable
 private fun QuickActions(onQuickAction: (String) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -302,6 +337,12 @@ private fun QuickActions(onQuickAction: (String) -> Unit) {
 
 // Lingkaran kaca 56dp (di atas target sentuh minimum 44/48) + label di bawah.
 // Press-scale spring disediakan GlassCard.
+/**
+ * Satu pintasan: lingkaran kaca + label. Dipakai [QuickActions].
+ *
+ * @param onClick menempel di kartu lingkarannya, jadi area yang bisa ditekan
+ *   hanya 56dp itu — label di bawahnya tidak ikut jadi target sentuh.
+ */
 @Composable
 private fun QuickAction(
     label: String,
@@ -336,6 +377,12 @@ private fun QuickAction(
     }
 }
 
+/**
+ * Kartu statistik label-nilai di grid ringkasan Beranda. Dipakai [DashboardContent].
+ *
+ * @param sub baris ketiga opsional (mis. jumlah piutang berjalan). Disembunyikan
+ *   saat kosong supaya kartu yang tanpa sub tidak dipaksa setinggi tetangganya.
+ */
 @Composable
 private fun GlassStat(
     label: String,
@@ -367,6 +414,13 @@ private fun GlassStat(
     }
 }
 
+/**
+ * Baris peringkat produk terlaris. Dipakai [DashboardContent] dan digambar tanpa
+ * LazyColumn, jadi daftarnya sengaja pendek — jangan dipakai untuk daftar panjang.
+ *
+ * @param rank posisi 1-based yang dicetak di lingkaran; pemanggil yang
+ *   menghitungnya (urutan penjualan sudah datang dari DAO).
+ */
 @Composable
 private fun TopItem(rank: Int, row: TopRow) {
     val scheme = MaterialTheme.colorScheme
@@ -398,8 +452,13 @@ private fun TopItem(rank: Int, row: TopRow) {
     }
 }
 
+/**
+ * Baris produk stok menipis. Tint-nya `secondaryContainer` yang sama dengan baris
+ * stok rendah di layar Produk supaya ambangnya terbaca konsisten; angka stoknya
+ * sendiri selalu memakai warna error.
+ */
 @Composable
-private fun LowStockItem(p: ProductEntity) {
+private fun LowStockItem(productEntity: ProductEntity) {
     val scheme = MaterialTheme.colorScheme
     GlassCard(
         shape = RoundedCornerShape(18.dp),
@@ -412,15 +471,19 @@ private fun LowStockItem(p: ProductEntity) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(p.name, fontWeight = FontWeight.SemiBold)
+                Text(productEntity.name, fontWeight = FontWeight.SemiBold)
                 Text(
-                    stringResource(Res.string.dash_min_stock, p.minStock, p.unit),
+                    stringResource(
+                        Res.string.dash_min_stock,
+                        productEntity.minStock,
+                        productEntity.unit
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSecondaryContainer,
                 )
             }
             Text(
-                stringResource(Res.string.dash_stock_left, p.stock),
+                stringResource(Res.string.dash_stock_left, productEntity.stock),
                 fontWeight = FontWeight.Bold,
                 color = scheme.error,
             )

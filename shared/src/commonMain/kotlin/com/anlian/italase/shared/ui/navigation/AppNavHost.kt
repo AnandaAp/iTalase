@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -87,6 +88,7 @@ import com.anlian.italase.shared.ui.state.HistoryViewModel
 import com.anlian.italase.shared.ui.state.ProductViewModel
 import com.anlian.italase.shared.ui.state.text
 import italase.shared.generated.resources.Res
+import italase.shared.generated.resources.cd_back
 import italase.shared.generated.resources.tab_cashier
 import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.tab_home
@@ -94,14 +96,23 @@ import italase.shared.generated.resources.tab_more
 import italase.shared.generated.resources.tab_stock
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
+import kotlinx.collections.immutable.toPersistentList
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
-import androidx.compose.material3.IconButton
-import italase.shared.generated.resources.cd_back
 
+/**
+ * Satu entri bottom nav: tujuan navigasi, label terlokalisasi, dan ikonnya.
+ * Privat karena daftar tab tidak pernah dibentuk dari luar berkas ini.
+ */
 private data class Tab(val route: String, val label: StringResource, val icon: AppIcon)
 
+/**
+ * Susunan tab dari kiri ke kanan — urutan di sini adalah urutan render.
+ * Route yang ditambahkan di sini juga harus masuk [Routes.TAB_ROUTES]; kalau
+ * tidak, [AppNavHost] mem-push-nya sebagai sub-screen (back stack rusak dan
+ * bottom bar jadi no-op di layar itu).
+ */
 private val TABS = listOf(
     Tab(Routes.HOME, Res.string.tab_home, AppIcon.HOME),
     Tab(Routes.CASHIER, Res.string.tab_cashier, AppIcon.SHOPPING_CART),
@@ -193,11 +204,21 @@ private val TOP_BAR_CONTENT_HEIGHT = 74.dp
  * baru reset kalau layar digulir dulu.
  */
 class TopBarState {
+    /** Teks kecil di atas judul (kategori layar), per route. */
     val eyebrow = mutableStateMapOf<String, String>()
+
+    /** Judul layar, per route. */
     val title = mutableStateMapOf<String, String>()
+
+    /** Scroll behavior milik destinasi, per route. */
     val behaviors = mutableStateMapOf<String, TopAppBarScrollBehavior>()
 }
 
+/**
+ * [TopBarState] milik app. Disediakan [AppNavHost] di atas NavHost, jadi layar
+ * bisa menulis identitasnya lewat [TopBarInfoEffect]; di luar [AppNavHost]
+ * nilainya masih contoh default (kosong) dan top bar merender bar kosong.
+ */
 val LocalTopBarState = compositionLocalOf { TopBarState() }
 
 /** Route destinasi yang sedang merender — kunci penulisan state top bar. */
@@ -362,9 +383,10 @@ fun AppNavHost(
 
                                 DashboardScreen(
                                     summary = summary,
-                                    top = top,
+                                    top = top.toPersistentList(),
                                     piutang = piutang,
-                                    lowStock = products.filter { it.stock <= it.minStock || it.stock <= StockRules.LOW_STOCK_FALLBACK },
+                                    lowStock = products.filter { it.stock <= it.minStock || it.stock <= StockRules.LOW_STOCK_FALLBACK }
+                                        .toPersistentList(),
                                     activeDebtCount = debts.size,
                                     error = error?.text().orEmpty(),
                                     onRefresh = vm::refresh,
@@ -717,6 +739,14 @@ private fun LiquidGlassTabBar(
     }
 }
 
+/**
+ * Satu sel bottom nav, dirender berulang oleh `LiquidGlassTabBar` untuk setiap
+ * entri [TABS]. State yang dibacanya cuma `selected` (dari route aktif) dan
+ * `isDark`.
+ *
+ * `indication = null` disengaja: umpan balik tekan datang dari skala 0.94,
+ * bukan ripple — ripple persegi akan keluar dari pill kacanya.
+ */
 @Composable
 private fun GlassTabItem(
     tab: Tab,

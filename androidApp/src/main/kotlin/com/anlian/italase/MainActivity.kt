@@ -11,7 +11,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import com.anlian.italase.shared.App
 
+/**
+ * Satu-satunya Activity app. Seluruh UI ada di commonMain ([App]); berkas ini
+ * hanya menyiapkan window Android — edge-to-edge, scrim system bar transparan,
+ * dan mode IME — lalu memasang [App] sebagai kontennya.
+ */
 class MainActivity : ComponentActivity() {
+    /**
+     * Konfigurasi system bar dilakukan `SEBELUM` [setContent], dan itu bukan pilihan
+     * gaya: kalau ditunda, frame pertama masih memakai scrim bawaan Activity dan
+     * muncul kedipan strip putih di bar bawah.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Edge-to-edge dengan scrim NOL di kedua system bar.

@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.koin.compiler)
     alias(libs.plugins.composeMultiplatform)
-    alias(libs.plugins.crashlytics)
     alias(libs.plugins.stability.analyzer)
     kotlin("plugin.serialization")
     id("kotlin-parcelize")

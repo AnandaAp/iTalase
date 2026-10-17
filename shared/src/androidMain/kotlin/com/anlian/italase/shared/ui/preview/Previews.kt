@@ -19,7 +19,15 @@ import com.anlian.italase.shared.ui.screens.SaleDetailScreen
 import com.anlian.italase.shared.ui.screens.SaleEditDialog
 import com.anlian.italase.shared.ui.theme.ITalaseTheme
 import com.anlian.italase.shared.ui.theme.WarungBackground
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 
+/**
+ * Pembungkus wajib setiap preview: tema + latar warung.
+ *
+ * Tanpa ini preview menampilkan warna & latar default yang tidak pernah dipakai aplikasi,
+ * jadi panel preview berhenti berguna sebagai pemeriksaan cepat.
+ */
 @Composable
 fun PreviewWrapper(content: @Composable () -> Unit) {
     ITalaseTheme {
@@ -29,36 +37,45 @@ fun PreviewWrapper(content: @Composable () -> Unit) {
     }
 }
 
+/**
+ * Dashboard terisi: omzet, produk terlaris, dan satu piutang aktif.
+ */
 @Preview(showBackground = true)
 @Composable
 fun DashboardPreview() {
     PreviewWrapper {
         DashboardContent(
             summary = sampleSummary(),
-            top = sampleTop(),
+            top = sampleTop().toPersistentList(),
             piutang = 48000,
-            lowStock = sampleProducts().filter { it.stock <= 3 },
+            lowStock = sampleProducts().filter { it.stock <= 3 }.toPersistentList(),
             activeDebtCount = 1,
             error = "",
         )
     }
 }
 
+/**
+ * Dashboard kosong — kasus paling gampang salah render (belum ada penjualan hari ini).
+ */
 @Preview(showBackground = true)
 @Composable
 fun DashboardEmptyPreview() {
     PreviewWrapper {
         DashboardContent(
             summary = DaySummary(),
-            top = emptyList(),
+            top = persistentListOf(),
             piutang = 0,
-            lowStock = emptyList(),
+            lowStock = persistentListOf(),
             activeDebtCount = 0,
             error = "",
         )
     }
 }
 
+/**
+ * Kasir dengan dua baris keranjang terisi.
+ */
 @Preview(showBackground = true)
 @Composable
 fun CashierPreview() {
@@ -82,6 +99,9 @@ fun CashierPreview() {
     }
 }
 
+/**
+ * Dialog pembayaran dengan total bukan angka bulat, supaya kolom kembalian ikut terpakai.
+ */
 @Preview(showBackground = true)
 @Composable
 fun PayDialogPreview() {
@@ -90,6 +110,9 @@ fun PayDialogPreview() {
     }
 }
 
+/**
+ * Daftar stok terisi, termasuk satu produk habis.
+ */
 @Preview(showBackground = true)
 @Composable
 fun ProductPreview() {
@@ -106,6 +129,9 @@ fun ProductPreview() {
     }
 }
 
+/**
+ * Form edit produk tanpa barcode (produk kedua di data contoh).
+ */
 @Preview(showBackground = true)
 @Composable
 fun ProductFormPreview() {
@@ -114,6 +140,9 @@ fun ProductFormPreview() {
     }
 }
 
+/**
+ * Riwayat tiga transaksi, termasuk satu BON separuh bayar.
+ */
 @Preview(showBackground = true)
 @Composable
 fun HistoryPreview() {
@@ -122,6 +151,9 @@ fun HistoryPreview() {
     }
 }
 
+/**
+ * Detail struk tiga item, tanpa dialog edit.
+ */
 @Preview(showBackground = true)
 @Composable
 fun SaleDetailPreview() {
@@ -130,6 +162,9 @@ fun SaleDetailPreview() {
     }
 }
 
+/**
+ * Dialog edit info struk dengan nama pelanggan terisi.
+ */
 @Preview(showBackground = true)
 @Composable
 fun SaleEditPreview() {
@@ -138,6 +173,9 @@ fun SaleEditPreview() {
     }
 }
 
+/**
+ * Daftar piutang: satu aktif, satu lunas.
+ */
 @Preview(showBackground = true)
 @Composable
 fun DebtPreview() {
@@ -146,6 +184,9 @@ fun DebtPreview() {
     }
 }
 
+/**
+ * Dialog pelunasan bon.
+ */
 @Preview(showBackground = true)
 @Composable
 fun PayDebtPreview() {
@@ -154,6 +195,9 @@ fun PayDebtPreview() {
     }
 }
 
+/**
+ * Daftar pengeluaran lintas kategori.
+ */
 @Preview(showBackground = true)
 @Composable
 fun ExpensePreview() {
@@ -162,6 +206,9 @@ fun ExpensePreview() {
     }
 }
 
+/**
+ * Form pengeluaran kosong.
+ */
 @Preview(showBackground = true)
 @Composable
 fun ExpenseFormPreview() {
@@ -170,6 +217,9 @@ fun ExpenseFormPreview() {
     }
 }
 
+/**
+ * Tab Lainnya apa adanya (tanpa state).
+ */
 @Preview(showBackground = true)
 @Composable
 fun MorePreview() {

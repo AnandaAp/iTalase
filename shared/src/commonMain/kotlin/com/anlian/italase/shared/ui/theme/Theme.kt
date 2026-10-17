@@ -26,18 +26,44 @@ import org.jetbrains.compose.resources.Font
 // Cream paper background + deep warung green + marigold accent.
 // Body text on cream and white text on primary both pass WCAG AA.
 
+/** Hijau warung — warna `primary` skema terang; teks putih di atasnya lolos WCAG AA. */
 val WarungGreen = Color(0xFF1D6B3C)
+
+/** Hijau tua — `onPrimaryContainer` skema terang, `primaryContainer` skema gelap. */
 val WarungGreenDark = Color(0xFF0E3D20)
+
+/** Hijau paling muda — `primaryContainer` skema terang; dipakai pill tab aktif. */
 val WarungGreenSoft = Color(0xFFDCEFE1)
+
+/** Marigold — `secondary` di kedua skema; aksen hangat untuk aksi sekunder. */
 val Marigold = Color(0xFFE8930C)
+
+/** Marigold muda — `secondaryContainer` skema terang. */
 val MarigoldSoft = Color(0xFFFDEBC8)
+
+/** Marigold pekat — `onSecondaryContainer` skema terang, teks di atas [MarigoldSoft]. */
 val MarigoldInk = Color(0xFF5C3800)
+
+/** Kertas cream — `background` skema terang, juga warna wash tab bar. Sengaja lebih gelap dari [CardWhite] supaya panel kaca tetap terbaca sebagai pulau terpisah. */
 val Paper = Color(0xFFFAF6EE)
+
+/** Putih kartu — `surface` skema terang. */
 val CardWhite = Color(0xFFFFFDF7)
+
+/** Sand muda — `surfaceVariant` skema terang. */
 val SandLow = Color(0xFFF3EDDE)
+
+/** Sand — `surfaceContainer` skema terang. */
 val Sand = Color(0xFFEAE1CC)
+
+/** Tinta lembut — `onSurfaceVariant`; teks sekunder seperti label tab non-aktif. */
 val InkSoft = Color(0xFF6B6250)
 
+/**
+ * Skema terang brand. Dipilih [AppColorScheme] di kedua platform; Material You
+ * dynamic color sengaja dilewati supaya identitas warungnya tidak hilang di
+ * device yang paletnya kebetulan beda.
+ */
 internal val LightColors = lightColorScheme(
     primary = WarungGreen,
     onPrimary = Color.White,
@@ -61,6 +87,10 @@ internal val LightColors = lightColorScheme(
     outlineVariant = Color(0xFFD8CFB6),
 )
 
+/**
+ * Skema gelap brand. Hanya terpakai kalau [ITalaseTheme] dipanggil dengan
+ * `dark = true` — belum ada call site yang melakukannya.
+ */
 internal val DarkColors = darkColorScheme(
     primary = Color(0xFF7BD89A),
     onPrimary = Color(0xFF06351A),
@@ -76,6 +106,10 @@ internal val DarkColors = darkColorScheme(
     surfaceContainerHigh = Color(0xFF333022),
 )
 
+/**
+ * Radius sudut brand (10/16/24/28dp), dipasang lewat MaterialTheme.shapes
+ * supaya komponen M3 mengambil bentuknya dari satu tempat ini.
+ */
 private val WarungShapes = Shapes(
     small = RoundedCornerShape(10.dp),
     medium = RoundedCornerShape(16.dp),
@@ -148,6 +182,14 @@ private fun withFontFamily(base: Typography, f: FontFamily): Typography = base.c
     labelSmallEmphasized = base.labelSmallEmphasized.copy(fontFamily = f),
 )
 
+/**
+ * Tema root app: warna, bentuk, dan huruf brand untuk seluruh layar. Dipanggil
+ * sekali di [App]; layar-layar tidak memanggilnya lagi.
+ *
+ * @param dark true = skema gelap brand. Tidak ada call site yang mengirim
+ *   true sekarang, jadi app selalu jalan di skema terang walau sistem sedang
+ *   gelap.
+ */
 @Composable
 fun ITalaseTheme(dark: Boolean = false, content: @Composable () -> Unit) {
     val fontFamily = notoSans()

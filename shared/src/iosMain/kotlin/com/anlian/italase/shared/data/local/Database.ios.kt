@@ -7,11 +7,25 @@ import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
 
+/**
+ * Builder Room untuk iOS.
+ *
+ * Berkas database diletakkan di direktori Documents supaya ikut ter-backup dan tidak terhapus
+ * saat app diperbarui — iOS tidak punya padanan `applicationContext`. Tidak ada enkripsi di
+ * target ini (tidak ada padanan SQLCipher yang dipasang); driver dan migrasi diatur oleh
+ * `PlatformModule`.
+ */
 fun getDatabaseBuilder(): RoomDatabase.Builder<ITalaseDatabase> {
     val dbPath: String = documentDirectory() + "/${DbFiles.NAME}"
     return Room.databaseBuilder<ITalaseDatabase>(name = dbPath)
 }
 
+/**
+ * Direktori Documents milik app.
+ *
+ * Gagal keras kalau tidak ada: tanpa direktori itu database tidak punya tempat tinggal, dan
+ * errornya jauh lebih jelas di titik ini daripada di dalam Room.
+ */
 @OptIn(ExperimentalForeignApi::class)
 private fun documentDirectory(): String {
     val url = NSFileManager.defaultManager.URLForDirectory(
@@ -24,6 +38,14 @@ private fun documentDirectory(): String {
     return requireNotNull(url?.path) { MissingDocumentDir.MESSAGE }
 }
 
+/**
+ * Satu tempat untuk pesan kegagalan [documentDirectory]; konstanta terpisah supaya teksnya
+ * mudah dicari di log maupun crash report.
+ */
 private object MissingDocumentDir {
+    /**
+     * Pesan yang dilempar `requireNotNull`; dipakai sebagai konstanta agar sama persis di setiap
+     * pemanggilan.
+     */
     const val MESSAGE = "Document directory not found"
 }

@@ -39,6 +39,14 @@ import italase.shared.generated.resources.title_history
 import italase.shared.generated.resources.title_more
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * Layar "Lainnya": pintu masuk ke Riwayat, Pengeluaran, dan info app.
+ *
+ * [onNavigate] menerima route string (`Routes.*`) alih-alih lambda per tujuan, jadi
+ * menambah menu cukup menambah satu baris dan daftar jalur tetap di AppNavHost.
+ * Layar ini tidak memasang frost di top bar, karena itu inset atasnya dipasang di
+ * luar area scroll (lihat catatan di badan Column).
+ */
 @Composable
 fun MoreScreen(onNavigate: (String) -> Unit = {}) {
     val appeared = rememberAppear()
@@ -97,6 +105,13 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
     }
 }
 
+/**
+ * Satu baris menu: ikon berwarna primary, judul, deskripsi, lalu chevron penanda
+ * "bisa dibuka".
+ *
+ * Seluruh kartu adalah target klik (`onClick` dipegang GlassCard), bukan chevron-nya
+ * — jadi area sentuh lebih besar dari yang terlihat.
+ */
 @Composable
 private fun MoreRow(title: String, desc: String, icon: AppIcon, onClick: () -> Unit) {
     GlassCard(onClick = onClick) {

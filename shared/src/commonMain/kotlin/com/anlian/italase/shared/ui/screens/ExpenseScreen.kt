@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -34,8 +34,11 @@ import com.anlian.italase.shared.data.local.entity.ExpenseEntity
 import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
+import com.anlian.italase.shared.ui.components.GlassCard
+import com.anlian.italase.shared.ui.components.LoadMoreFooter
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.enter
+import com.anlian.italase.shared.ui.components.onBottomReached
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.ACTION_FAB_HEIGHT
@@ -64,11 +67,15 @@ import italase.shared.generated.resources.exp_name
 import italase.shared.generated.resources.exp_total
 import italase.shared.generated.resources.title_expenses
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.foundation.shape.RoundedCornerShape
-import com.anlian.italase.shared.ui.components.GlassCard
-import com.anlian.italase.shared.ui.components.LoadMoreFooter
-import com.anlian.italase.shared.ui.components.onBottomReached
 
+/**
+ * Layar pengeluaran (kas keluar) beserta dialog catatnya.
+ *
+ * `items` adalah halaman yang sudah dimuat, bukan seluruh riwayat — [hasMore],
+ * [loadingMore], dan [onLoadMore] meneruskan kontrak memuat-bertahap milik
+ * ViewModel; `onLoadMore` boleh dipanggil berkali-kali selama `hasMore` masih
+ * true, jadi implementasinya harus idempoten terhadap pemanggilan berulang.
+ */
 @Composable
 fun ExpenseScreen(
     items: List<ExpenseEntity>,
@@ -100,6 +107,14 @@ fun ExpenseScreen(
     }
 }
 
+/**
+ * Bagian daftar pengeluaran tanpa dialog; dipakai layar penuh maupun preview.
+ *
+ * Observes: scroll behavior top bar (judul/eyebrow), `rememberAppear` untuk animasi
+ * masuk, dan `listState` untuk pemicu muat-tambahan. Total di kartu atas dijumlah
+ * dari item yang sedang dipegang, jadi angkanya ikut bertambah setiap halaman baru
+ * masuk — bukan total keseluruhan.
+ */
 @Composable
 fun ExpenseContent(
     items: List<ExpenseEntity>,
@@ -219,6 +234,13 @@ fun ExpenseContent(
     }
 }
 
+/**
+ * Dialog catat pengeluaran baru.
+ *
+ * Empat isian: nama, kategori, nominal, catatan. Nominal diketik sebagai teks bebas
+ * dan baru dinormalkan `parseRupiah` saat simpan, sama seperti form uang lain di app
+ * ini. Kategori dan nominal disejajarkan sebaris karena keduanya pendek.
+ */
 @Composable
 fun ExpenseFormDialog(onDismiss: () -> Unit, onSave: (String, String, Long, String) -> Unit) {
     var name by remember { mutableStateOf("") }

@@ -24,6 +24,12 @@ import org.jetbrains.compose.resources.painterResource
 
 // Enum agar parameter ikon di composable tetap stabil
 // (DrawableResource/Painter sebagai parameter membuat composable non-skippable).
+/**
+ * Ikon app sebagai enum — pengganti langsung `DrawableResource`/`Painter` di
+ * parameter composable. Tipe stabil & comparable membuat composable penerimanya
+ * tetap skippable; resource mentah membatalkan itu. Resolusi ke drawable
+ * dikerjakan [painter].
+ */
 enum class AppIcon {
     ARROW_BACK,
     ARROW_BACK_IOS_NEW,
@@ -43,6 +49,11 @@ enum class AppIcon {
     STOREFRONT,
 }
 
+/**
+ * Petakan [AppIcon] ke resource drawable-nya. Satu-satunya tempat pemetaan ini
+ * hidup; menambah entri enum wajib menambah cabang di sini, kalau tidak `when`
+ * jadi tidak ekshaustif.
+ */
 @Composable
 fun AppIcon.painter(): Painter = painterResource(
     when (this) {

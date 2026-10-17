@@ -17,14 +17,14 @@ import italase.shared.generated.resources.msg_cart_empty
 import italase.shared.generated.resources.msg_checkout_failed
 import italase.shared.generated.resources.msg_debt_paid
 import italase.shared.generated.resources.msg_debt_pay_failed
-import italase.shared.generated.resources.msg_debt_saved
 import italase.shared.generated.resources.msg_debt_save_failed
+import italase.shared.generated.resources.msg_debt_saved
 import italase.shared.generated.resources.msg_delete_failed
 import italase.shared.generated.resources.msg_exp_save_failed
 import italase.shared.generated.resources.msg_exp_saved
-import italase.shared.generated.resources.msg_product_gone
 import italase.shared.generated.resources.msg_prod_deleted
 import italase.shared.generated.resources.msg_prod_saved
+import italase.shared.generated.resources.msg_product_gone
 import italase.shared.generated.resources.msg_qty_invalid
 import italase.shared.generated.resources.msg_sale_saved
 import italase.shared.generated.resources.msg_save_failed
@@ -32,6 +32,14 @@ import italase.shared.generated.resources.msg_stock_short
 import italase.shared.generated.resources.msg_txn_saved
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * Pesan yang ditampilkan ke penjual: dikirim ViewModel lewat `MutableStateFlow`, dan baru
+ * menjadi kalimat di lapisan Compose ([text]).
+ *
+ * Dipisah dari `String` supaya ViewModel tetap bebas resource Compose (bisa diuji tanpa
+ * komposisi), dan dari [ErrorCode] supaya repository tidak perlu tahu kalimat apa yang
+ * dilihat user.
+ */
 sealed interface UiMessage {
     data object ProductSaved : UiMessage
     data object ProductDeleted : UiMessage
@@ -39,14 +47,31 @@ sealed interface UiMessage {
     data object DeleteFailed : UiMessage
     data object NameRequired : UiMessage
     data object PricePositive : UiMessage
+
+    /**
+     * Stok kurang dari yang diminta; [name] = nama produk yang menahan.
+     */
     data class StockShort(val name: String) : UiMessage
+
+    /**
+     * Transaksi tersimpan; [id] = id penjualan untuk merujuk struknya.
+     */
     data class TxnSaved(val id: Long) : UiMessage
     data object CheckoutFailed : UiMessage
     data object CartEmpty : UiMessage
+
+    /**
+     * Produk sudah tidak ada di tabel saat checkout; [name] = nama baris yang gagal.
+     */
     data class ProductGone(val name: String) : UiMessage
     data object QtyInvalid : UiMessage
     data object SummaryFailed : UiMessage
     data object DebtSaved : UiMessage
+
+    /**
+     * Pelunasan tercatat; [amount] = nominal yang benar-benar masuk kas (dari repository,
+     * bukan angka yang diketik user).
+     */
     data class DebtPaid(val amount: Long) : UiMessage
     data object DebtAlreadyPaid : UiMessage
     data object DebtSaveFailed : UiMessage
@@ -61,6 +86,12 @@ sealed interface UiMessage {
     data object GenericFailure : UiMessage
 }
 
+/**
+ * Terjemahkan kegagalan repository jadi pesan siap tampil.
+ *
+ * [arg] hanya dipakai pesan yang menyebut sesuatu ([UiMessage.ProductGone],
+ * [UiMessage.StockShort]); sisanya mengabaikannya.
+ */
 fun ErrorCode.toMessage(arg: String = ""): UiMessage = when (this) {
     ErrorCode.EMPTY_CART -> UiMessage.CartEmpty
     ErrorCode.PRODUCT_GONE -> UiMessage.ProductGone(arg)
@@ -73,6 +104,13 @@ fun ErrorCode.toMessage(arg: String = ""): UiMessage = when (this) {
     ErrorCode.ALREADY_PAID -> UiMessage.DebtAlreadyPaid
 }
 
+/**
+ * Kalimat final yang dibaca penjual — satu-satunya tempat `UiMessage` menyentuh resource
+ * string.
+ *
+ * `@Composable` karena `stringResource` membaca locale/konfigurasi saat komposisi, jadi
+ * pesan tidak boleh dibekukan jadi `String` lebih awal.
+ */
 @Composable
 fun UiMessage.text(): String = when (this) {
     UiMessage.ProductSaved -> stringResource(Res.string.msg_prod_saved)

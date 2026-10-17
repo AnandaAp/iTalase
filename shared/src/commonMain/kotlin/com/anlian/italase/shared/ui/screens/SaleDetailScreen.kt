@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,7 +37,7 @@ import com.anlian.italase.shared.data.repository.ShopRepository.SaleDetail
 import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
-import com.anlian.italase.shared.ui.components.ListCard
+import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.StatusChip
@@ -77,6 +78,16 @@ import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.title_detail
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * Layar detail satu nota penjualan.
+ *
+ * Seluruh state diangkat ke pemanggil (NavHost): layar tidak memuat data sendiri,
+ * hanya merender yang dikirim dan meneruskan aksi lewat callback. `detail` null
+ * berarti "belum selesai dimuat", bukan "tidak ada" — karena itu pesan loading dan
+ * not-found ditampilkan sekaligus, sedangkan FAB Edit dan dialog edit baru muncul
+ * ketika datanya sudah ada. Kalau tidak, menekan Edit pada nota yang belum termuat
+ * akan membuka dialog dengan isian kosong.
+ */
 @Composable
 fun SaleDetailScreen(
     detail: SaleDetail?,
@@ -137,6 +148,17 @@ fun SaleDetailScreen(
     }
 }
 
+/**
+ * Isi nota: identitas pelanggan, daftar barang, lalu ringkasan pembayaran.
+ *
+ * Header struk tidak dirender di sini tetapi ditulis ke top bar lewat
+ * [TopBarInfoEffect] agar tidak dobel. Prasyarat scope: `LocalTopAppBarScrollBehavior`
+ * dan `LocalTopOverlayPadding` harus tersedia (disiapkan ScreenScope di AppNavHost).
+ *
+ * Catatan nominal: baris Diterima/Kembalian hanya muncul bila `tendered` terisi.
+ * Nota lama menyimpan null di sana karena nominalnya memang tidak pernah dicatat —
+ * menampilkannya sebagai 0 akan terbaca sebagai "pelanggan bayar nol".
+ */
 @Composable
 private fun SaleDetailContent(detail: SaleDetail, message: String) {
     val sale = detail.sale
@@ -174,7 +196,7 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
         contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
     ) {
         item {
-            ListCard {
+            GlassCard(shape = RoundedCornerShape(20.dp)) {
                 Row(
                     Modifier.fillMaxWidth().padding(14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -213,7 +235,7 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
             SectionHeader(stringResource(Res.string.detail_items))
         }
         items(detail.items, key = { it.id }) { item ->
-            ListCard {
+            GlassCard(shape = RoundedCornerShape(20.dp)) {
                 Row(
                     Modifier.fillMaxWidth().padding(14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -289,7 +311,7 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
         }
         if (sale.note.isNotBlank()) {
             item {
-                ListCard {
+                GlassCard(shape = RoundedCornerShape(20.dp)) {
                     Column(Modifier.padding(14.dp)) {
                         Text(
                             stringResource(Res.string.debt_note),
@@ -306,6 +328,13 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
     }
 }
 
+/**
+ * Satu baris label/nilai pada kartu ringkasan pembayaran.
+ *
+ * Warna teks di-hardcode ke `onPrimary` karena baris ini tidak pernah keluar dari
+ * kartu ber-tint primary di atasnya. `emphasis` menaikkan bobot dan ukuran font
+ * untuk angka yang paling perlu terbaca cepat (total, kembalian, sisa).
+ */
 @Composable
 private fun PaymentRow(
     label: String,
@@ -327,6 +356,14 @@ private fun PaymentRow(
     }
 }
 
+/**
+ * Dialog ubah nama pelanggan dan catatan sebuah nota.
+ *
+ * Isian di-seed dari [initialCustomer]/[initialNote] lewat `remember(key)`, jadi
+ * nilai awal yang berubah akan menyetel ulang yang sedang diketik — pemanggil
+ * wajib menutup dialog setelah simpan agar tidak ada editan setengah jalan yang
+ * tertimpa. Dipanggil SaleDetailScreen hanya saat `showEditDialog` true.
+ */
 @Composable
 fun SaleEditDialog(
     initialCustomer: String,

@@ -4,7 +4,6 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -77,6 +76,12 @@ import italase.shared.generated.resources.exit_title
 import italase.shared.generated.resources.load_more_loading
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * Judul seksi dengan teks opsional di kanan (jumlah item / aksi "lihat semua").
+ * Jarak atas-bawah sudah termasuk supaya ritme antar-seksi seragam.
+ *
+ * @param trailing teks kanan; kosong berarti tidak dirender.
+ */
 @Composable
 fun SectionHeader(title: String, trailing: String = "") {
     Row(
@@ -91,6 +96,11 @@ fun SectionHeader(title: String, trailing: String = "") {
     }
 }
 
+/**
+ * Kartu "belum ada data" versi netral (non-kaca). Varian kaca: [GlassEmptyState].
+ *
+ * @param hint baris kedua opsional; kosong berarti tidak dirender.
+ */
 @Composable
 fun EmptyState(text: String, hint: String = "") {
     Card(
@@ -125,6 +135,12 @@ fun EmptyState(text: String, hint: String = "") {
 
 // Lencana status dengan kontras terkontrol (pengganti AssistChip disabled
 // yang warnanya dikalahkan state disabled).
+/**
+ * Lencana status; warna dipilih eksplisit dari [good].
+ *
+ * @param good true → skema sukses (primaryContainer), false → netral
+ *   (secondaryContainer).
+ */
 @Composable
 fun StatusChip(text: String, good: Boolean) {
     Surface(
@@ -143,39 +159,6 @@ fun StatusChip(text: String, good: Boolean) {
     }
 }
 
-// Kartu daftar: putih dengan garis tepi agar tegas di atas background krem.
-@Composable
-fun ListCard(
-    modifier: Modifier = Modifier,
-    tonal: Boolean = false,
-    onClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        colors = if (tonal) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-        } else {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-        },
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        content()
-    }
-}
-
-@Composable
-fun MoneyBig(amount: String, label: String, light: Boolean = false) {
-    val labelColor = if (light) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
-    val valueColor = if (light) Color.White else MaterialTheme.colorScheme.onSurface
-    Column {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = labelColor, fontWeight = FontWeight.Bold)
-        Text(amount, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = valueColor)
-    }
-}
-
 // ════════════════════════════════════════════════════════════════════════
 //  LAZY LOAD — kaki daftar + pemicu halaman berikutnya
 // ════════════════════════════════════════════════════════════════════════
@@ -184,7 +167,12 @@ fun MoneyBig(amount: String, label: String, light: Boolean = false) {
 //  muncul/hilang.
 private val LOAD_MORE_FOOTER_HEIGHT = 56.dp
 
-/** Kaki daftar: indikator saat halaman berikutnya sedang dimuat. */
+/**
+ * Kaki daftar: indikator saat halaman berikutnya sedang dimuat.
+ *
+ * @param loading true → spinner + label; false → hanya memesan ruang kosong
+ *   setinggi [LOAD_MORE_FOOTER_HEIGHT] supaya daftar tidak tersentak.
+ */
 @Composable
 fun LoadMoreFooter(loading: Boolean, modifier: Modifier = Modifier) {
     Box(
@@ -214,6 +202,9 @@ fun LoadMoreFooter(loading: Boolean, modifier: Modifier = Modifier) {
  * Dipasang di dalam LazyColumn-nya sendiri; [enabled] dipakai untuk mematikan
  * pemicunya selama masih memuat atau saat sudah tidak ada halaman tersisa,
  * sehingga tidak ada permintaan beruntun.
+ *
+ * @param buffer berapa item dari ujung yang sudah dihitung "hampir sampai";
+ *   lebih besar = pemicu lebih awal.
  */
 @Composable
 fun LazyListState.onBottomReached(
@@ -255,7 +246,12 @@ fun rememberAppear(): Boolean {
     return appeared
 }
 
-/** Animasi masuk sebagai pembungkus. Jangan pakai untuk anak ber-weight/align. */
+/**
+ * Animasi masuk sebagai pembungkus. Jangan pakai untuk anak ber-weight/align —
+ * di situ pakai [Modifier.enter] langsung, kalau tidak parent data-nya hilang.
+ *
+ * @param index urutan blok dalam layar (0,1,2…) untuk delay bertahap 70ms.
+ */
 @Composable
 fun Enter(
     visible: Boolean,
@@ -268,6 +264,8 @@ fun Enter(
 /**
  * Animasi masuk sebagai modifier — untuk node yang tidak boleh dibungkus:
  * anak `weight(1f)` di Column/Row, atau node ber-`align` di Box.
+ *
+ * @param index urutan blok dalam layar (0,1,2…) untuk delay bertahap 70ms.
  */
 @Composable
 fun Modifier.enter(visible: Boolean, index: Int): Modifier {
@@ -419,6 +417,11 @@ fun Modifier.glassSurface(
 //  seluruh body AppNavHost dengan provider berarti menggeser indentasi ~280
 //  baris demi satu boolean. Kalau nanti ada dua dialog kaca yang boleh terbuka
 //  bersamaan, ini yang harus jadi counter, bukan boolean.
+/**
+ * Penanda tunggal "ada dialog kaca terbuka". Ditulis oleh
+ * [AnnounceGlassDialogOpen], dibaca AppNavHost untuk memutuskan blur Scaffold.
+ * Lihat blok di atas untuk alasan kenapa bukan CompositionLocal.
+ */
 internal object GlassDialogBackdrop {
     var open: Boolean by mutableStateOf(false)
 }
@@ -442,6 +445,10 @@ internal fun AnnounceGlassDialogOpen() {
  *
  * Jendela terpisah dari tree screen → tidak pernah ikut di-blur, dan boleh
  * memakai alpha panel 0.54 karena backdrop di belakangnya SUDAH di-blur Scaffold.
+ *
+ * @param eyebrow label kecil di atas judul; null → tidak dirender (jarak judul
+ *   menyesuaikan otomatis).
+ * @param warningDescription deskripsi a11y untuk ikon peringatan.
  */
 @Composable
 fun GlassConfirmDialog(
@@ -667,6 +674,12 @@ fun ExitConfirmDialog(
 //  alpha 0.54 background itu bocor ke dalam dan kartunya jadi "kaca kotor".
 //  Jadi di sini alpha tinggi, dan kesan kaca datang dari specular sheen +
 //  shadow diffuse + edge tint — bukan dari see-through background.
+/**
+ * Kartu kaca untuk konten yang ikut scroll. Pembungkus tipis [glassSurface] + Box.
+ *
+ * @param onClick non-null → seluruh kartu dapat ditekan; efek tekan datang dari
+ *   press-scale [glassSurface], bukan ripple.
+ */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
@@ -683,7 +696,7 @@ fun GlassCard(
 }
 
 /**
- * Baris list bergaya kaca — pengganti [ListCard] (yang memakai BorderStroke).
+ * Baris list bergaya kaca — komponen daftar standar app ini.
  * Dipakai layar Kasir, Stok, Bon, Riwayat, dan Lainnya.
  *
  * @param tint pakai `primaryContainer` untuk baris yang sedang aktif/terpilih.
@@ -830,6 +843,8 @@ fun GlassChip(text: String, selected: Boolean, onClick: () -> Unit) {
  * label panjang menempel di tepi melengkung, dan label pendek seperti "Habis"
  * pada tinggi 42dp berubah jadi LINGKARAN dengan teks meluber keluar.
  *
+ * @param container warna fill saat enabled.
+ * @param content warna label saat enabled.
  * @param elevation bayangan. 0.dp untuk varian ghost (tint tipis di atas panel
  *   gelap) supaya tidak ada bayangan mengambang tanpa isi.
  * @param specular kekuatan gloss putih di tepi atas. Gloss HANYA terbaca di
@@ -886,6 +901,8 @@ fun GlassButton(
  * yang terang: terukur cuma 1.17:1 terhadap baris mint, jadi batas kontrolnya
  * tak terlihat sama sekali dan tombolnya terbaca sebagai glyph melayang.
  * Dengan primary: bidangnya 5.43:1 vs mint, ikonnya 6.52:1.
+ *
+ * @param size diameter tombol; ikonnya digambar pada 44% nilai ini.
  */
 @Composable
 fun GlassIconButton(
@@ -1024,6 +1041,14 @@ fun GlassEmptyState(text: String, hint: String = "") {
     }
 }
 
+/**
+ * Baris chip kategori horizontal. Chip "Semua" selalu dirender di depan dan
+ * mewakili filter kosong (null).
+ *
+ * @param active kategori terpilih; null = "Semua". Menekan chip yang sudah
+ *   aktif mengembalikan ke "Semua".
+ * @param onSelect nilai null dikirim saat "Semua" dipilih.
+ */
 @Composable
 fun CategoryChips(
     categories: List<String>,

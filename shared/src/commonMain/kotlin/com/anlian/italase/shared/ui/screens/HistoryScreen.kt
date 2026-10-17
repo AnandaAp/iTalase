@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,8 +26,11 @@ import com.anlian.italase.shared.data.local.entity.TxnStatus
 import com.anlian.italase.shared.ui.components.CategoryChips
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.Enter
+import com.anlian.italase.shared.ui.components.GlassCard
+import com.anlian.italase.shared.ui.components.LoadMoreFooter
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.enter
+import com.anlian.italase.shared.ui.components.onBottomReached
 import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
@@ -46,11 +50,16 @@ import italase.shared.generated.resources.status_paid
 import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.title_history
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.foundation.shape.RoundedCornerShape
-import com.anlian.italase.shared.ui.components.GlassCard
-import com.anlian.italase.shared.ui.components.LoadMoreFooter
-import com.anlian.italase.shared.ui.components.onBottomReached
 
+/**
+ * Layar riwayat penjualan dengan saringan kategori.
+ *
+ * `sales` hanya halaman yang sudah dimuat; [hasMore]/[loadingMore]/[onLoadMore]
+ * adalah kontrak memuat-bertahap dari ViewModel, bukan paginasi halaman bernomor.
+ * `activeCategory` null berarti semua kategori, dan filternya sengaja tetap dipegang
+ * pemanggil supaya tidak hilang saat layar dibuka ulang. Menekan kartu memanggil
+ * [onOpen] dengan id nota — pemanggil yang memuat detailnya.
+ */
 @Composable
 fun HistoryScreen(
     sales: List<SaleEntity>,
@@ -74,6 +83,13 @@ fun HistoryScreen(
     )
 }
 
+/**
+ * Label metode bayar untuk satu baris riwayat.
+ *
+ * `@Composable` karena butuh `stringResource`. Nilai tak dikenal (mis. data lama
+ * atau metode baru yang belum punya label) jatuh ke label utang, sama seperti
+ * pemetaan di layar detail.
+ */
 @Composable
 private fun payMethodLabel(method: String): String = when (method) {
     PayMethod.TUNAI -> stringResource(Res.string.cash_m_cash)
@@ -81,6 +97,15 @@ private fun payMethodLabel(method: String): String = when (method) {
     else -> stringResource(Res.string.tab_debt)
 }
 
+/**
+ * Bagian daftar riwayat tanpa pembungkus; dipakai layar penuh maupun preview.
+ *
+ * Observes: scroll behavior top bar (judul/eyebrow), `rememberAppear` untuk animasi
+ * masuk, dan `listState` untuk pemicu muat-tambahan.
+ *
+ * Saringan kategori tetap dirender walau `sales` kosong — hasil filter yang nol
+ * harus tetap bisa dilepas kembali, bukan terkunci di layar kosong.
+ */
 @Composable
 fun HistoryContent(
     sales: List<SaleEntity>,

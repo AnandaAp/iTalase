@@ -18,7 +18,6 @@
     <string name="tab_stock">Stok</string>
     <string name="tab_debt">Bon</string>
     <string name="tab_more">Lainnya</string>
-    <string name="title_app">iTalase</string>
     <string name="title_cashier">Kasir</string>
     <string name="title_products">Stok Barang</string>
     <string name="title_history">Riwayat Transaksi</string>
@@ -103,7 +102,6 @@
     <string name="title_detail">Detail Struk</string>
     <string name="detail_back">Kembali</string>
     <string name="detail_items">Daftar barang</string>
-    <string name="detail_payment">Pembayaran</string>
     <string name="detail_total">Total</string>
     <string name="detail_received">Diterima</string>
     <string name="detail_change">Kembalian</string>
@@ -157,7 +155,6 @@
     <string name="more_sub">Menu tambahan warung</string>
     <string name="more_history_d">Semua struk penjualan</string>
     <string name="more_expense_d">Biaya operasional toko</string>
-    <string name="more_stock_d">Kelola barang &amp; kulakan</string>
     <string name="more_about_t">iTalase • Offline</string>
     <string name="more_about_d">Data tersimpan aman di HP, tanpa internet.</string>
 

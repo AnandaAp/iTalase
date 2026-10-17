@@ -5,6 +5,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+/**
+ * Mengunci aritmetika paging murni, tanpa Compose maupun Room.
+ *
+ * Bug di sini tidak melempar exception — gejalanya cuma "daftar berhenti setengah", jadi
+ * perilakunya perlu dikunci eksplisit.
+ */
 class PagingTest {
 
     @Test
@@ -32,6 +38,12 @@ class PagingTest {
         assertTrue(endOfListReached(lastVisibleIndex = 29, totalCount = 30, buffer = 3))
     }
 
+    /**
+     * Halaman penuh berarti mungkin masih ada lanjutannya.
+     *
+     * Inilah alasan jumlah baris dipakai sebagai penanda, bukan query COUNT terpisah (lihat catatan
+     * `hasMorePages`).
+     */
     @Test
     fun hasMoreWhileSqlReturnedAFullPage() {
         assertTrue(hasMorePages(loadedCount = 20, requestedLimit = 20))
@@ -44,6 +56,10 @@ class PagingTest {
         assertEquals(false, hasMorePages(loadedCount = 0, requestedLimit = 20))
     }
 
+    /**
+     * Nilai 20 bukan angka bebas: "halaman penuh" dipakai sebagai penanda habis/tidak, jadi harus
+     * sama dengan pengali limit di ViewModel.
+     */
     @Test
     fun pageSizeIsTwenty() {
         assertTrue(PAGE_SIZE == 20, "satu halaman = 20 baris")

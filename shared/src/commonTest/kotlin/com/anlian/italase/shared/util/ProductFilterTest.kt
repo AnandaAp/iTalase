@@ -6,7 +6,17 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * Menjaga perilaku pencarian & urutan katalog saat implementasinya dioptimasi.
+ *
+ * Pipeline lama disalin apa adanya sebagai acuan ([referencePipeline]) dan dibandingkan
+ * baris-per-baris dengan implementasi baru atas 400 produk × 55 kombinasi filter.
+ */
 class ProductFilterTest {
+    /**
+     * Katalog kecil acuan: satu item per kategori, satu tanpa barcode, dan satu yang hanya bisa
+     * ketemu lewat teks kategorinya.
+     */
     private val items = listOf(
         ProductEntity(id = 1, name = "Indomie Goreng", barcode = "899001", category = ProductCategories.FOOD, sellPrice = 3500, stock = 10),
         ProductEntity(id = 2, name = "Beras 5kg", barcode = "", category = ProductCategories.STAPLE, sellPrice = 68000, stock = 5),
@@ -14,45 +24,51 @@ class ProductFilterTest {
     )
 
     @Test
-    fun blankQueryReturnsAll() = assertEquals(3, filterProducts(items, "", null).size)
+    fun blankQueryReturnsAll() = assertEquals(3, ProductList.of(items).visible("", null).size)
 
     @Test
     fun caseInsensitivePartialMatch() {
-        val found = filterProducts(items, "INDO", null)
+        val found = ProductList.of(items).visible("INDO", null)
         assertEquals(listOf(1L), found.map { it.id })
     }
 
     @Test
     fun multiWordAllMustMatch() {
-        assertEquals(listOf(1L), filterProducts(items, "indomie goreng", null).map { it.id })
-        assertTrue(filterProducts(items, "indomie beras", null).isEmpty())
+        assertEquals(
+            listOf(1L),
+            ProductList.of(items).visible("indomie goreng", null).map { it.id })
+        assertTrue(ProductList.of(items).visible("indomie beras", null).isEmpty())
     }
 
     @Test
     fun extraSpacesIgnored() {
-        assertEquals(listOf(2L), filterProducts(items, "  beras   5kg ", null).map { it.id })
+        assertEquals(
+            listOf(2L),
+            ProductList.of(items).visible("  beras   5kg ", null).map { it.id })
     }
 
     @Test
     fun barcodeMatch() {
-        assertEquals(listOf(3L), filterProducts(items, "899002", null).map { it.id })
+        assertEquals(listOf(3L), ProductList.of(items).visible("899002", null).map { it.id })
     }
 
     @Test
     fun categoryTextMatch() {
-        assertEquals(1, filterProducts(items, "sembako", null).size)
+        assertEquals(1, ProductList.of(items).visible("sembako", null).size)
     }
 
     @Test
     fun categoryFilter() {
-        assertEquals(listOf(2L), filterProducts(items, "", ProductCategories.STAPLE).map { it.id })
-        assertTrue(filterProducts(items, "kopi", ProductCategories.FOOD).isEmpty())
+        assertEquals(
+            listOf(2L),
+            ProductList.of(items).visible("", ProductCategories.STAPLE).map { it.id })
+        assertTrue(ProductList.of(items).visible("kopi", ProductCategories.FOOD).isEmpty())
     }
 
     @Test
     fun sortedAlphabeticallyCaseInsensitive() {
         // Beras 5kg (2), Indomie Goreng (1), Kopi Sachet (3)
-        assertEquals(listOf(2L, 1L, 3L), filterProducts(items, "", null).map { it.id })
+        assertEquals(listOf(2L, 1L, 3L), ProductList.of(items).visible("", null).map { it.id })
     }
 
     @Test
@@ -65,7 +81,9 @@ class ProductFilterTest {
         )
         // tersedia dulu — abjad case-insensitive: anggur, Zebra
         // lalu yang habis: apel, Beras
-        assertEquals(listOf(13L, 10L, 11L, 12L), filterProducts(mixed, "", null).map { it.id })
+        assertEquals(
+            listOf(13L, 10L, 11L, 12L),
+            ProductList.of(mixed).visible("", null).map { it.id })
     }
 
     @Test
@@ -74,7 +92,9 @@ class ProductFilterTest {
             ProductEntity(id = 20, name = "Sabun Mandi", stock = 0, category = ProductCategories.FOOD),
             ProductEntity(id = 21, name = "Sarden", stock = 3, category = ProductCategories.FOOD),
         )
-        assertEquals(listOf(21L, 20L), filterProducts(mixed, "sa", ProductCategories.FOOD).map { it.id })
+        assertEquals(
+            listOf(21L, 20L),
+            ProductList.of(mixed).visible("sa", ProductCategories.FOOD).map { it.id })
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -103,6 +123,12 @@ class ProductFilterTest {
             .sortedWith(compareBy<ProductEntity>({ it.stock <= 0 }, { it.name.lowercase() }))
     }
 
+    /**
+     * Uji banding acak ber-seed tetap (bisa diulang).
+     *
+     * Hasilnya harus sama persis dengan pipeline lama — beda urutan pun sudah kegagalan, karena
+     * urutan itulah yang dilihat penjual.
+     */
     @Test
     fun productListMatchesTheOldPipelineOnRandomData() {
         val rnd = kotlin.random.Random(20261017)

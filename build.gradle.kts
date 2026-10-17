@@ -9,7 +9,6 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.androidx.room) apply false
     alias(libs.plugins.koin.compiler) apply false
-    alias(libs.plugins.crashlytics) apply false
     alias(libs.plugins.plugin.serialization) apply false
     alias(libs.plugins.stability.analyzer) apply false
 }

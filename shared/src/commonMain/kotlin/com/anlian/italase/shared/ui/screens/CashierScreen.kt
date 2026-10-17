@@ -84,6 +84,16 @@ import org.jetbrains.compose.resources.stringResource
 // bottomActionTailPadding), bukan untuk tinggi layout kartunya sendiri.
 private val CHECKOUT_CARD_HEIGHT = 148.dp
 
+/**
+ * Entry point layar Kasir: daftar produk + keranjang, dan dialog bayar saat
+ * [showPayDialog] true. Dipasang NavHost setelah state-nya dirakit ViewModel.
+ *
+ * Layar ini sengaja tak punya state sendiri — query, kategori aktif, keranjang,
+ * dan total dipegang pemanggil supaya [CashierContent] bisa dipratinjau. Karena
+ * itu semua callback diberi default kosong: pratinjau cukup mengisi state.
+ *
+ * @param onConfirmPay dipanggil dengan (nominal dibayar, metode, nama pelanggan).
+ */
 @Composable
 fun CashierScreen(
     query: String,
@@ -130,6 +140,17 @@ fun CashierScreen(
     }
 }
 
+/**
+ * Isi layar Kasir tanpa dialog bayar — versi yang aman dipratinjau. Dipanggil
+ * [CashierScreen]; NavHost tidak memanggilnya langsung.
+ *
+ * Header hidup di top bar lewat [TopBarInfoEffect] (tidak merender apa pun di
+ * sini). Daftar diberi ruang ekor setinggi kartu checkout karena kartu itu
+ * mengambang di atas konten, dan tab bar ada di lapisan lebih atas lagi.
+ *
+ * @param list hasil pencarian + filter dari pemanggil; layar ini tidak
+ *   menyaring ulang, hanya menggambar.
+ */
 @Composable
 fun CashierContent(
     query: String,
@@ -397,6 +418,19 @@ private fun CheckoutCard(
     }
 }
 
+/**
+ * Dialog pembayaran: nominal, nama pelanggan, dan metode (tunai/transfer/bon).
+ * State-nya lokal dan tidak dilaporkan ke atas sampai simpan ditekan, jadi
+ * menutup dialog membatalkan isian tanpa efek samping.
+ *
+ * Tombol simpan tidak pernah dimatikan — kekurangan bayar diberitahukan lewat
+ * baris selisih di dalam dialog, bukan dengan mencabut aksinya. Untuk BON
+ * nominal bebas: sisanya jadi piutang, itu sebabnya peringatan kekurangan
+ * sengaja disembunyikan.
+ *
+ * @param onConfirm dipanggil dengan (nominal dibayar dalam rupiah utuh, metode,
+ *   nama pelanggan); nama pelanggan boleh kosong.
+ */
 @Composable
 fun PayDialog(total: Long, onDismiss: () -> Unit, onConfirm: (Long, String, String) -> Unit) {
     var paidText by remember { mutableStateOf("") }

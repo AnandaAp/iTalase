@@ -72,6 +72,16 @@ import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.title_debts
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * Layar daftar utang beserta kedua dialognya (catat manual, bayar).
+ *
+ * State diangkat penuh ke pemanggil — NavHost memegang `showAddDialog` dan `payId`.
+ * `payId` non-null sekaligus menandai utang mana yang sedang dibayar; layar sengaja
+ * tidak menyimpan id itu sendiri supaya sumber kebenarannya tetap satu.
+ *
+ * `onSavePay` hanya mengirim nominal: id-nya sudah dipegang pemanggil, dan
+ * pembayaran tetap dijalankan walau `payId` keburu berubah.
+ */
 @Composable
 fun DebtScreen(
     debts: List<DebtEntity>,
@@ -107,6 +117,16 @@ fun DebtScreen(
     }
 }
 
+/**
+ * Bagian daftar utang tanpa dialog; dipakai layar penuh maupun preview.
+ *
+ * Observes: scroll behavior top bar (judul/eyebrow lewat [TopBarInfoEffect]) dan
+ * `rememberAppear` untuk animasi masuk bertahap (kartu total, list, FAB).
+ *
+ * `debts` boleh memuat entri LUNAS — kartunya tetap tampil sebagai riwayat, hanya
+ * tanpa tombol Bayar. Angka Total di kartu atas sengaja hanya menjumlah yang belum
+ * lunas, jadi ia mengecil saat utang dibayar.
+ */
 @Composable
 fun DebtContent(
     debts: List<DebtEntity>,
@@ -231,6 +251,13 @@ fun DebtContent(
     }
 }
 
+/**
+ * Dialog catat utang manual.
+ *
+ * Nama, nominal, dan catatan diketik bebas; nominal baru dinormalkan `parseRupiah`
+ * saat simpan — pola yang sama dipakai form uang lain. Kolom nominal kosong menjadi
+ * 0, dan penolakan (kalau memang perlu) adalah tanggung jawab pemanggil.
+ */
 @Composable
 fun DebtFormDialog(onDismiss: () -> Unit, onSave: (String, Long, String) -> Unit) {
     var name by remember { mutableStateOf("") }
@@ -267,6 +294,13 @@ fun DebtFormDialog(onDismiss: () -> Unit, onSave: (String, Long, String) -> Unit
     )
 }
 
+/**
+ * Dialog pembayaran (cicilan) utang.
+ *
+ * Hanya meminta nominal — id utang tidak ditampilkan maupun dipilih di sini karena
+ * pemanggil sudah memegangnya. Nominal tetap dinormalkan `parseRupiah` sebelum
+ * dikirim, jadi titik desimal/ribuan yang diketik user tidak bocor ke domain.
+ */
 @Composable
 fun PayDebtDialog(onDismiss: () -> Unit, onSave: (Long) -> Unit) {
     var amount by remember { mutableStateOf("") }

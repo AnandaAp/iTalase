@@ -37,6 +37,12 @@ class ProductList private constructor(private val rows: List<Row>) {
         val barcode: String,
         val category: String,
     ) {
+        /**
+         * Cocok kalau SEMUA kata kunci ketemu di nama, barcode, atau kategori (ketiganya sudah
+         * huruf kecil).
+         *
+         * Urutan kata tidak penting, jadi "goreng indomie" tetap menemukan "Indomie Goreng".
+         */
         fun matches(tokens: List<String>): Boolean =
             tokens.all { t -> name.contains(t) || barcode.contains(t) || category.contains(t) }
     }
@@ -68,8 +74,14 @@ class ProductList private constructor(private val rows: List<Row>) {
     }
 
     companion object {
+        /**
+         * Daftar kosong, dipakai sebagai nilai awal `stateIn` sebelum tabel selesai dibaca.
+         */
         val EMPTY: ProductList = ProductList(emptyList())
 
+        /**
+         * Satu atau lebih spasi/putih — query "susu  kental" berarti dua kata kunci.
+         */
         private val TOKEN_SEPARATOR = Regex("\\s+")
 
         /**
@@ -94,14 +106,3 @@ class ProductList private constructor(private val rows: List<Row>) {
         )
     }
 }
-
-/**
- * Saring + urut sekali jalan. Dipakai kalau daftarnya hanya dibutuhkan sekilas
- * (test, atau pemakai yang memang belum punya [ProductList] sendiri). Untuk
- * layar, pakai [ProductList] supaya pengurutan tidak diulang tiap ketikan.
- */
-fun filterProducts(
-    products: List<ProductEntity>,
-    query: String,
-    category: String?,
-): List<ProductEntity> = ProductList.of(products).visible(query, category)

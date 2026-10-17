@@ -39,12 +39,20 @@ class TabRoutesTest {
         assertFalse(Routes.isTabRoute("tidak-ada"))
     }
 
+    /**
+     * Daftar tab dipakai sebagai himpunan, bukan list terurut: duplikat membuat tombol back terasa
+     * acak karena satu rute dihitung dua kali.
+     */
     @Test
     fun tabRouteSetHasNoDuplicates() {
         assertTrue(Routes.TAB_ROUTES.size == 5, "tab root tidak boleh duplikat: ${Routes.TAB_ROUTES}")
     }
 
     // ── Tombol back di top bar: HANYA Riwayat + Pengeluaran ──
+    /**
+     * Jumlah rute ber-tombol back dikunci ke 2 supaya layar baru tidak diam-diam mendapat tombol
+     * back di top bar saat ditambahkan ke daftar.
+     */
     @Test
     fun onlyHistoryAndExpenseGetABackButton() {
         assertTrue(Routes.hasBackButton(Routes.HISTORY))

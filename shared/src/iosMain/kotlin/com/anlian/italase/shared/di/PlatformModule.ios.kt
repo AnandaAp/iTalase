@@ -8,11 +8,25 @@ import org.koin.core.annotation.Module
 import org.koin.core.annotation.Singleton
 import org.koin.core.component.KoinComponent
 
+/**
+ * Bean platform iOS.
+ *
+ * Lokasi berkas dan pembukaan database dipisah ke dua bean supaya urutan penyiapan (berkas
+ * dulu, driver & migrasi kemudian) terbaca langsung dari deklarasi, dan Koin memegang keduanya
+ * sendiri — tidak ada dua koneksi ke berkas yang sama.
+ */
 @Module
 actual class PlatformModule: KoinComponent {
+    /**
+     * Builder untuk berkas database di Documents; dibuat sekali per proses.
+     */
     @Singleton
     fun provideDbBuilder(): RoomDatabase.Builder<ITalaseDatabase> = getDatabaseBuilder()
 
+    /**
+     * Buka database dari builder tersebut lewat `getRoomDatabase`, tempat driver dan migrasi
+     * dipasang.
+     */
     @Singleton
     fun provideDb(builder: RoomDatabase.Builder<ITalaseDatabase>): ITalaseDatabase =
         getRoomDatabase(builder)

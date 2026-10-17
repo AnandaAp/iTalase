@@ -12,6 +12,11 @@ import com.anlian.italase.shared.data.local.entity.TxnStatus
 import com.anlian.italase.shared.data.repository.DaySummary
 import com.anlian.italase.shared.data.repository.ShopRepository
 
+/**
+ * Katalog contoh untuk `@Preview`: sengaja kecil, tapi memuat keadaan yang biasanya merusak
+ * tata letak — satu stok 0, satu di bawah minimum, satu tanpa barcode, dan satuan campur
+ * pcs/karung.
+ */
 fun sampleProducts() = listOf(
     ProductEntity(id = 1, name = "Indomie Goreng", barcode = "8992388110101", category = "Makanan", buyPrice = 2800, sellPrice = 3500, stock = 48, unit = "pcs", minStock = 10),
     ProductEntity(id = 2, name = "Beras 5kg", barcode = "", category = "Sembako", buyPrice = 62000, sellPrice = 68000, stock = 2, unit = "karung", minStock = 5),
@@ -20,20 +25,36 @@ fun sampleProducts() = listOf(
     ProductEntity(id = 5, name = "Kopi Sachet", barcode = "", category = "Minuman", buyPrice = 1200, sellPrice = 2000, stock = 120, unit = "pcs", minStock = 20),
 )
 
+/**
+ * Angka dashboard yang khas: omzet besar, jumlah transaksi ganjil, pengeluaran tidak
+ * bulat.
+ */
 fun sampleSummary() = DaySummary(omzet = 485000, profit = 96000, trxCount = 23, expense = 25000, bersih = 71000)
 
+/**
+ * Baris terlaris dengan nilai besar & kecil bercampur, supaya lebar kolom benar-benar
+ * teruji.
+ */
 fun sampleTop() = listOf(
     TopRow("Indomie Goreng", 18, 63000),
     TopRow("Kopi Sachet", 15, 30000),
     TopRow("Minyak Goreng 1L", 4, 84000),
 )
 
+/**
+ * Riwayat tiga transaksi, termasuk satu BON yang baru separuh dibayar — kartu riwayat punya
+ * dua bentuk dan keduanya perlu terlihat.
+ */
 fun sampleSales() = listOf(
     SaleEntity(id = 12, dateMillis = 1, total = 45500, profit = 9000, payMethod = PayMethod.TUNAI, paidAmount = 45500, status = TxnStatus.LUNAS),
     SaleEntity(id = 11, dateMillis = 1, total = 68000, profit = 6000, payMethod = PayMethod.BON, paidAmount = 20000, customerName = "Bu RT", status = TxnStatus.BON),
     SaleEntity(id = 10, dateMillis = 1, total = 21000, profit = 2500, payMethod = PayMethod.TRANSFER, paidAmount = 21000, status = TxnStatus.LUNAS),
 )
 
+/**
+ * Struk lengkap: tiga item dan uang diterima lebih dari total, jadi kolom kembalian
+ * terpakai.
+ */
 fun sampleSaleDetail() = ShopRepository.SaleDetail(
     sale = SaleEntity(
         id = 12, dateMillis = 1_700_000_000_000L, total = 45500, profit = 9000,
@@ -47,11 +68,18 @@ fun sampleSaleDetail() = ShopRepository.SaleDetail(
     ),
 )
 
+/**
+ * Satu bon aktif dan satu bon lunas, supaya kedua gaya baris terlihat berdampingan.
+ */
 fun sampleDebts() = listOf(
     DebtEntity(id = 1, customerName = "Bu RT", totalAmount = 68000, paidAmount = 20000, remaining = 48000, status = DebtStatus.BELUM_LUNAS, note = "Bon dari kasir #11"),
     DebtEntity(id = 2, customerName = "Pak Budi", totalAmount = 35000, paidAmount = 35000, remaining = 0, status = DebtStatus.LUNAS),
 )
 
+/**
+ * Pengeluaran lintas kategori (Operasional/Utilitas/Kulakan) untuk menguji chip dan
+ * pengelompokan.
+ */
 fun sampleExpenses() = listOf(
     ExpenseEntity(id = 1, name = "Plastik & kresek", category = "Operasional", amount = 15000),
     ExpenseEntity(id = 2, name = "Listrik", category = "Utilitas", amount = 50000),
