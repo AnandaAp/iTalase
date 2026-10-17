@@ -151,7 +151,7 @@ fun CashierContent(
     // butuh dua lapis ruang gulir: tinggi tab bar (agar item bisa lewat di
     // belakang tab bar) + tinggi checkout card (agar item terakhir tidak
     // tertutup permanen oleh keduanya).
-    val checkoutSpace = overlayBottom + 132.dp + 12.dp
+    val checkoutSpace = overlayBottom + 132.dp + 16.dp
 
     Box(Modifier.fillMaxSize()) {
     Column(
@@ -227,9 +227,8 @@ fun CashierContent(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = 16.dp)
-                // offset bawah = overlayBottom (tinggi tab bar + margin sistem)
-                // + 12dp gap supaya checkout card tidak menempel di tab bar.
-                .padding(bottom = overlayBottom + 12.dp)
+                // Jeda 16dp di atas tab bar supaya action UI tidak menempel.
+                .padding(bottom = overlayBottom + 16.dp)
                 .fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = MaterialTheme.shapes.large,

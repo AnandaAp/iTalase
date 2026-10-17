@@ -218,7 +218,11 @@ fun AppNavHost(
             Modifier.fillMaxSize(),
         ) {
             val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
-            val overlayBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp
+            // Footprint tab bar yang mengambang: margin bawah 12dp + tinggi bar 64dp,
+            // di atas system nav bar. Ditambah jeda 8dp jadi ruang gulir minimum.
+            val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            val bottomBarFootprint = navInset + 12.dp + 64.dp
+            val overlayBottom = bottomBarFootprint + 8.dp
             // Provide scroll behavior to all screens via CompositionLocal
             androidx.compose.runtime.CompositionLocalProvider(
                 LocalTopAppBarScrollBehavior provides scrollBehavior,
@@ -601,8 +605,12 @@ private fun PremiumTopBar(
     val collapse = scrollBehavior?.state?.collapsedFraction ?: 0f
     // Same translation the TopAppBar applies internally, so scrim and bar move as one.
     val barOffset = scrollBehavior?.state?.heightOffset ?: 0f
-    val topAlpha = 0.94f + 0.06f * collapse
-    val bottomAlpha = 0.86f + 0.14f * collapse
+    // Scrim mengikuti scroll, bukan konstan. Saat berada di paling atas
+    // (collapse 0) scrim NOL → background aplikasi menembus sampai ke status
+    // bar. Begitu konten mulai lewat di belakang bar (collapse naik), scrim
+    // menguat supaya judul tetap terbaca di atas konten yang menggulir.
+    // Ini perilaku large-title ala iOS.
+    val scrim = 0.92f * collapse
     Box(Modifier.fillMaxWidth()) {
         // Fixed status scrim: never moves, keeps the system bar translucent
         // with content faintly melting underneath when the bar is hidden.
@@ -610,11 +618,17 @@ private fun PremiumTopBar(
             Modifier
                 .fillMaxWidth()
                 .windowInsetsTopHeight(TopAppBarDefaults.windowInsets)
-                .background(
-                    Brush.verticalGradient(
-                        0f to surface.copy(alpha = 0.90f),
-                        1f to surface.copy(alpha = 0.60f),
-                    ),
+                .then(
+                    if (scrim > 0.01f) {
+                        Modifier.background(
+                            Brush.verticalGradient(
+                                0f to surface.copy(alpha = scrim),
+                                1f to surface.copy(alpha = scrim * 0.65f),
+                            ),
+                        )
+                    } else {
+                        Modifier
+                    },
                 ),
         )
         // Moving bar unit.
@@ -623,15 +637,17 @@ private fun PremiumTopBar(
                 .fillMaxWidth()
                 .graphicsLayer { translationY = barOffset },
         ) {
-            Box(
-                Modifier.matchParentSize().background(
-                    Brush.verticalGradient(
-                        0f to surface.copy(alpha = topAlpha),
-                        0.7f to surface.copy(alpha = (topAlpha + bottomAlpha) / 2f),
-                        1f to surface.copy(alpha = bottomAlpha),
+            if (scrim > 0.01f) {
+                Box(
+                    Modifier.matchParentSize().background(
+                        Brush.verticalGradient(
+                            0f to surface.copy(alpha = scrim),
+                            0.7f to surface.copy(alpha = scrim * 0.9f),
+                            1f to surface.copy(alpha = scrim * 0.7f),
+                        ),
                     ),
-                ),
-            )
+                )
+            }
             CenterAlignedTopAppBar(
                 title = {
                     Text(
