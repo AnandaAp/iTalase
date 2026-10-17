@@ -7,5 +7,4 @@ import androidx.compose.runtime.Composable
 // dapat palet berbeda sehingga dialog/bottom bar kehilangan identitas warung
 // (terlihat generic Google). Konsisten di semua device = kesan premium.
 @Composable
-actual fun AppColorScheme(dark: Boolean): ColorScheme =
-    if (dark) DarkColors else LightColors
+actual fun AppColorScheme(dark: Boolean): ColorScheme = if (dark) DarkColors else LightColors
