@@ -1,22 +1,32 @@
 package com.anlian.italase.shared.ui.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -33,9 +43,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -114,6 +127,11 @@ val LocalTopAppBarScrollBehavior = compositionLocalOf<TopAppBarScrollBehavior?> 
 // starts below the translucent overlay bar but scrolls underneath it (YouTube-style).
 val LocalTopOverlayPadding = compositionLocalOf { 64.dp }
 
+// Bottom offset (tab bar height + its margin + system nav bar) so scrollable
+// screens can add trailing padding and scroll their last row ABOVE the floating
+// glass bar instead of leaving it permanently hidden underneath.
+val LocalBottomOverlayPadding = compositionLocalOf { 0.dp }
+
 // Komponen navigasi utama. NavController dimiliki di dalam body
 // (bukan parameter) agar semua parameter composable tetap stabil.
 // Injeksi ViewModel + load state dilakukan di call site tiap route,
@@ -174,6 +192,7 @@ fun AppNavHost(
         scrollBehavior.state.contentOffset = 0f
     }
 
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         // Backdrop blur: Modifier.blur memburam SELURUH subtree Scaffold, yaitu
         // konten app di belakang dialog. Dialog-nya sendiri adalah jendela
@@ -182,44 +201,29 @@ fun AppNavHost(
         modifier = Modifier.blur(if (confirmExit) 20.dp else 0.dp),
         containerColor = Color.Transparent,
         // No automatic insets: content draws full-bleed behind the status bar,
-        // top bar overlays it translucency-style (YouTube). Bottom bar keeps
-        // its Scaffold slot so lists end above it. IME handled per-screen on Android.
+        // top bar overlays it translucency-style (YouTube). Bottom bar is NOT
+        // in the Scaffold slot — see below. IME handled per-screen on Android.
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {},
-        bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)) {
-                TABS.forEach { t ->
-                    val label = stringResource(t.label)
-                    NavigationBarItem(
-                        selected = current == t.route,
-                        onClick = { goToTab(t.route) },
-                        icon = { Icon(t.icon.painter(), contentDescription = label) },
-                        label = { Text(label) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        ),
-                    )
-                }
-            }
-        },
+        // bottomBar sengaja KOSONG. Kalau ditaruh di sini, Scaffold memesan
+        // layout space setinggi bar sehingga konten berhenti di atasnya dan
+        // tidak pernah lewat di BELAKANG kaca. Bar dirender sebagai overlay
+        // sibling supaya konten bisa menggulir menembusnya.
+        bottomBar = {},
     ) { pad ->
         // Overlay: full-bleed content behind the status bar + translucent top bar on top.
         // Only the bottom bar reserves layout space; top offset is handled per-screen
         // as scrollable content padding so lists slide underneath it.
         Box(
-            Modifier
-                .fillMaxSize()
-                .padding(bottom = pad.calculateBottomPadding()),
+            Modifier.fillMaxSize(),
         ) {
             val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
+            val overlayBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp
             // Provide scroll behavior to all screens via CompositionLocal
             androidx.compose.runtime.CompositionLocalProvider(
                 LocalTopAppBarScrollBehavior provides scrollBehavior,
                 LocalTopOverlayPadding provides overlayTop,
+                LocalBottomOverlayPadding provides overlayBottom,
             ) {
                 NavHost(
                     navController = navController,
@@ -408,6 +412,15 @@ fun AppNavHost(
             }
         }
     }
+    // Tab bar sebagai overlay SIBLING — dirender setelah NavHost, di atasnya.
+    // Karena Scaffold.bottomBar dikosongkan, konten sekarang bisa menggulir
+    // menembus bar. Bar tetap mengambang di bagian bawah layar.
+    LiquidGlassTabBar(
+        current = current,
+        onSelect = goToTab,
+        modifier = Modifier.align(Alignment.BottomCenter),
+    )
+    }  // Box(Modifier.fillMaxSize())
     ExitOnBackFromTab(
         currentRoute = current,
         visible = confirmExit,
@@ -420,10 +433,163 @@ fun AppNavHost(
     )
 }
 
-// Frosted-glass top bar: the bar unit (scrim + content) slides away together on
-// scroll, while a fixed system-bar scrim stays put so the status bar is always
-// translucent — even when the bar itself is hidden. On scroll the scrim
-// solidifies and a hairline divider fades in — the iOS / premium Android feel.
+// ════════════════════════════════════════════════════════════════════════
+//  LIQUID GLASS TAB BAR
+// ════════════════════════════════════════════════════════════════════════
+//  Ciri Liquid Glass yang diterapkan:
+//   • Mengambang (floating island): margin horizontal + bawah, radius penuh.
+//     Bar tidak lagi menempel edge-to-edge.
+//   • Translucency: surface α 0.85 → kaca, tapi label tetap terbaca saat
+//     konten lewat di belakangnya.
+//   • Specular rim: border gradient putih-atas → gelap-bawah, bukan stroke
+//     seragam — pantulan cahaya di tepi kaca.
+//   • Shadow diffuse besar: bar terangkat dari konten.
+//   • Pill aktif berlapis: gradient + rim dalam.
+//
+//  Catatan jujur soal blur: backdrop-blur ASLI (konten di belakang bar ikut
+//  kabur) tidak dipakai. Alasannya sama dengan dialog dead-end #1 —
+//  Modifier.blur di node bar justru memburam IKON dan LABEL bar sendiri.
+//  Untuk floating bar, backdrop blur butuh snapshot konten di belakangnya,
+//  terlalu rapuh cross-platform. Kaca di sini dibentuk dari translucency +
+//  rim + shadow — sama bahasanya dengan kartu GlassCard (α 0.88) tapi lebih
+//  tembus (α 0.55) karena bar menempel pada background polos, bukan pada
+//  konten multi-warna yang tajam.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LiquidGlassTabBar(
+    current: String?,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val isDark = scheme.surface.luminance() < 0.5f
+    val shape = RoundedCornerShape(26.dp)
+
+    // Ruang untuk gesture bar sistem supaya pulau tidak menempel paling bawah.
+    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    Box(
+        modifier
+            .fillMaxWidth()
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = bottomInset + 12.dp,
+            ),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = 26.dp,
+                    shape = shape,
+                    ambientColor = scheme.onSurface.copy(alpha = 0.14f),
+                    spotColor = scheme.onSurface.copy(alpha = 0.22f),
+                )
+                .clip(shape)
+                // Translucency: cukup tembus untuk terlihat kaca, cukup pekat
+                // untuk menjaga label tetap terbaca saat konten lewat di
+                // belakangnya. 0.55 terbukti terlalu bening (teks konten
+                // bertabrakan dengan label tab), jadi dinaikkan.
+                .background(scheme.surface.copy(alpha = if (isDark) 0.80f else 0.85f))
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = if (isDark) 0.30f else 0.62f),
+                            scheme.onSurface.copy(alpha = 0.08f),
+                        ),
+                    ),
+                    shape = shape,
+                )
+                .padding(horizontal = 6.dp, vertical = 8.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TABS.forEach { t ->
+                    GlassTabItem(
+                        tab = t,
+                        selected = current == t.route,
+                        isDark = isDark,
+                        onClick = { onSelect(t.route) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GlassTabItem(
+    tab: Tab,
+    selected: Boolean,
+    isDark: Boolean,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val label = stringResource(tab.label)
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(interaction, indication = null) { onClick() }
+            .graphicsLayer {
+                val s = if (pressed) 0.94f else 1f
+                scaleX = s
+                scaleY = s
+            }
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // Pill aktif berlapis: radial highlight + rim dalam + shadow bertint.
+        Box(
+            Modifier
+                .size(width = 46.dp, height = 28.dp)
+                .clip(CircleShape)
+                .then(
+                    if (selected) {
+                        Modifier
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        scheme.primaryContainer,
+                                        scheme.primaryContainer.copy(alpha = 0.72f),
+                                    ),
+                                ),
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = Color.White.copy(alpha = if (isDark) 0.18f else 0.55f),
+                                shape = CircleShape,
+                            )
+                    } else {
+                        Modifier
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                tab.icon.painter(),
+                contentDescription = label,
+                tint = if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(Modifier.height(3.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PremiumTopBar(

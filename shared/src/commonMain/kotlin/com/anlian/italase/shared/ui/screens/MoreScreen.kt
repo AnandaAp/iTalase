@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -22,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.Routes
 import italase.shared.generated.resources.Res
@@ -40,7 +43,13 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MoreScreen(onNavigate: (String) -> Unit = {}) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
         ScreenHeader(
             title = stringResource(Res.string.title_more),
@@ -86,6 +95,8 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
                 }
             }
         }
+        // Card terakhir bisa digulir ke atas tab bar kaca yang mengambang.
+        Spacer(Modifier.height(LocalBottomOverlayPadding.current))
     }
 }
 

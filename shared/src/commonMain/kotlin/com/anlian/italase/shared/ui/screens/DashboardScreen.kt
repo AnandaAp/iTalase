@@ -46,6 +46,7 @@ import com.anlian.italase.shared.ui.components.GlassEmptyState
 import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.Routes
 import com.anlian.italase.shared.util.formatRupiah
@@ -114,6 +115,7 @@ fun DashboardContent(
     onQuickAction: (String) -> Unit = {},
 ) {
     val overlayTop = LocalTopOverlayPadding.current
+    val overlayBottom = LocalBottomOverlayPadding.current
 
     // Entry sekali saja per komposisi. Destination di-restore saat pindah tab,
     // jadi `remember` bertahan → animasi tidak diputar ulang tiap balik ke
@@ -213,7 +215,9 @@ fun DashboardContent(
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
+        // Ruang gulir ekstra: tarik baris terakhir melewati bar kaca yang
+        // mengambang, supaya tidak tertutup permanen di bawahnya.
+        Spacer(Modifier.height(overlayBottom))
     }
 }
 

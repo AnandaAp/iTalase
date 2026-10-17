@@ -41,6 +41,7 @@ import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.util.formatDateTime
 import com.anlian.italase.shared.util.formatRupiah
@@ -103,7 +104,7 @@ fun SaleDetailScreen(
             } else {
                 SaleDetailContent(detail = detail, message = message)
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(LocalBottomOverlayPadding.current))
         }
         if (detail != null) {
             ExtendedFloatingActionButton(

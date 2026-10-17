@@ -2,7 +2,9 @@ package com.anlian.italase.shared.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +45,7 @@ import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
 import com.anlian.italase.shared.ui.components.ScreenHeader
 import com.anlian.italase.shared.ui.components.painter
+import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.util.formatRupiah
@@ -143,6 +146,14 @@ fun CashierContent(
     val onDarkDim = Color.White.copy(alpha = 0.85f)
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val listState = rememberLazyListState()
+    val overlayBottom = LocalBottomOverlayPadding.current
+    // Layar ini punya checkout card yang mengambang DI ATAS tab bar. Jadi list
+    // butuh dua lapis ruang gulir: tinggi tab bar (agar item bisa lewat di
+    // belakang tab bar) + tinggi checkout card (agar item terakhir tidak
+    // tertutup permanen oleh keduanya).
+    val checkoutSpace = overlayBottom + 132.dp + 12.dp
+
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -183,6 +194,10 @@ fun CashierContent(
                 state = listState,
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
+                // Ruang ekstra di ekor list: item terakhir bisa digulir ke ATAS
+                // tab bar dan checkout card yang mengambang, bukan berhenti
+                // tertutup di bawahnya.
+                contentPadding = PaddingValues(bottom = checkoutSpace),
             ) {
                 items(list.take(60), key = { it.id }) { p ->
                     val qty = cart[p.id] ?: 0
@@ -201,8 +216,21 @@ fun CashierContent(
                 }
             }
         }
+        // Checkout card TIDAK di dalam Column lagi — sekarang overlay yang
+        // mengambang di bawah. LazyColumn punya weight(1f) jadi memenuhi
+        // seluruh ruang di bawah header, dan checkout card mengambang DI ATAS
+        // ekornya. Tab bar yang mengambang berada di bawah checkout card.
+    } // Column
+
+        // Overlay checkout: di atas ekor LazyColumn, di atas tab bar.
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 16.dp)
+                // offset bawah = overlayBottom (tinggi tab bar + margin sistem)
+                // + 12dp gap supaya checkout card tidak menempel di tab bar.
+                .padding(bottom = overlayBottom + 12.dp)
+                .fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = MaterialTheme.shapes.large,
         ) {
@@ -249,8 +277,7 @@ fun CashierContent(
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
-    }
+    } // Box(Modifier.fillMaxSize())
 }
 
 @Composable
