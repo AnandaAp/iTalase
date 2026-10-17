@@ -151,12 +151,24 @@ fun Modifier.aboveTabBar(side: Dp = 16.dp, gap: Dp = ACTION_OVER_BAR_GAP): Modif
  * mengambang, supaya baris terakhir bisa digulir ke ATAS elemen itu alih-alih
  * berhenti tertutup di bawahnya.
  *
+ * [ACTION_OVER_BAR_GAP] dihitung DUA KALI, dan itu bukan kekeliruan: satu jarak
+ * dipakai di BAWAH elemen aksi (antara elemen dan tab bar), satu lagi di
+ * ATASNYA (antara elemen dan konten). Kalau hanya sekali — rumus sebelumnya —
+ * baris terakhir berhenti TEPAT di tepi atas elemen aksi, jaraknya 0dp, dan
+ * hasilnya terlihat menempel. Terukur: FAB atas di `overlay+96`, ekor lama
+ * `overlay+96` → 0dp; ekor sekarang `overlay+112` → 16dp.
+ *
  * @param actionHeight tinggi elemen aksinya: ACTION_FAB_HEIGHT untuk FAB,
- *   ~148.dp untuk kartu checkout Kasir.
+ *   CHECKOUT_CARD_HEIGHT untuk kartu checkout Kasir.
  */
 @Composable
 fun bottomActionTailPadding(actionHeight: Dp): PaddingValues =
-    PaddingValues(bottom = LocalBottomOverlayPadding.current + actionHeight + ACTION_OVER_BAR_GAP)
+    PaddingValues(
+        bottom = LocalBottomOverlayPadding.current +
+            actionHeight +
+            ACTION_OVER_BAR_GAP + // di bawah elemen aksi (elemen -> tab bar)
+            ACTION_OVER_BAR_GAP, // di atas elemen aksi (elemen -> konten)
+    )
 
 // Tinggi konten top bar (di bawah status bar), dihitung dari isinya:
 // 10 top + 16 labelSmall + 2 gap + 32 headlineSmall + 14 bottom = 74dp.

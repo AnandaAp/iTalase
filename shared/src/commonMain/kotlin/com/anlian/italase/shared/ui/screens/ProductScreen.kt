@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,8 +39,9 @@ import com.anlian.italase.shared.data.StockRules
 import com.anlian.italase.shared.data.local.entity.ProductEntity
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.CategoryChips
-import com.anlian.italase.shared.ui.components.EmptyState
-import com.anlian.italase.shared.ui.components.ListCard
+import com.anlian.italase.shared.ui.components.GlassCard
+import com.anlian.italase.shared.ui.components.GlassEmptyState
+import com.anlian.italase.shared.ui.components.GlassTextField
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.painter
@@ -145,19 +148,16 @@ fun ProductContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-            OutlinedTextField(
+            GlassTextField(
                 value = query,
                 onValueChange = onQuery,
-                label = { Text(stringResource(Res.string.cash_search)) },
+                label = stringResource(Res.string.cash_search),
                 leadingIcon = {
                     Icon(
                         AppIcon.SEARCH.painter(),
                         contentDescription = stringResource(Res.string.cd_search),
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = MaterialTheme.shapes.medium,
             )
             CategoryChips(
                 categories = categories,
@@ -172,7 +172,7 @@ fun ProductContent(
                 )
             }
             if (products.isEmpty()) {
-                EmptyState(
+                GlassEmptyState(
                     stringResource(Res.string.prod_empty_t),
                     stringResource(Res.string.prod_empty_h),
                 )
@@ -188,7 +188,18 @@ fun ProductContent(
                 ) {
                     items(products, key = { it.id }) { p ->
                         val low = p.stock <= p.minStock || p.stock <= StockRules.LOW_STOCK_FALLBACK
-                        ListCard(tonal = low) {
+                        GlassCard(
+                            shape = RoundedCornerShape(20.dp),
+                            // Baris stok rendah diberi tint peringatan yang sama
+                            // seperti sebelumnya, tapi kini lewat resep kaca —
+                            // bukan Card material3 + BorderStroke.
+                            tint = if (low) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surface
+                            },
+                            alpha = if (low) 0.95f else 0.88f,
+                        ) {
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(p.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -225,7 +236,17 @@ fun ProductContent(
                                             modifier = Modifier.padding(start = 4.dp),
                                         )
                                     }
-                                    TextButton(onClick = { onDelete(p) }) {
+                                    // Hapus = destruktif, jadi merah. Pakai token
+                                    // `error` yang SAMA dengan teks "Habis" di atas,
+                                    // bukan merah baru — supaya keduanya benar-benar
+                                    // satu warna. Sebelumnya mewarisi warna primary
+                                    // (hijau), sehingga aksi hapus terbaca "aman".
+                                    TextButton(
+                                        onClick = { onDelete(p) },
+                                        colors = ButtonDefaults.textButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.error,
+                                        ),
+                                    ) {
                                         Icon(
                                             AppIcon.DELETE.painter(),
                                             contentDescription = null,
