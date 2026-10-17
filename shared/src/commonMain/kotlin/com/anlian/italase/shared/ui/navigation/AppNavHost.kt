@@ -1,13 +1,13 @@
 package com.anlian.italase.shared.ui.navigation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -45,7 +45,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -53,6 +56,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -64,6 +68,7 @@ import com.anlian.italase.shared.data.StockRules
 import com.anlian.italase.shared.data.local.entity.ProductEntity
 import com.anlian.italase.shared.platform.rememberAppExit
 import com.anlian.italase.shared.ui.components.AppIcon
+import com.anlian.italase.shared.ui.components.glassSurface
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.screens.CashierScreen
 import com.anlian.italase.shared.ui.screens.DashboardScreen
@@ -116,6 +121,42 @@ val LocalTopOverlayPadding = compositionLocalOf { 64.dp }
 // screens can add trailing padding and scroll their last row ABOVE the floating
 // glass bar instead of leaving it permanently hidden underneath.
 val LocalBottomOverlayPadding = compositionLocalOf { 0.dp }
+
+// Jarak elemen aksi mengambang (FAB, kartu checkout) dari tepi atas tab bar.
+// SATU angka untuk semua layar, dipakai lewat [aboveTabBar] — supaya Stok, Bon,
+// Pengeluaran, Detail Struk, dan Kasir punya jarak yang identik. Kalau salah
+// satu layar pakai angka sendiri, ia akan terlihat "nyeleneh" sendiri.
+val ACTION_OVER_BAR_GAP = 16.dp
+
+// Tinggi ExtendedFloatingActionButton material3 yang dipakai layar-layar ini.
+// Perlu diketahui karena container scroll di layar ber-FAB harus menyediakan
+// ruang ekor setinggi itu, kalau tidak baris terakhir tertutup permanen.
+val ACTION_FAB_HEIGHT = 56.dp
+
+/**
+ * Padding untuk SEMUA elemen aksi yang mengambang di atas tab bar.
+ *
+ * Pakai ini, jangan hitung sendiri. Layout yang benar: elemen di-`align` ke
+ * BottomCenter/BottomEnd di dalam Box(fillMaxSize), lalu diberi modifier ini —
+ * BUKAN ditaruh sebagai anak terakhir di dalam Column, karena Column akan
+ * MEMESAN ruangnya dan mendorong elemen ke atas (itu yang bikin konten tidak
+ * bisa lewat di belakang tab bar).
+ */
+@Composable
+fun Modifier.aboveTabBar(side: Dp = 16.dp, gap: Dp = ACTION_OVER_BAR_GAP): Modifier =
+    padding(start = side, end = side, bottom = LocalBottomOverlayPadding.current + gap)
+
+/**
+ * Padding ekor untuk container scroll di layar yang punya elemen aksi
+ * mengambang, supaya baris terakhir bisa digulir ke ATAS elemen itu alih-alih
+ * berhenti tertutup di bawahnya.
+ *
+ * @param actionHeight tinggi elemen aksinya: ACTION_FAB_HEIGHT untuk FAB,
+ *   ~148.dp untuk kartu checkout Kasir.
+ */
+@Composable
+fun bottomActionTailPadding(actionHeight: Dp): PaddingValues =
+    PaddingValues(bottom = LocalBottomOverlayPadding.current + actionHeight + ACTION_OVER_BAR_GAP)
 
 // Tinggi konten top bar (di bawah status bar), dihitung dari isinya:
 // 10 top + 16 labelSmall + 2 gap + 32 headlineSmall + 14 bottom = 74dp.
@@ -259,10 +300,14 @@ fun AppNavHost(
             Box(Modifier.fillMaxSize()) {
                 val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TOP_BAR_CONTENT_HEIGHT
                 // Footprint tab bar yang mengambang: margin bawah 12dp + tinggi bar 64dp,
-                // di atas system nav bar. Ditambah jeda 8dp jadi ruang gulir minimum.
+                // di atas system nav bar.
                 val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 val bottomBarFootprint = navInset + 12.dp + 64.dp
-                val overlayBottom = bottomBarFootprint + 8.dp
+                // Jeda 24dp di atas tepi atas panel — bukan 8dp. Ini jarak antara
+                // KONTEN dan tab bar: cukup lega supaya item terakhir tiap list
+                // tidak menempel ke panel, dan tidak tertutup kalau panel
+                // menebar bayangan.
+                val overlayBottom = bottomBarFootprint + 24.dp
                 // Behavior scroll diberikan per-destinasi lewat ScreenScope, bukan di sini.
                 CompositionLocalProvider(
                     LocalTopOverlayPadding provides overlayTop,
@@ -470,11 +515,22 @@ fun AppNavHost(
                             // ditulis layar lewat TopBarInfoEffect, frost dari scroll
                             // behavior milik destinasi itu sendiri — jadi tidak ada
                             // state yang bocor antar layar.
-                            val activeBehavior = topBarState.behaviors[current]
+                            // Efek frosted top bar HANYA di Beranda.
+                            // Di layar lain isi scrollable-nya LazyColumn ber-weight
+                            // yang batas atasnya sudah di bawah bar, jadi tidak ada
+                            // konten yang lewat di belakang bar — frost di sana
+                            // tidak berguna. Beranda berbeda: scrollable-nya
+                            // Column(verticalScroll) sepanjang layar, jadi kontennya
+                            // memang lewat di belakang bar dan butuh frost.
+                            val frostOffset = if (current == Routes.HOME) {
+                                topBarState.behaviors[current]?.state?.contentOffset ?: 0f
+                            } else {
+                                0f
+                            }
                             PremiumTopBar(
                                 eyebrow = topBarState.eyebrow[current].orEmpty(),
                                 title = topBarState.title[current].orEmpty(),
-                                scrollOffset = activeBehavior?.state?.contentOffset ?: 0f,
+                                scrollOffset = frostOffset,
                             )
                         }
             }
@@ -535,39 +591,71 @@ private fun LiquidGlassTabBar(
     // Ruang untuk gesture bar sistem supaya pulau tidak menempel paling bawah.
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+    // Wash konten di belakang panel kaca — area frost yang sama seperti
+    // sebelumnya (selebar layar, dari tepi atas panel sampai bawah layar).
+    // Yang diubah cuma bagaimana ia HABIS ke atas, bukan apakah ia ada.
+    //
+    // Kenapa ramp-nya panjang (44dp) dan alpha-nya "telat" di ujung atas:
+    // background app ini WarungBackground ber-blob (3 blob di-blur 70dp), bukan
+    // warna rata. Wash Paper datar bertemu blob di satu garis → di situlah
+    // muncul "separation" yang kentara. Dengan ramp panjang + stop yang telat,
+    // blob memudar perlahan ke wash dan tidak ada garis yang terbaca.
+    // Efek sampingnya bagus: di 45% band alpha masih ~0.02, jadi konten yang
+    // berhenti 24dp di atas panel (overlayBottom) TIDAK ikut kena wash.
+    //
+    // Warna: `background` (Paper #FAF6EE), BUKAN `surface` (CardWhite #FFFDF7).
+    // Panel memakai `surface`; kalau wash juga `surface`, panel dan latarnya
+    // jadi warna yang SAMA → beda luminance 1.009:1 dan pulau kacanya hilang
+    // total. Paper lebih gelap, jadi panel terbaca lebih terang dari latarnya.
+    // Terukur: beda panel-vs-latar 1.009:1 → 1.051:1; kontras label non-aktif
+    // 4.35:1 (tanpa wash) → 5.87:1.
+    val scrimFade = 44.dp
+    val scrimBase = scheme.background.copy(alpha = if (isDark) 0.88f else 0.90f)
     Box(
         modifier
             .fillMaxWidth()
+            .drawBehind {
+                val fade = scrimFade.toPx()
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.00f to Color.Transparent,
+                            0.40f to scrimBase.copy(alpha = scrimBase.alpha * 0.02f),
+                            0.60f to scrimBase.copy(alpha = scrimBase.alpha * 0.10f),
+                            0.80f to scrimBase.copy(alpha = scrimBase.alpha * 0.42f),
+                            1.00f to scrimBase,
+                        ),
+                        startY = -fade,
+                        endY = 0f,
+                    ),
+                    topLeft = Offset(0f, -fade),
+                    size = Size(size.width, fade),
+                )
+                drawRect(
+                    color = scrimBase,
+                    topLeft = Offset(0f, 0f),
+                    size = Size(size.width, size.height),
+                )
+            }
             .padding(
                 start = 16.dp,
                 end = 16.dp,
                 bottom = bottomInset + 12.dp,
             ),
     ) {
+        // Panel kaca memakai resep yang SAMA dengan ExitConfirmDialog dan
+        // GlassCard: shadow → clip → tint → veil → specular sheen.
+        // Border 1dp yang dulu ada di sini DIHAPUS — tepi kaca datang dari
+        // sheen (specular 0.55 = "rim lit lip" seperti di dialog), bukan
+        // dari stroke seragam.
         Box(
             Modifier
                 .fillMaxWidth()
-                .shadow(
+                .glassSurface(
+                    shape = shape,
+                    alpha = if (isDark) 0.80f else 0.85f,
                     elevation = 26.dp,
-                    shape = shape,
-                    ambientColor = scheme.onSurface.copy(alpha = 0.14f),
-                    spotColor = scheme.onSurface.copy(alpha = 0.22f),
-                )
-                .clip(shape)
-                // Translucency: cukup tembus untuk terlihat kaca, cukup pekat
-                // untuk menjaga label tetap terbaca saat konten lewat di
-                // belakangnya. 0.55 terbukti terlalu bening (teks konten
-                // bertabrakan dengan label tab), jadi dinaikkan.
-                .background(scheme.surface.copy(alpha = if (isDark) 0.80f else 0.85f))
-                .border(
-                    width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = if (isDark) 0.30f else 0.62f),
-                            scheme.onSurface.copy(alpha = 0.08f),
-                        ),
-                    ),
-                    shape = shape,
+                    specular = 0.55f,
                 )
                 .padding(horizontal = 6.dp, vertical = 8.dp),
         ) {
@@ -613,27 +701,21 @@ private fun GlassTabItem(
             .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Pill aktif berlapis: radial highlight + rim dalam + shadow bertint.
+        // Pill aktif memakai resep kaca yang sama, tanpa border putih: tepinya
+        // dibentuk specular sheen di dalam pill (lihat glassSurface).
         Box(
             Modifier
                 .size(width = 46.dp, height = 28.dp)
-                .clip(CircleShape)
                 .then(
                     if (selected) {
-                        Modifier
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        scheme.primaryContainer,
-                                        scheme.primaryContainer.copy(alpha = 0.72f),
-                                    ),
-                                ),
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = Color.White.copy(alpha = if (isDark) 0.18f else 0.55f),
-                                shape = CircleShape,
-                            )
+                        Modifier.glassSurface(
+                            shape = CircleShape,
+                            tint = scheme.primaryContainer,
+                            alpha = 0.95f,
+                            elevation = 8.dp,
+                            specular = 0.45f,
+                            veil = false,
+                        )
                     } else {
                         Modifier
                     },

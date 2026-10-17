@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,12 +39,15 @@ import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.CategoryChips
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
+import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.painter
-import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
+import com.anlian.italase.shared.ui.navigation.ACTION_FAB_HEIGHT
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
+import com.anlian.italase.shared.ui.navigation.aboveTabBar
+import com.anlian.italase.shared.ui.navigation.bottomActionTailPadding
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import com.anlian.italase.shared.util.parseRupiah
@@ -183,7 +184,7 @@ fun ProductContent(
                         .nestedScrollConnection(scrollBehavior, listState),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
-                    contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current),
+                    contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
                 ) {
                     items(products, key = { it.id }) { p ->
                         val low = p.stock <= p.minStock || p.stock <= StockRules.LOW_STOCK_FALLBACK
@@ -241,18 +242,13 @@ fun ProductContent(
                     }
                 }
             }
-            Spacer(Modifier.height(LocalBottomOverlayPadding.current))
         }
-        ExtendedFloatingActionButton(
+        PrimaryFab(
+            text = stringResource(Res.string.action_add_product),
+            icon = AppIcon.ADD,
+            contentDescription = stringResource(Res.string.cd_add_product),
             onClick = onAdd,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-            text = { Text(stringResource(Res.string.action_add_product)) },
-            icon = {
-                Icon(
-                    AppIcon.ADD.painter(),
-                    contentDescription = stringResource(Res.string.cd_add_product),
-                )
-            },
+            modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar(),
         )
     }
 }

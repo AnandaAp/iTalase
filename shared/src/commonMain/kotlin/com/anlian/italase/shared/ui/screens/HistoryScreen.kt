@@ -2,6 +2,7 @@ package com.anlian.italase.shared.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -95,7 +96,13 @@ fun HistoryContent(
                 stringResource(Res.string.hist_empty_h),
             )
         } else {
-            LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.weight(1f),
+                // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
+                contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current),
+            ) {
                 items(sales, key = { it.id }) { s ->
                     val lunas = s.status == TxnStatus.LUNAS
                     ListCard(onClick = { onOpen(s.id) }) {
@@ -145,6 +152,5 @@ fun HistoryContent(
                 }
             }
         }
-        Spacer(Modifier.height(LocalBottomOverlayPadding.current))
     }
 }

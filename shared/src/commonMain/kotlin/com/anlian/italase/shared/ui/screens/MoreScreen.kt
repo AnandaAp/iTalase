@@ -50,11 +50,17 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
     Column(
         Modifier
             .fillMaxSize()
+            // Inset atas di LUAR scrollable. Konten mulai DI BAWAH top bar dan
+            // tidak pernah masuk ke belakangnya — sama seperti layar dalam lain
+            // yang scrollable-nya LazyColumn ber-weight. Ini wajib karena layar
+            // ini TIDAK memasang frost di top bar (frost hanya di Beranda, lihat
+            // AppNavHost): andai kontennya lewat di belakang bar, ia akan
+            // bertabrakan dengan eyebrow + judul tanpa pelindung apa pun.
+            .padding(top = LocalTopOverlayPadding.current + 8.dp)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
         MoreRow(
             title = stringResource(Res.string.title_history),
             desc = stringResource(Res.string.more_history_d),

@@ -3,7 +3,6 @@ package com.anlian.italase.shared.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +16,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,13 +36,16 @@ import com.anlian.italase.shared.data.repository.ShopRepository.SaleDetail
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
+import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.painter
-import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
+import com.anlian.italase.shared.ui.navigation.ACTION_FAB_HEIGHT
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
+import com.anlian.italase.shared.ui.navigation.aboveTabBar
+import com.anlian.italase.shared.ui.navigation.bottomActionTailPadding
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatDateTime
 import com.anlian.italase.shared.util.formatRupiah
@@ -107,19 +108,14 @@ fun SaleDetailScreen(
             } else {
                 SaleDetailContent(detail = detail, message = message)
             }
-            Spacer(Modifier.height(LocalBottomOverlayPadding.current))
         }
         if (detail != null) {
-            ExtendedFloatingActionButton(
+            PrimaryFab(
+                text = stringResource(Res.string.action_edit),
+                icon = AppIcon.EDIT,
+                contentDescription = stringResource(Res.string.detail_edit_title),
                 onClick = onEdit,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-                text = { Text(stringResource(Res.string.action_edit)) },
-                icon = {
-                    Icon(
-                        AppIcon.EDIT.painter(),
-                        contentDescription = stringResource(Res.string.detail_edit_title),
-                    )
-                },
+                modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar(),
             )
         }
     }
@@ -167,7 +163,7 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
             .weight(1f)
             .nestedScrollConnection(scrollBehavior, listState),
         // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
-        contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current),
+        contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
     ) {
         item {
             ListCard {

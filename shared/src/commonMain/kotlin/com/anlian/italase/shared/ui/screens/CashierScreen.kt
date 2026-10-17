@@ -1,10 +1,8 @@
 package com.anlian.italase.shared.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,18 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.data.local.entity.PayMethod
@@ -41,13 +30,21 @@ import com.anlian.italase.shared.data.local.entity.ProductEntity
 import com.anlian.italase.shared.data.repository.CartLine
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.CategoryChips
-import com.anlian.italase.shared.ui.components.EmptyState
-import com.anlian.italase.shared.ui.components.ListCard
+import com.anlian.italase.shared.ui.components.GLASS_RADIUS
+import com.anlian.italase.shared.ui.components.GlassButton
+import com.anlian.italase.shared.ui.components.GlassChip
+import com.anlian.italase.shared.ui.components.GlassDialog
+import com.anlian.italase.shared.ui.components.GlassEmptyState
+import com.anlian.italase.shared.ui.components.GlassIconButton
+import com.anlian.italase.shared.ui.components.GlassRow
+import com.anlian.italase.shared.ui.components.GlassTextField
+import com.anlian.italase.shared.ui.components.glassSurface
 import com.anlian.italase.shared.ui.components.painter
-import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
+import com.anlian.italase.shared.ui.navigation.aboveTabBar
+import com.anlian.italase.shared.ui.navigation.bottomActionTailPadding
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import com.anlian.italase.shared.util.parseRupiah
@@ -74,11 +71,16 @@ import italase.shared.generated.resources.cash_sub
 import italase.shared.generated.resources.cd_add
 import italase.shared.generated.resources.cd_remove
 import italase.shared.generated.resources.cd_search
+import italase.shared.generated.resources.prod_out
 import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.title_cashier
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import org.jetbrains.compose.resources.stringResource
+
+// Tinggi perkiraan kartu checkout. Dipakai untuk ruang ekor list (lihat
+// bottomActionTailPadding), bukan untuk tinggi layout kartunya sendiri.
+private val CHECKOUT_CARD_HEIGHT = 148.dp
 
 @Composable
 fun CashierScreen(
@@ -143,194 +145,238 @@ fun CashierContent(
     onClear: () -> Unit = {},
     onPay: () -> Unit = {},
 ) {
-    val onDark = Color.White
-    val onDarkDim = Color.White.copy(alpha = 0.85f)
+    val scheme = MaterialTheme.colorScheme
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val listState = rememberLazyListState()
-    val overlayBottom = LocalBottomOverlayPadding.current
-    // Layar ini punya checkout card yang mengambang DI ATAS tab bar. Jadi list
+    // Layar ini punya kartu checkout yang mengambang DI ATAS tab bar. Jadi list
     // butuh dua lapis ruang gulir: tinggi tab bar (agar item bisa lewat di
-    // belakang tab bar) + tinggi checkout card (agar item terakhir tidak
+    // belakang tab bar) + tinggi kartu checkout (agar item terakhir tidak
     // tertutup permanen oleh keduanya).
-    val checkoutSpace = overlayBottom + 132.dp + 16.dp
+    // Jarak & tinggi tab bar datang dari helper yang SAMA dengan layar ber-FAB,
+    // supaya jarak aksi-vs-tab-bar identik di seluruh app.
+    val checkoutSpace = bottomActionTailPadding(CHECKOUT_CARD_HEIGHT)
 
-    Box(Modifier.fillMaxSize()) {
+    // Header layar hidup di top bar. Diletakkan DI LUAR Column: nilai ini tidak
+    // merender apa pun, jadi kalau jadi child Column ia tetap memakan jarak
+    // Arrangement.spacedBy di dua sisinya.
     TopBarInfoEffect(
         eyebrow = stringResource(Res.string.cash_sub),
         title = stringResource(Res.string.title_cashier),
     )
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQuery,
-            label = { Text(stringResource(Res.string.cash_search)) },
-            leadingIcon = {
-                Icon(
-                    AppIcon.SEARCH.painter(),
-                    contentDescription = stringResource(Res.string.cd_search),
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = MaterialTheme.shapes.medium,
-        )
-        CategoryChips(
-            categories = categories,
-            active = activeCategory,
-            onSelect = onCategory,
-        )
-        if (list.isEmpty()) {
-            EmptyState(
-                stringResource(Res.string.cash_empty_t),
-                stringResource(Res.string.cash_empty_h),
-            )
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .nestedScrollConnection(scrollBehavior, listState),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                // Ruang ekstra di ekor list: item terakhir bisa digulir ke ATAS
-                // tab bar dan checkout card yang mengambang, bukan berhenti
-                // tertutup di bawahnya.
-                contentPadding = PaddingValues(bottom = checkoutSpace),
-            ) {
-                items(list.take(60), key = { it.id }) { p ->
-                    val qty = cart[p.id] ?: 0
-                    if (qty > 0) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                        ) {
-                            ProductRow(p, qty, onAdd, onSetQty)
-                        }
-                    } else {
-                        ListCard {
-                            ProductRow(p, qty, onAdd, onSetQty)
-                        }
-                    }
-                }
-            }
-        }
-        // Checkout card TIDAK di dalam Column lagi — sekarang overlay yang
-        // mengambang di bawah. LazyColumn punya weight(1f) jadi memenuhi
-        // seluruh ruang di bawah header, dan checkout card mengambang DI ATAS
-        // ekornya. Tab bar yang mengambang berada di bawah checkout card.
-    } // Column
 
-        // Overlay checkout: di atas ekor LazyColumn, di atas tab bar.
-        Card(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 16.dp)
-                // Jeda 16dp di atas tab bar supaya action UI tidak menempel.
-                .padding(bottom = overlayBottom + 16.dp)
-                .fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = MaterialTheme.shapes.large,
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        stringResource(Res.string.cash_cart_items, lines.size),
-                        color = onDarkDim,
-                        style = MaterialTheme.typography.bodyMedium,
+            Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+            GlassTextField(
+                value = query,
+                onValueChange = onQuery,
+                label = stringResource(Res.string.cash_search),
+                leadingIcon = {
+                    Icon(
+                        AppIcon.SEARCH.painter(),
+                        contentDescription = stringResource(Res.string.cd_search),
                     )
-                    Text(
-                        formatRupiah(total),
-                        color = onDark,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                }
-                if (message.isNotBlank()) {
-                    Text(message, color = onDark, style = MaterialTheme.typography.bodySmall)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onClear,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = onDark),
-                        border = BorderStroke(1.dp, onDarkDim),
-                    ) { Text(stringResource(Res.string.action_cancel)) }
-                    Button(
-                        onClick = onPay,
-                        enabled = lines.isNotEmpty(),
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            disabledContainerColor = onDark.copy(alpha = 0.20f),
-                            disabledContentColor = onDark.copy(alpha = 0.65f),
-                        ),
-                    ) {
-                        Text(
-                            stringResource(Res.string.action_pay),
-                            fontWeight = FontWeight.Bold,
+                },
+            )
+            CategoryChips(
+                categories = categories,
+                active = activeCategory,
+                onSelect = onCategory,
+            )
+            if (list.isEmpty()) {
+                GlassEmptyState(
+                    stringResource(Res.string.cash_empty_t),
+                    stringResource(Res.string.cash_empty_h),
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .nestedScrollConnection(scrollBehavior, listState),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    // Ruang ekstra di ekor list: item terakhir bisa digulir ke ATAS
+                    // tab bar dan checkout card yang mengambang, bukan berhenti
+                    // tertutup di bawahnya.
+                    contentPadding = checkoutSpace,
+                ) {
+                    items(list.take(60), key = { it.id }) { p ->
+                        val qty = cart[p.id] ?: 0
+                        GlassRow(
+                            title = p.name,
+                            subtitle = stringResource(
+                                Res.string.cash_product_line,
+                                formatRupiah(p.sellPrice),
+                                p.stock,
+                            ),
+                            // Baris yang sudah masuk keranjang diberi tint brand —
+                            // bahasa yang sama dengan pill aktif di tab bar.
+                            tint = if (qty > 0) scheme.primaryContainer else scheme.surface,
+                            alpha = if (qty > 0) 0.95f else 0.88f,
+                            trailing = {
+                                if (qty == 0) {
+                                    // Aksi utama baris ini. Fill brand pekat + gloss
+                                    // PUTIH di tepi atas: gloss cuma terbaca di atas
+                                    // permukaan gelap — di atas mint, putih@0.30 jadi
+                                    // #E6F4EA alias tak terlihat (itu sebabnya versi
+                                    // mint terlihat "tumpul" dan tanpa rim kaca).
+                                    // Kontras label putih di atas primary = 6.52:1.
+                                    // Stok habis → labelnya BERGANTI KATA, bukan cuma
+                                    // dipudarkan, supaya affordance-nya jelas.
+                                    GlassButton(
+                                        text = if (p.stock > 0) {
+                                            stringResource(Res.string.cash_add_cart)
+                                        } else {
+                                            stringResource(Res.string.prod_out)
+                                        },
+                                        onClick = { onAdd(p) },
+                                        enabled = p.stock > 0,
+                                        height = 42.dp,
+                                    )
+                                } else {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        GlassIconButton(
+                                            icon = AppIcon.REMOVE,
+                                            contentDescription = stringResource(Res.string.cd_remove),
+                                            onClick = { onSetQty(p.id, qty - 1) },
+                                            size = 38.dp,
+                                        )
+                                        Text(
+                                            "$qty",
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleMedium,
+                                        )
+                                        GlassIconButton(
+                                            icon = AppIcon.ADD,
+                                            contentDescription = stringResource(Res.string.cd_add),
+                                            onClick = { onSetQty(p.id, qty + 1) },
+                                            enabled = qty < p.stock,
+                                            size = 38.dp,
+                                        )
+                                    }
+                                }
+                            },
                         )
                     }
                 }
             }
-        }
-    } // Box(Modifier.fillMaxSize())
+        } // Column
+
+        // Checkout card mengambang di atas konten; tab bar ada di layer lebih
+        // atas lagi (lihat AppNavHost).
+        CheckoutCard(
+            lines = lines.size,
+            total = total,
+            message = message,
+            onClear = onClear,
+            onPay = onPay,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .aboveTabBar(),
+        )
+    } // Box
 }
 
+/**
+ * Kartu total + aksi bayar. Memakai gaya hero yang sama seperti kartu omzet di
+ * Beranda: tint brand pekat, tapi tetap dilapisi resep kaca (sheen + veil), jadi
+ * ia terbaca satu keluarga dengan kartu lain — bukan blok warna Material.
+ */
 @Composable
-private fun ProductRow(
-    p: ProductEntity,
-    qty: Int,
-    onAdd: (ProductEntity) -> Unit,
-    onSetQty: (Long, Int) -> Unit,
+private fun CheckoutCard(
+    lines: Int,
+    total: Long,
+    message: String,
+    onClear: () -> Unit,
+    onPay: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        Modifier.fillMaxWidth().padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier
+            .fillMaxWidth()
+            .glassSurface(
+                // Radius kontainer HARUS > radius anak. Pill tombol 48dp → radius
+                // efektif 24dp, jadi kartu di 28dp. Kalau sama-sama 24dp, tepi
+                // pill terlihat terjepit di sudut kartu.
+                shape = RoundedCornerShape(GLASS_RADIUS),
+                tint = scheme.primary,
+                // 0.94 hampir opak: kartu terbaca sebagai blok warna solid dan
+                // keluar dari bahasa kaca. 0.90 + gloss lebih kuat supaya tetap
+                // satu keluarga dengan kartu lain. Batasnya: di bawah ~0.88
+                // konten di belakang mulai bocor dan kartunya jadi kotor.
+                alpha = 0.90f,
+                elevation = 22.dp,
+                specular = 0.34f,
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(p.name, fontWeight = FontWeight.SemiBold)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
-                stringResource(Res.string.cash_product_line, formatRupiah(p.sellPrice), p.stock),
+                stringResource(Res.string.cash_cart_items, lines),
+                modifier = Modifier.alignByBaseline(),
+                color = scheme.onPrimary.copy(alpha = 0.82f),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                formatRupiah(total),
+                modifier = Modifier.alignByBaseline(),
+                color = scheme.onPrimary,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
+        if (message.isNotBlank()) {
+            Text(
+                message,
+                color = scheme.onPrimary.copy(alpha = 0.9f),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (qty == 0) {
-            Button(onClick = { onAdd(p) }, enabled = p.stock > 0, modifier = Modifier.height(48.dp)) {
-                Text(stringResource(Res.string.cash_add_cart))
-            }
-        } else {
-            Stepper(
-                qty = qty,
-                canPlus = qty < p.stock,
-                onMinus = { onSetQty(p.id, qty - 1) },
-                onPlus = { onSetQty(p.id, qty + 1) },
+        // Semua tombol di kartu ini mati selama belum ada produk yang masuk
+        // keranjang. Disabled di kartu GELAP = fill lebih GELAP (recessed),
+        // label tetap putih penuh: terukur 8.64:1, dan beda 7.37:1 terhadap
+        // state enabled (sand) sehingga transisi mati → menyala sangat jelas.
+        val barEnabled = lines > 0
+        val disabledFill = scheme.onSurface.copy(alpha = 0.30f)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // SEKUNDER — ghost: tint tipis 0.10, TANPA gloss dan TANPA bayangan.
+            // Sebelumnya 0.16: fill terlalu terang sehingga teks putih cuma
+            // 4.54:1 (nyaris gagal AA), dan blob-nya lebih berat dari tombol
+            // utama sehingga mata tertarik ke "Batal". Di 0.10 → 5.19:1.
+            GlassButton(
+                text = stringResource(Res.string.action_cancel),
+                onClick = onClear,
+                enabled = barEnabled,
+                container = scheme.onPrimary.copy(alpha = 0.10f),
+                content = scheme.onPrimary,
+                elevation = 0.dp,
+                specular = 0f,
+                disabledContainer = disabledFill,
+                disabledContent = scheme.onPrimary,
+                modifier = Modifier.weight(1f),
             )
-        }
-    }
-}
-
-@Composable
-private fun Stepper(qty: Int, canPlus: Boolean, onMinus: () -> Unit, onPlus: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = onMinus, modifier = Modifier.height(48.dp)) {
-            Icon(
-                AppIcon.REMOVE.painter(),
-                contentDescription = stringResource(Res.string.cd_remove),
-            )
-        }
-        Text("$qty", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-        Button(onClick = onPlus, enabled = canPlus, modifier = Modifier.height(48.dp)) {
-            Icon(
-                AppIcon.ADD.painter(),
-                contentDescription = stringResource(Res.string.cd_add),
+            // PRIMER — satu-satunya elemen yang menyala: sand @8.86:1, bergloss,
+            // dan paling tinggi. Beda luminance vs ghost 4.42:1 → jelas dominan.
+            GlassButton(
+                text = stringResource(Res.string.action_pay),
+                onClick = onPay,
+                enabled = barEnabled,
+                container = scheme.secondaryContainer,
+                content = scheme.onSecondaryContainer,
+                elevation = 14.dp,
+                disabledContainer = disabledFill,
+                disabledContent = scheme.onPrimary,
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -342,68 +388,93 @@ fun PayDialog(total: Long, onDismiss: () -> Unit, onConfirm: (Long, String, Stri
     var customer by remember { mutableStateOf("") }
     var method by remember { mutableStateOf(PayMethod.TUNAI) }
     val paid = parseRupiah(paidText)
+    val scheme = MaterialTheme.colorScheme
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.cash_pay_title, formatRupiah(total))) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    customer, { customer = it },
-                    label = { Text(stringResource(Res.string.cash_customer)) }, singleLine = true,
+    GlassDialog(onDismiss = onDismiss) {
+        Text(
+            stringResource(Res.string.cash_pay_title, formatRupiah(total)),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onSurface,
+        )
+        Spacer(Modifier.height(16.dp))
+        GlassTextField(
+            value = customer,
+            onValueChange = { customer = it },
+            label = stringResource(Res.string.cash_customer),
+        )
+        Spacer(Modifier.height(10.dp))
+        GlassTextField(
+            value = paidText,
+            onValueChange = { paidText = it },
+            label = stringResource(Res.string.cash_paid),
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GlassChip(
+                text = stringResource(Res.string.cash_m_cash),
+                selected = method == PayMethod.TUNAI,
+                onClick = { method = PayMethod.TUNAI },
+            )
+            GlassChip(
+                text = stringResource(Res.string.cash_m_transfer),
+                selected = method == PayMethod.TRANSFER,
+                onClick = { method = PayMethod.TRANSFER },
+            )
+            GlassChip(
+                text = stringResource(Res.string.tab_debt),
+                selected = method == PayMethod.BON,
+                onClick = { method = PayMethod.BON },
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .glassSurface(
+                    shape = RoundedCornerShape(16.dp),
+                    tint = scheme.surfaceContainerLow,
+                    alpha = 0.90f,
+                    elevation = 6.dp,
+                    specular = 0.18f,
+                    veil = false,
                 )
-                OutlinedTextField(
-                    paidText, { paidText = it },
-                    label = { Text(stringResource(Res.string.cash_paid)) }, singleLine = true,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = method == PayMethod.TUNAI,
-                        onClick = { method = PayMethod.TUNAI },
-                        label = { Text(stringResource(Res.string.cash_m_cash)) },
-                    )
-                    FilterChip(
-                        selected = method == PayMethod.TRANSFER,
-                        onClick = { method = PayMethod.TRANSFER },
-                        label = { Text(stringResource(Res.string.cash_m_transfer)) },
-                    )
-                    FilterChip(
-                        selected = method == PayMethod.BON,
-                        onClick = { method = PayMethod.BON },
-                        label = { Text(stringResource(Res.string.tab_debt)) },
-                    )
-                }
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            if (paid >= total) stringResource(Res.string.cash_change)
-                            else stringResource(Res.string.cash_short),
-                        )
-                        Text(
-                            formatRupiah(if (paid >= total) paid - total else total - paid),
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-                if (method != PayMethod.BON && paid < total) {
-                    Text(
-                        stringResource(Res.string.cash_short_hint),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(paid, method, customer) }) {
-                Text(stringResource(Res.string.action_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_close)) }
-        },
-    )
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                if (paid >= total) stringResource(Res.string.cash_change)
+                else stringResource(Res.string.cash_short),
+                color = scheme.onSurfaceVariant,
+            )
+            Text(
+                formatRupiah(if (paid >= total) paid - total else total - paid),
+                fontWeight = FontWeight.Bold,
+                color = scheme.onSurface,
+            )
+        }
+        if (method != PayMethod.BON && paid < total) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(Res.string.cash_short_hint),
+                color = scheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GlassButton(
+                text = stringResource(Res.string.action_close),
+                onClick = onDismiss,
+                container = scheme.onSurface.copy(alpha = 0.06f),
+                content = scheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            GlassButton(
+                text = stringResource(Res.string.action_save),
+                onClick = { onConfirm(paid, method, customer) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
 }

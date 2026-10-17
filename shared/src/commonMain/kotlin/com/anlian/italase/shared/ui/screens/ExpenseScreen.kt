@@ -3,7 +3,6 @@ package com.anlian.italase.shared.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +17,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -37,11 +35,14 @@ import com.anlian.italase.shared.data.local.entity.ExpenseEntity
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.ListCard
+import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.painter
-import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
+import com.anlian.italase.shared.ui.navigation.ACTION_FAB_HEIGHT
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
+import com.anlian.italase.shared.ui.navigation.aboveTabBar
+import com.anlian.italase.shared.ui.navigation.bottomActionTailPadding
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatRupiah
 import com.anlian.italase.shared.util.parseRupiah
@@ -146,7 +147,7 @@ fun ExpenseContent(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(bottom = 88.dp),
+                    contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
                 ) {
                     items(items, key = { it.id }) { e ->
                         ListCard {
@@ -182,18 +183,13 @@ fun ExpenseContent(
                     }
                 }
             }
-            Spacer(Modifier.height(LocalBottomOverlayPadding.current))
         }
-        ExtendedFloatingActionButton(
+        PrimaryFab(
+            text = stringResource(Res.string.action_record),
+            icon = AppIcon.ADD,
+            contentDescription = stringResource(Res.string.cd_add_expense),
             onClick = onAdd,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-            text = { Text(stringResource(Res.string.action_record)) },
-            icon = {
-                Icon(
-                    AppIcon.ADD.painter(),
-                    contentDescription = stringResource(Res.string.cd_add_expense),
-                )
-            },
+            modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar(),
         )
     }
 }
