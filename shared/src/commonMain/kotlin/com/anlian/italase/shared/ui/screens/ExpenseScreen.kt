@@ -36,9 +36,9 @@ import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.LoadMoreFooter
+import com.anlian.italase.shared.ui.components.OnBottomReached
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.enter
-import com.anlian.italase.shared.ui.components.onBottomReached
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.ACTION_FAB_HEIGHT
@@ -178,7 +178,7 @@ fun ExpenseContent(
             } else {
                 // Lihat catatan di HistoryScreen: isi LazyColumn bukan scope
                 // @Composable, jadi pemicunya dipasang di luar.
-                listState.onBottomReached(
+                listState.OnBottomReached(
                     enabled = hasMore && !loadingMore,
                     onLoadMore = onLoadMore,
                 )

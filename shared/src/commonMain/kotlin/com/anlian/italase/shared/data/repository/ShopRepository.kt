@@ -215,6 +215,25 @@ class ShopRepository(
     // ---- Riwayat & laporan ----
     /** Struk terbaru untuk daftar riwayat; `limit` adalah jumlah baris yang
      *  diminta (lihat util/Paging.kt untuk cara bertambahnya). */
+    /**
+     * Riwayat penjualan untuk satu rentang waktu, dengan atau tanpa saringan
+     * kategori — SATU pintu untuk keempat kombinasi, supaya ViewModel tidak
+     * bercabang sendiri dan `LIMIT` yang bertumbuh tetap dipakai di semua jalur.
+     *
+     * `from`/`to` adalah epoch millis inklusif; kalau keduanya null berarti tanpa
+     * batas (seluruh riwayat). Rentang dihitung pemanggil lewat
+     * [com.anlian.italase.shared.util.dayRangeMillis].
+     */
+    fun observeSalesInRange(
+        from: Long,
+        to: Long,
+        category: String?,
+        limit: Int = PAGE_SIZE,
+    ): Flow<List<SaleEntity>> = when {
+        category.isNullOrBlank() -> db.saleDao().observeBetween(from, to, limit)
+        else -> db.saleDao().observeBetweenByCategory(from, to, category, limit)
+    }
+
     fun observeRecentSales(limit: Int = PAGE_SIZE): Flow<List<SaleEntity>> =
         db.saleDao().observeRecent(limit)
 

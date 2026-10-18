@@ -16,6 +16,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -23,20 +27,25 @@ import androidx.compose.ui.unit.dp
 import com.anlian.italase.shared.data.local.entity.PayMethod
 import com.anlian.italase.shared.data.local.entity.SaleEntity
 import com.anlian.italase.shared.data.local.entity.TxnStatus
+import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.CategoryChips
+import com.anlian.italase.shared.ui.components.DateRangeChip
+import com.anlian.italase.shared.ui.components.DateRangePickerDialog
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.Enter
 import com.anlian.italase.shared.ui.components.GlassCard
+import com.anlian.italase.shared.ui.components.GlassIconButton
 import com.anlian.italase.shared.ui.components.LoadMoreFooter
+import com.anlian.italase.shared.ui.components.OnBottomReached
 import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.enter
-import com.anlian.italase.shared.ui.components.onBottomReached
 import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
 import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
+import com.anlian.italase.shared.util.formatDateTimeLong
 import com.anlian.italase.shared.util.formatRupiah
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.cash_m_cash
@@ -44,11 +53,13 @@ import italase.shared.generated.resources.cash_m_transfer
 import italase.shared.generated.resources.hist_count
 import italase.shared.generated.resources.hist_empty_h
 import italase.shared.generated.resources.hist_empty_t
+import italase.shared.generated.resources.hist_export
 import italase.shared.generated.resources.hist_profit
 import italase.shared.generated.resources.hist_receipt
 import italase.shared.generated.resources.status_paid
 import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.title_history
+import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -67,9 +78,14 @@ fun HistoryScreen(
     activeCategory: String?,
     loadingMore: Boolean = false,
     hasMore: Boolean = false,
+    rangeFrom: LocalDate? = null,
+    rangeTo: LocalDate? = null,
+    exporting: Boolean = false,
     onCategory: (String?) -> Unit = {},
     onOpen: (Long) -> Unit = {},
     onLoadMore: () -> Unit = {},
+    onRange: (LocalDate?, LocalDate?) -> Unit = { _, _ -> },
+    onExport: () -> Unit = {},
 ) {
     HistoryContent(
         sales = sales,
@@ -77,9 +93,14 @@ fun HistoryScreen(
         activeCategory = activeCategory,
         loadingMore = loadingMore,
         hasMore = hasMore,
+        rangeFrom = rangeFrom,
+        rangeTo = rangeTo,
+        exporting = exporting,
         onCategory = onCategory,
         onOpen = onOpen,
         onLoadMore = onLoadMore,
+        onRange = onRange,
+        onExport = onExport,
     )
 }
 
@@ -113,13 +134,19 @@ fun HistoryContent(
     activeCategory: String? = null,
     loadingMore: Boolean = false,
     hasMore: Boolean = false,
+    rangeFrom: LocalDate? = null,
+    rangeTo: LocalDate? = null,
+    exporting: Boolean = false,
     onCategory: (String?) -> Unit = {},
     onOpen: (Long) -> Unit = {},
     onLoadMore: () -> Unit = {},
+    onRange: (LocalDate?, LocalDate?) -> Unit = { _, _ -> },
+    onExport: () -> Unit = {},
 ) {
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val listState = rememberLazyListState()
     val appeared = rememberAppear()
+    var pickingRange by remember { mutableStateOf(false) }
     TopBarInfoEffect(
         eyebrow = stringResource(Res.string.hist_count, sales.size),
         title = stringResource(Res.string.title_history),
@@ -133,11 +160,36 @@ fun HistoryContent(
     ) {
         Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
         Enter(appeared, 0) {
-            CategoryChips(
-                categories = categories,
-                active = activeCategory,
-                onSelect = onCategory,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CategoryChips(
+                    categories = categories,
+                    active = activeCategory,
+                    onSelect = onCategory,
+                )
+                // Baris filter tanggal + aksi ekspor. Rentang ditampilkan pada
+                // chip-nya sendiri supaya user tahu sedang melihat periode apa
+                // tanpa harus membuka dialog.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    DateRangeChip(
+                        from = rangeFrom,
+                        to = rangeTo,
+                        onClick = { pickingRange = true },
+                    )
+                    Spacer(Modifier.weight(1f))
+                    // Tombol nonaktif selama laporan disiapkan: laporan membaca
+                    // SELURUH rentang, jadi menekan dua kali akan menggandakan kerja.
+                    GlassIconButton(
+                        icon = AppIcon.RECEIPT,
+                        contentDescription = stringResource(Res.string.hist_export),
+                        onClick = onExport,
+                        enabled = !exporting && sales.isNotEmpty(),
+                    )
+                }
+            }
         }
         if (sales.isEmpty()) {
             EmptyState(
@@ -149,7 +201,7 @@ fun HistoryContent(
             // bertipe LazyListScope (bukan @Composable), jadi composable seperti
             // onBottomReached tidak bisa dipanggil di dalamnya. Ia hanya membaca
             // listState, jadi posisinya di sini sama saja.
-            listState.onBottomReached(
+            listState.OnBottomReached(
                 enabled = hasMore && !loadingMore,
                 onLoadMore = onLoadMore,
             )
@@ -185,6 +237,16 @@ fun HistoryContent(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column {
+                                    // Tanggal transaksi: dulu tidak ditampilkan sama
+                                    // sekali, sehingga "Struk #3" tidak bisa dipetakan
+                                    // ke hari kejadian. Format panjang dipakai karena
+                                    // inilah yang dibaca user saat mencocokkan bon
+                                    // fisik dengan catatan.
+                                    Text(
+                                        formatDateTimeLong(s.dateMillis),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                     Text(
                                         payMethodLabel(s.payMethod) +
                                             if (s.customerName.isNotBlank()) " • ${s.customerName}" else "",
@@ -210,5 +272,17 @@ fun HistoryContent(
                 item(key = "load-more") { LoadMoreFooter(loadingMore) }
             }
         }
+    }
+
+    if (pickingRange) {
+        DateRangePickerDialog(
+            from = rangeFrom,
+            to = rangeTo,
+            onApply = { f, t2 ->
+                pickingRange = false
+                onRange(f, t2)
+            },
+            onDismiss = { pickingRange = false },
+        )
     }
 }

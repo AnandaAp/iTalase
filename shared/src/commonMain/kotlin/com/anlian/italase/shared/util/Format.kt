@@ -41,40 +41,5 @@ fun parseRupiah(text: String): Long {
  */
 const val DAY_MILLIS = 86_400_000L
 
-/**
- * Waktu sekarang sebagai epoch millis.
- *
- * Pembungkus tipis [currentTimeMillis] supaya kode `commonMain` tidak menyentuh API platform
- * secara langsung.
- */
-fun nowMillis(): Long = currentTimeMillis()
-
-/**
- * Jam sistem per platform; satu-satunya tempat waktu dibaca langsung.
- */
-expect fun currentTimeMillis(): Long
-
-// Batas hari menurut zona waktu perangkat (bukan UTC), agar
-// "hari ini" benar untuk warung di WIB/WITA/WIT.
-/**
- * Awal hari menurut zona waktu **perangkat**, bukan UTC.
- *
- * Zona lokal dipakai karena batas "hari ini" di laporan harus sama dengan hari yang dialami
- * penjual; perangkat di Indonesia selalu berada di WIB/WITA/WIT.
- */
-expect fun startOfLocalDayMillis(millis: Long): Long
-
-/**
- * Akhir hari = awal hari berikutnya dikurangi 1 ms.
- *
- * Rentang `[awal, akhir]` jadi tertutup penuh: tidak ada milidetik yang jatuh di dua hari,
- * dan tidak ada celah yang bisa membuat transaksi terlewat dari laporan.
- */
-fun endOfLocalDayMillis(millis: Long): Long =
-    startOfLocalDayMillis(millis + DAY_MILLIS) - 1
-
-// Contoh: "14 Nov 2023 • 09:41" sesuai locale Indonesia.
-/**
- * Tanggal + jam lokal, contoh "14 Nov 2023 • 09:41" sesuai locale Indonesia.
- */
-expect fun formatDateTime(millis: Long): String
+// Waktu, tanggal, dan format tanggal Indonesia ada di Time.kt — satu
+// implementasi commonMain lewat kotlinx-datetime (dulu expect/actual per platform).

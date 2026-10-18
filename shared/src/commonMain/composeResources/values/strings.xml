@@ -6,6 +6,11 @@
     <string name="action_delete">Hapus</string>
     <string name="cd_back">Kembali</string>
     <string name="load_more_loading">Memuat item berikutnya…</string>
+    <string name="range_pick">Pilih rentang tanggal</string>
+    <string name="range_from">Dari</string>
+    <string name="range_to">Sampai</string>
+    <string name="range_all">Semua tanggal</string>
+    <string name="range_apply">Terapkan</string>
     <string name="action_edit">Ubah</string>
     <string name="action_close">Tutup</string>
     <string name="action_pay">Bayar</string>
@@ -98,6 +103,10 @@
     <string name="hist_empty_h">Hasil penjualan dari kasir akan tercatat di sini</string>
     <string name="hist_receipt">Struk #%1$d</string>
     <string name="hist_profit">Untung %1$s</string>
+    <string name="hist_export">Ekspor PDF</string>
+    <string name="hist_exporting">Menyiapkan laporan…</string>
+    <string name="hist_export_done">Laporan berhasil disimpan</string>
+    <string name="hist_export_failed">Gagal membuat laporan</string>
     <string name="status_paid">Lunas</string>
     <string name="title_detail">Detail Struk</string>
     <string name="detail_back">Kembali</string>

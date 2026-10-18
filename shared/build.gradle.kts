@@ -63,6 +63,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
             implementation(libs.koin.android)
+            implementation(libs.androidx.core.ktx)
             implementation(libs.koin.androidx.compose)
             implementation(libs.compose.foundation)
             val bom = project.dependencies.platform(libs.compose.bom)
@@ -98,6 +99,9 @@ kotlin {
             api(libs.napier)
             api(libs.bundles.ktor.core)
             api(libs.kotlinx.collections.immutable)
+            // Tanggal/waktu lintas platform: satu implementasi commonMain, jadi
+            // tidak ada lagi expect/actual Time per platform.
+            implementation(libs.kotlinx.datetime)
         }
         commonMain.configure {
             this@configure.kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")

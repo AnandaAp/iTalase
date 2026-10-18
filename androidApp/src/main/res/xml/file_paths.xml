@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  Folder yang boleh dibagikan lewat FileProvider.
+  Hanya `cache/reports` — bukan cache/ umum, supaya app tidak pernah
+  memaparkan berkas lain (mis. unduhan sementara)
+
+  path  = nama folder, HARUS sama dengan "reports" di ReportExport.android.kt
+  name  = segmen kosong di URI content://
+-->
+<paths>
+    <cache-path
+        name="reports"
+        path="reports/" />
+</paths>

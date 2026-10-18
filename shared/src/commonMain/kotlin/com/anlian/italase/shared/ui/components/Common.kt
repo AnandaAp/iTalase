@@ -208,7 +208,7 @@ fun LoadMoreFooter(loading: Boolean, modifier: Modifier = Modifier) {
  *   lebih besar = pemicu lebih awal.
  */
 @Composable
-fun LazyListState.onBottomReached(
+fun LazyListState.OnBottomReached(
     enabled: Boolean,
     onLoadMore: () -> Unit,
     buffer: Int = 3,
@@ -795,12 +795,24 @@ fun GlassTextField(
     )
 }
 
-/** Chip pilihan bergaya kaca — pengganti `FilterChip` Material. */
+/**
+ * Chip pilihan bergaya kaca — pengganti `FilterChip` Material.
+ *
+ * `onClick` sengaja parameter TERAKHIR walaupun `modifier` ditambahkan sesudahnya
+ * — kalau `modifier` yang terakhir, trailing lambda di pemanggil lama akan
+ * diam-diam mengikat ke `modifier` dan gagal dikompilasi dengan pesan yang
+ * menyesatkan. Aturan Compose: trailing lambda = parameter terakhir.
+ */
 @Composable
-fun GlassChip(text: String, selected: Boolean, onClick: () -> Unit) {
+fun GlassChip(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
     Box(
-        Modifier
+        modifier
             .glassSurface(
                 shape = CircleShape,
                 tint = if (selected) scheme.primaryContainer else scheme.surface,

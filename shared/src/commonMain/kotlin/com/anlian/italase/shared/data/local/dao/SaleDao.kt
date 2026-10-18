@@ -19,6 +19,35 @@ interface SaleDao {
     @Query("SELECT * FROM ${Tables.SALES} ORDER BY dateMillis DESC LIMIT :limit")
     fun observeRecent(limit: Int = 100): Flow<List<SaleEntity>>
 
+    /**
+     * Riwayat dalam rentang waktu `[from, to]`, urut terbaru dulu.
+     *
+     * `LIMIT` di sini sah karena urutannya kronologis: "n transaksi terbaru di
+     * rentang itu". Untuk daftar yang diurut ulang di klien (produk), LIMIT tidak
+     * boleh dipakai — lihat catatan di `util/Paging.kt`.
+     */
+    @Query(
+        "SELECT * FROM ${Tables.SALES} WHERE dateMillis BETWEEN :from AND :to " +
+                "ORDER BY dateMillis DESC LIMIT :limit",
+    )
+    fun observeBetween(from: Long, to: Long, limit: Int): Flow<List<SaleEntity>>
+
+    /**
+     * Sama seperti [observeBetween] tapi dibatasi pada transaksi yang memuat item
+     * berkategori [category].
+     */
+    @Query(
+        "SELECT * FROM ${Tables.SALES} WHERE dateMillis BETWEEN :from AND :to " +
+                "AND id IN (SELECT DISTINCT saleId FROM ${Tables.SALE_ITEMS} WHERE category = :category) " +
+                "ORDER BY dateMillis DESC LIMIT :limit",
+    )
+    fun observeBetweenByCategory(
+        from: Long,
+        to: Long,
+        category: String,
+        limit: Int,
+    ): Flow<List<SaleEntity>>
+
     /** Struk dalam rentang millis inklusif, urut terbaru; dasar laporan harian. */
     @Query("SELECT * FROM ${Tables.SALES} WHERE dateMillis BETWEEN :from AND :to ORDER BY dateMillis DESC")
     suspend fun listRange(from: Long, to: Long): List<SaleEntity>

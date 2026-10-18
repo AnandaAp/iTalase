@@ -13,6 +13,8 @@ import italase.shared.generated.resources.err_generic
 import italase.shared.generated.resources.err_name_required
 import italase.shared.generated.resources.err_price_positive
 import italase.shared.generated.resources.err_summary_failed
+import italase.shared.generated.resources.hist_export_done
+import italase.shared.generated.resources.hist_export_failed
 import italase.shared.generated.resources.msg_cart_empty
 import italase.shared.generated.resources.msg_checkout_failed
 import italase.shared.generated.resources.msg_debt_paid
@@ -84,6 +86,12 @@ sealed interface UiMessage {
     data object ExpenseSaveFailed : UiMessage
     data object SaleInfoSaved : UiMessage
     data object GenericFailure : UiMessage
+
+    /** Laporan PDF selesai dibuat dan lembar berbagi sudah dibuka. */
+    data object ReportExported : UiMessage
+
+    /** Laporan gagal dibuat/dibagikan (penyimpanan, resource logo, atau izin). */
+    data object ReportExportFailed : UiMessage
 }
 
 /**
@@ -139,4 +147,6 @@ fun UiMessage.text(): String = when (this) {
     UiMessage.ExpenseSaveFailed -> stringResource(Res.string.msg_exp_save_failed)
     UiMessage.SaleInfoSaved -> stringResource(Res.string.msg_sale_saved)
     UiMessage.GenericFailure -> stringResource(Res.string.err_generic)
+    UiMessage.ReportExported -> stringResource(Res.string.hist_export_done)
+    UiMessage.ReportExportFailed -> stringResource(Res.string.hist_export_failed)
 }

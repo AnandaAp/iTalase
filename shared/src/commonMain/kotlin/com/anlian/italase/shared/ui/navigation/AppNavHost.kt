@@ -97,6 +97,7 @@ import italase.shared.generated.resources.tab_stock
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.collections.immutable.toPersistentList
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -470,6 +471,10 @@ fun AppNavHost(
                                 val categories by vm.categories.collectAsState()
                                 val loadingMore by vm.loadingMore.collectAsState()
                                 val hasMore by vm.hasMore.collectAsState()
+                                val rangeFrom by vm.rangeFrom.collectAsState()
+                                val rangeTo by vm.rangeTo.collectAsState()
+                                val exporting by vm.exporting.collectAsState()
+                                val exportMessage by vm.exportMessage.collectAsState()
 
                                 HistoryScreen(
                                     sales = sales,
@@ -477,13 +482,27 @@ fun AppNavHost(
                                     activeCategory = category,
                                     loadingMore = loadingMore,
                                     hasMore = hasMore,
+                                    rangeFrom = rangeFrom,
+                                    rangeTo = rangeTo,
+                                    exporting = exporting,
                                     onCategory = vm::selectCategory,
+                                    onRange = vm::selectRange,
+                                    onExport = vm::exportPdf,
                                     onOpen = {
                                         vm.selectSale(it)
                                         goToScreen(Routes.HISTORY_DETAIL)
                                     },
                                     onLoadMore = vm::loadMore,
                                 )
+
+                                // Pesan hasil ekspor ditampilkan sekali lalu dibersihkan,
+                                // supaya tidak menempel di layar setelah user pindah.
+                                exportMessage?.let {
+                                    LaunchedEffect(it) {
+                                        delay(MESSAGE_VISIBLE_MILLIS)
+                                        vm.clearExportMessage()
+                                    }
+                                }
                             }
                         }
                         composable(Routes.HISTORY_DETAIL) {
@@ -617,6 +636,9 @@ fun AppNavHost(
         },
     )
 }
+
+/** Lama pesan sekali-jalan (hasil ekspor) tampil sebelum dibersihkan otomatis. */
+private const val MESSAGE_VISIBLE_MILLIS = 2_500L
 
 // ════════════════════════════════════════════════════════════════════════
 //  LIQUID GLASS TAB BAR

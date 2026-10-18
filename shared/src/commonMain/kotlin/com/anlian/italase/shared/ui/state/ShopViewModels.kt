@@ -7,15 +7,32 @@ import com.anlian.italase.shared.data.ShopDefaults
 import com.anlian.italase.shared.data.local.dao.TopRow
 import com.anlian.italase.shared.data.local.entity.DebtEntity
 import com.anlian.italase.shared.data.local.entity.ExpenseEntity
+import com.anlian.italase.shared.data.local.entity.PayMethod
 import com.anlian.italase.shared.data.local.entity.ProductEntity
 import com.anlian.italase.shared.data.local.entity.SaleEntity
+import com.anlian.italase.shared.data.local.entity.TxnStatus
 import com.anlian.italase.shared.data.repository.CartLine
 import com.anlian.italase.shared.data.repository.DaySummary
 import com.anlian.italase.shared.data.repository.ShopException
 import com.anlian.italase.shared.data.repository.ShopRepository
+import com.anlian.italase.shared.report.EXPORT_LIMIT
+import com.anlian.italase.shared.report.REPORT_APP_NAME
+import com.anlian.italase.shared.report.REPORT_FOOTER
+import com.anlian.italase.shared.report.REPORT_TAGLINE
+import com.anlian.italase.shared.report.SalesReport
+import com.anlian.italase.shared.report.SalesReportRow
+import com.anlian.italase.shared.report.SalesReportTotals
+import com.anlian.italase.shared.report.renderSalesReportPdf
+import com.anlian.italase.shared.report.salesReportFileName
+import com.anlian.italase.shared.report.savePdf
+import com.anlian.italase.shared.ui.components.readAppLogo
 import com.anlian.italase.shared.util.PAGE_SIZE
 import com.anlian.italase.shared.util.ProductList
+import com.anlian.italase.shared.util.dayRangeMillis
+import com.anlian.italase.shared.util.formatDateRange
 import com.anlian.italase.shared.util.hasMorePages
+import com.anlian.italase.shared.util.localDateOf
+import com.anlian.italase.shared.util.minusDays
 import com.anlian.italase.shared.util.nowMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -25,10 +42,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import org.koin.core.annotation.Singleton
 
 /**
@@ -450,13 +469,40 @@ class HistoryViewModel(private val repo: ShopRepository) : ViewModel() {
     private val loading: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
     /**
-     * Baris yang dirender sejauh ini; jumlahnya mengikuti limit yang sedang diminta.
+     * Rentang tanggal yang dipilih di layar; `null` di kedua sisi = seluruh riwayat.
+     *
+     * Disimpan sebagai [LocalDate] (bukan millis) karena UI yang mengubahnya lewat
+     * pemilih tanggal, dan batas hari harus dihitung ulang menurut zona perangkat
+     * setiap kali query dijalankan.
      */
-    val sales: StateFlow<List<SaleEntity>> = combine(category, limit) { c, l -> c to l }
-        .flatMapLatest { (c, l) ->
-            if (c == null) repo.observeRecentSales(l) else repo.observeSalesByCategory(c, l)
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+    val rangeFrom: MutableStateFlow<LocalDate?> = MutableStateFlow(null)
+    val rangeTo: MutableStateFlow<LocalDate?> = MutableStateFlow(null)
+
+    /**
+     * Baris yang dirender sejauh ini; jumlahnya mengikuti limit yang sedang diminta.
+     *
+     * Keempat kombinasi (kategori × rentang) diserahkan ke repository lewat satu
+     * pintu [ShopRepository.observeSalesInRange], jadi tidak ada cabang ganda di sini.
+     */
+    val sales: StateFlow<List<SaleEntity>> =
+        combine(category, limit, rangeFrom, rangeTo) { c, l, from, to -> Filter(c, l, from, to) }
+            .flatMapLatest { f ->
+                val (start, end) = dayRangeMillis(f.from, f.to)
+                repo.observeSalesInRange(start, end, f.category, f.limit)
+            }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS),
+                emptyList()
+            )
+
+    /** Pasangan filter yang sedang aktif; kelas kecil supaya `combine` 4 argumen tetap terbaca. */
+    private data class Filter(
+        val category: String?,
+        val limit: Int,
+        val from: LocalDate?,
+        val to: LocalDate?,
+    )
 
     /**
      * Kategori dari item penjualan yang pernah tercatat, bukan kategori produk aktif — ini yang
@@ -494,9 +540,131 @@ class HistoryViewModel(private val repo: ShopRepository) : ViewModel() {
     fun selectCategory(c: String?) {
         if (category.value == c) return
         category.value = c
-        // Ganti saringan = mulai dari halaman pertama lagi.
+        resetPaging()
+    }
+
+    /**
+     * Ubah rentang tanggal. `null` di kedua sisi berarti seluruh riwayat.
+     *
+     * Rentang yang terbalik (dari > sampai) ditukar otomatis, bukan ditolak: user
+     * yang menekan "sampai" lebih dulu tidak perlu dipermalukan dengan error.
+     */
+    fun selectRange(from: LocalDate?, to: LocalDate?) {
+        val (f, s) = if (from != null && to != null && from > to) to to from else from to to
+        if (rangeFrom.value == f && rangeTo.value == s) return
+        rangeFrom.value = f
+        rangeTo.value = s
+        resetPaging()
+    }
+
+    /** Pintasan rentang: `days` hari terakhir sampai hari ini. */
+    fun selectLastDays(days: Int) {
+        val today: LocalDate = localDateOf(nowMillis())
+        selectRange(today.minusDays(days - 1), today)
+    }
+
+    /** Hapus rentang (kembali ke seluruh riwayat). */
+    fun clearRange() = selectRange(null, null)
+
+    /** Ganti saringan = mulai dari halaman pertama lagi. */
+    private fun resetPaging() {
         limit.value = PAGE_SIZE
         loading.value = false
+    }
+
+    /**
+     * Seluruh baris yang cocok dengan filter aktif, untuk diekspor ke PDF.
+     *
+     * Sengaja TIDAK memakai [sales]: itu hanya halaman yang sudah dimuat, jadi
+     * laporan akan diam-diam terpotong sebanyak yang belum di-scroll. Rentang tetap
+     * dihormati karena user mengharapkan "yang sedang saya lihat".
+     */
+    suspend fun loadAllForExport(): List<SaleEntity> {
+        val (start, end) = dayRangeMillis(rangeFrom.value, rangeTo.value)
+        return repo.observeSalesInRange(start, end, category.value, limit = EXPORT_LIMIT)
+            .first()
+    }
+
+    /** true selama berkas PDF sedang disiapkan, supaya tombol ekspor bisa dikunci. */
+    private val exportingState: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val exporting: StateFlow<Boolean> = exportingState
+
+    /** Hasil ekspor terakhir; `null` = belum ada. Layar menampilkan pesannya. */
+    val exportMessage: MutableStateFlow<UiMessage?> = MutableStateFlow(null)
+
+    /** Bersihkan pesan ekspor setelah ditampilkan, agar tidak menempel di layar. */
+    fun clearExportMessage() {
+        exportMessage.value = null
+    }
+
+    /**
+     * Bentuk dan simpan laporan PDF untuk filter yang sedang aktif.
+     *
+     * Alurnya sengaja di ViewModel, bukan di layar: laporan butuh seluruh rentang
+     * (bukan hanya halaman yang ter-scroll), ditambah label bahasa Indonesia yang
+     * bergantung pada locale dan kategori aktif. Layar cukup memanggil satu aksi.
+     */
+    fun exportPdf() {
+        if (exportingState.value) return
+        exportingState.value = true
+        exportMessage.value = null
+        viewModelScope.launch {
+            try {
+                val rows: List<SaleEntity> = loadAllForExport()
+                val logo: ByteArray? = runCatching { readAppLogo() }.getOrNull()
+                val report = SalesReport(
+                    appName = REPORT_APP_NAME,
+                    tagline = REPORT_TAGLINE,
+                    title = "Laporan Riwayat Transaksi",
+                    periodLabel = formatDateRange(rangeFrom.value, rangeTo.value),
+                    filterLabel = category.value?.let { "Kategori: $it" } ?: "Kategori: Semua",
+                    generatedAtMillis = nowMillis(),
+                    rows = rows.map { s ->
+                        SalesReportRow(
+                            receiptNo = s.id,
+                            dateMillis = s.dateMillis,
+                            methodLabel = payMethodLabelOf(s.payMethod),
+                            statusLabel = if (s.status == TxnStatus.LUNAS) "Lunas" else "Bon",
+                            paid = s.status == TxnStatus.LUNAS,
+                            total = s.total,
+                            profit = s.profit,
+                            customerName = s.customerName,
+                        )
+                    },
+                    totals = SalesReportTotals(
+                        count = rows.size,
+                        revenue = rows.sumOf { it.total },
+                        profit = rows.sumOf { it.profit },
+                        unpaid = rows.filter { it.status != TxnStatus.LUNAS }
+                            .sumOf { it.total - it.paidAmount },
+                    ),
+                    footerNote = REPORT_FOOTER,
+                    invoiceLimitReached = rows.size >= EXPORT_LIMIT,
+                )
+                val pdf: ByteArray = renderSalesReportPdf(report, logo)
+                val saved: Boolean = savePdf(salesReportFileName(report), pdf)
+                exportMessage.value =
+                    if (saved) UiMessage.ReportExported else UiMessage.ReportExportFailed
+            } catch (t: Throwable) {
+                exportMessage.value = UiMessage.ReportExportFailed
+            } finally {
+                exportingState.value = false
+            }
+        }
+    }
+
+    /**
+     * Label metode bayar tanpa Compose.
+     *
+     * Di layar label ini datang dari `stringResource`, tetapi ViewModel tidak punya
+     * akses ke resource Compose. Teksnya harus sama dengan yang tampil di daftar,
+     * jadi nilainya diambil dari konstanta yang sama (`PayMethod`), dengan nilai
+     * cadangan untuk data lama yang metodenya tidak dikenal.
+     */
+    private fun payMethodLabelOf(method: String): String = when (method) {
+        PayMethod.TUNAI -> "Tunai"
+        PayMethod.TRANSFER -> "Transfer"
+        else -> "Bon"
     }
 
     /**
