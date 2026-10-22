@@ -19,3 +19,4 @@ captures
 node_modules/
 shared/build/generated/ksp/metadata/commonMain/kotlin
 shared/src/commonMain/kotlin/generated/
+gradle/gradle-daemon-jvm.properties
