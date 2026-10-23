@@ -1,5 +1,6 @@
 package com.anlian.italase
 
+import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -24,6 +25,8 @@ class MainActivity : ComponentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val isDarkMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
         // Edge-to-edge dengan scrim NOL di kedua system bar.
         //
         // Penting: enableEdgeToEdge() tanpa argumen memakai SystemBarStyle.auto()
@@ -47,8 +50,8 @@ class MainActivity : ComponentActivity() {
         // Transparent system bars (YouTube-style edge-to-edge)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.isAppearanceLightStatusBars = true
-        controller.isAppearanceLightNavigationBars = true
+        controller.isAppearanceLightStatusBars = !isDarkMode
+        controller.isAppearanceLightNavigationBars = !isDarkMode
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             window.statusBarColor = Color.TRANSPARENT
             window.navigationBarColor = Color.TRANSPARENT

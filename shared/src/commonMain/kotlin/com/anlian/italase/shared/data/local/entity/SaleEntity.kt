@@ -2,6 +2,7 @@ package com.anlian.italase.shared.data.local.entity
 
 import androidx.compose.runtime.Immutable
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.anlian.italase.shared.data.local.Tables
 
@@ -30,7 +31,12 @@ object PayMethod {
 /** Header struk: satu baris per checkout. total dan profit disimpan sudah
  *  dihitung, jadi laporan harian tidak perlu menjumlahkan sale_items. */
 @Immutable
-@Entity(tableName = Tables.SALES)
+@Entity(
+    tableName = Tables.SALES,
+    indices = [
+        Index("dateMillis"),
+    ],
+)
 data class SaleEntity(
     /** 0 berarti baris baru; Room mengisi id saat insert. */
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -62,7 +68,13 @@ data class SaleEntity(
 /** Baris rincian struk. Nama, kategori, dan harga DISALIN dari produk saat
  *  checkout, jadi mengubah atau menghapus produk tidak mengubah struk lama. */
 @Immutable
-@Entity(tableName = Tables.SALE_ITEMS)
+@Entity(
+    tableName = Tables.SALE_ITEMS,
+    indices = [
+        Index("saleId"),
+        Index("category"),
+    ],
+)
 data class SaleItemEntity(
     /** 0 berarti baris baru; Room mengisi id saat insert batch. */
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

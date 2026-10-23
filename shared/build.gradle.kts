@@ -31,7 +31,7 @@ kotlin {
     cocoapods {
         summary = "Shared framework for iTalase"
         homepage = "https://github.com/anlian/iTalase"
-        version = "1.1.2"
+        version = libs.versions.app.version.get()
         ios.deploymentTarget = "16.0"
         pod("SQLCipher", "~> 4.6.0")
     }
@@ -72,6 +72,7 @@ kotlin {
             implementation(libs.bundles.android.compose)
             api(libs.bundles.ktor.shared.android)
             api(libs.bundles.android.essentials)
+            implementation(libs.sqlcipher.android)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -95,7 +96,12 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.compose.navigation.multiplatform)
             implementation(libs.room.runtime)
-            implementation(libs.sqlite.bundled)
+            // CATATAN: `sqlite-bundled` sengaja TIDAK ada di commonMain.
+            // Artifact itu mengekspor simbol `sqlite3_*` yang sama dengan
+            // SQLCipher; kalau keduanya masuk ke satu binary, linker bisa
+            // memilih yang salah sehingga `PRAGMA key` diabaikan tanpa error
+            // dan database tetap polos. Android memakai SQLCipher
+            // (`sqlcipher-android`), iOS memakai SQLCipher via CocoaPods.
             api(libs.napier)
             api(libs.bundles.ktor.core)
             api(libs.kotlinx.collections.immutable)

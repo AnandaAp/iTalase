@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
     spec.name                     = 'shared'
-    spec.version                  = '1.1.2'
+    spec.version                  = '1.0.0'
     spec.homepage                 = 'https://github.com/anlian/iTalase'
     spec.source                   = { :http=> ''}
     spec.authors                  = ''

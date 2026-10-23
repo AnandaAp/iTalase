@@ -14,4 +14,4 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
  * `viewModelScope`, bukan dari komposisi.
  */
 @OptIn(ExperimentalResourceApi::class)
-suspend fun readAppLogo(): ByteArray = Res.readBytes("files/italase_logo.png")
+suspend fun readAppLogo(): ByteArray = Res.readBytes("files/italase_logo.jpg")

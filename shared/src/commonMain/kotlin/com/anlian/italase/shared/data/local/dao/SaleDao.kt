@@ -52,6 +52,10 @@ interface SaleDao {
     @Query("SELECT * FROM ${Tables.SALES} WHERE dateMillis BETWEEN :from AND :to ORDER BY dateMillis DESC")
     suspend fun listRange(from: Long, to: Long): List<SaleEntity>
 
+    /** Jumlah struk dalam rentang. */
+    @Query("SELECT COUNT(*) FROM ${Tables.SALES} WHERE dateMillis BETWEEN :from AND :to")
+    suspend fun countRange(from: Long, to: Long): Int
+
     /** Total omzet rentang; 0 kalau tidak ada struk. */
     @Query("SELECT IFNULL(SUM(total),0) FROM ${Tables.SALES} WHERE dateMillis BETWEEN :from AND :to")
     suspend fun sumOmzet(from: Long, to: Long): Long

@@ -1,13 +1,19 @@
 package com.anlian.italase.shared.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.anlian.italase.shared.data.ShopDefaults
 import com.anlian.italase.shared.data.local.Tables
 
 /** Pengeluaran operasional toko (bukan pembelian stok). Dikurangkan dari
  *  profit di ringkasan harian dan tidak terhubung ke produk mana pun. */
-@Entity(tableName = Tables.EXPENSES)
+@Entity(
+    tableName = Tables.EXPENSES,
+    indices = [
+        Index("dateMillis"),
+    ],
+)
 data class ExpenseEntity(
     /** 0 berarti baris baru; Room mengisi id saat insert. */
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

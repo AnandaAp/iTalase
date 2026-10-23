@@ -2,6 +2,7 @@ package com.anlian.italase.shared.data.local.entity
 
 import androidx.compose.runtime.Immutable
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.anlian.italase.shared.data.local.Tables
 
@@ -19,7 +20,13 @@ object DebtStatus {
  *  atau manual dari layar Bon; satu baris = satu bon. paidAmount dan remaining
  *  adalah ringkasan yang harus tetap konsisten dengan debt_payments. */
 @Immutable
-@Entity(tableName = Tables.DEBTS)
+@Entity(
+    tableName = Tables.DEBTS,
+    indices = [
+        Index("status"),
+        Index("dateMillis"),
+    ],
+)
 data class DebtEntity(
     /** 0 berarti baris baru; Room mengisi id saat insert. */
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -48,7 +55,12 @@ data class DebtEntity(
 /** Satu baris per cicilan bon. Tabel ini sumber kebenaran riwayat pembayaran,
  *  sedangkan debts.paidAmount hanya ringkasannya. */
 @Immutable
-@Entity(tableName = Tables.DEBT_PAYMENTS)
+@Entity(
+    tableName = Tables.DEBT_PAYMENTS,
+    indices = [
+        Index("debtId"),
+    ],
+)
 data class DebtPaymentEntity(
     /** 0 berarti baris baru; Room mengisi id saat insert. */
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

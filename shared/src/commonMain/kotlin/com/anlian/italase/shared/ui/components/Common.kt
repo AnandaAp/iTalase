@@ -347,15 +347,47 @@ fun Modifier.glassSurface(
 ): Modifier {
     val scheme = MaterialTheme.colorScheme
     val isDark = scheme.surface.luminance() < 0.5f
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
+
+    val primaryVeilBrush = if (veil) {
+        remember(scheme.primary) {
+            Brush.radialGradient(
+                colors = listOf(scheme.primary.copy(alpha = 0.06f), Color.Transparent),
+                center = Offset.Zero,
+                radius = 900f,
+            )
+        }
+    } else null
+
+    val secondaryVeilColors = if (veil) {
+        remember(scheme.secondary) {
+            listOf(scheme.secondary.copy(alpha = 0.04f), Color.Transparent)
+        }
+    } else null
+
+    val specularAlpha = if (isDark) specular * 0.4f else specular
+    val specularBrush = remember(specularAlpha) {
+        Brush.verticalGradient(
+            0f to Color.White.copy(alpha = specularAlpha),
+            0.28f to Color.Transparent,
+        )
+    }
+
+    val clickModifier = if (onClick != null) {
+        val interaction = remember { MutableInteractionSource() }
+        val pressed by interaction.collectIsPressedAsState()
+        Modifier
+            .graphicsLayer {
+                val s = if (pressed) 0.975f else 1f
+                scaleX = s
+                scaleY = s
+            }
+            .clickable(interaction, indication = null) { onClick() }
+    } else {
+        Modifier
+    }
 
     return this
-        .graphicsLayer {
-            val s = if (pressed) 0.975f else 1f
-            scaleX = s
-            scaleY = s
-        }
+        .then(clickModifier)
         .shadow(
             elevation = elevation,
             shape = shape,
@@ -365,17 +397,11 @@ fun Modifier.glassSurface(
         .clip(shape)
         .drawBehind {
             drawRect(tint, alpha = alpha)
-            if (veil) {
+            if (primaryVeilBrush != null && secondaryVeilColors != null) {
+                drawRect(primaryVeilBrush)
                 drawRect(
                     Brush.radialGradient(
-                        colors = listOf(scheme.primary.copy(alpha = 0.06f), Color.Transparent),
-                        center = Offset.Zero,
-                        radius = 900f,
-                    ),
-                )
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(scheme.secondary.copy(alpha = 0.04f), Color.Transparent),
+                        colors = secondaryVeilColors,
                         center = Offset(size.width, size.height),
                         radius = 900f,
                     ),
@@ -383,20 +409,8 @@ fun Modifier.glassSurface(
             }
             // Specular: cahaya dari atas. Inilah "rim lit lip" yang bikin tepi
             // terbaca sebagai kaca tanpa perlu stroke apa pun.
-            drawRect(
-                Brush.verticalGradient(
-                    0f to Color.White.copy(alpha = if (isDark) specular * 0.4f else specular),
-                    0.28f to Color.Transparent,
-                ),
-            )
+            drawRect(specularBrush)
         }
-        .then(
-            if (onClick != null) {
-                Modifier.clickable(interaction, indication = null) { onClick() }
-            } else {
-                Modifier
-            },
-        )
 }
 
 // ════════════════════════════════════════════════════════════════════════

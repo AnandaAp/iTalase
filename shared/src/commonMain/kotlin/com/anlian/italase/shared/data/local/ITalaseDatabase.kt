@@ -6,7 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.execSQL
 import com.anlian.italase.shared.data.ProductCategories
 import com.anlian.italase.shared.data.local.dao.DebtDao
@@ -35,7 +35,7 @@ import kotlinx.coroutines.IO
         DebtPaymentEntity::class,
         ExpenseEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @ConstructedBy(ITalaseDatabaseConstructor::class)
@@ -84,6 +84,22 @@ val MIGRATION_2_3 = object : Migration(DB_VERSION_2, DB_VERSION_3) {
     }
 }
 
+/** Versi skema 4: indeks pada kolom filter dan foreign key. */
+private const val DB_VERSION_4 = 4
+
+/** Migrasi 3→4: membuat indeks pada dateMillis, saleId, category, status, debtId. */
+val MIGRATION_3_4 = object : Migration(DB_VERSION_3, DB_VERSION_4) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_sales_dateMillis ON ${Tables.SALES}(dateMillis)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_sale_items_saleId ON ${Tables.SALE_ITEMS}(saleId)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_sale_items_category ON ${Tables.SALE_ITEMS}(category)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_debts_status ON ${Tables.DEBTS}(status)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_debts_dateMillis ON ${Tables.DEBTS}(dateMillis)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_debt_payments_debtId ON ${Tables.DEBT_PAYMENTS}(debtId)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_expenses_dateMillis ON ${Tables.EXPENSES}(dateMillis)")
+    }
+}
+
 /** Implementasi konkret per platform (lihat androidMain/iosMain) karena Room
  *  perlu kode pembangun database yang beda tiap target. */
 @Suppress("KotlinNoActualForExpect")
@@ -93,14 +109,27 @@ expect object ITalaseDatabaseConstructor : RoomDatabaseConstructor<ITalaseDataba
     override fun initialize(): ITalaseDatabase
 }
 
-/** Konfigurasi tunggal database: driver SQLite bundled (tidak bergantung
- *  sqlite sistem, jadi perilakunya sama di Android & iOS), query dijalankan di
- *  [Dispatchers.IO], dan seluruh migrasi didaftarkan. Dipanggil platform module
- *  saat menyiapkan DI. */
-fun getRoomDatabase(builder: RoomDatabase.Builder<ITalaseDatabase>): ITalaseDatabase {
+/** Konfigurasi tunggal database: query dijalankan di [Dispatchers.IO], dan seluruh
+ *  migrasi didaftarkan. Dipanggil platform module saat menyiapkan DI.
+ *
+ *  Driver-nya datang dari per-platform (`createEncryptedDriver`): Android memakai
+ *  SQLCipher, iOS memakai SQLCipher lewat CocoaPods. Driver SQLite polos tidak
+ *  dipakai di mana pun — database yang tersimpan di disk harus terenkripsi. */
+fun getRoomDatabase(
+    builder: RoomDatabase.Builder<ITalaseDatabase>,
+    driver: SQLiteDriver,
+): ITalaseDatabase {
     return builder
-        .setDriver(BundledSQLiteDriver())
+        .setDriver(driver)
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
         .build()
 }
+
+/**
+ * Driver terenkripsi untuk platform ini.
+ *
+ * Harus meng-key setiap koneksi yang dibuka, sebelum statement apa pun
+ * dijalankan: Room membaca versi skema sebelum statement aplikasi pertama.
+ */
+expect fun createEncryptedDriver(passphrase: String): SQLiteDriver

@@ -10,10 +10,12 @@ import platform.Foundation.NSUserDomainMask
 /**
  * Builder Room untuk iOS.
  *
- * Berkas database diletakkan di direktori Documents supaya ikut ter-backup dan tidak terhapus
- * saat app diperbarui — iOS tidak punya padanan `applicationContext`. Tidak ada enkripsi di
- * target ini (tidak ada padanan SQLCipher yang dipasang); driver dan migrasi diatur oleh
- * `PlatformModule`.
+ * Berkas database diletakkan di direktori Documents supaya tidak terhapus
+ * saat app diperbarui — iOS tidak punya padanan `applicationContext`.
+ *
+ * Database ini **terenkripsi**: driver-nya memasang kunci SQLCipher sebelum
+ * Room membaca apa pun (lihat `SqlCipherDriver.ios.kt`). Driver dan migrasi
+ * diatur oleh `PlatformModule`.
  */
 fun getDatabaseBuilder(): RoomDatabase.Builder<ITalaseDatabase> {
     val dbPath: String = documentDirectory() + "/${DbFiles.NAME}"

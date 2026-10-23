@@ -277,7 +277,7 @@ class ShopRepository(
         val to: Long = endOfLocalDayMillis(millis)
         val omzet: Long = db.saleDao().sumOmzet(from, to)
         val profit: Long = db.saleDao().sumProfit(from, to)
-        val count: Int = db.saleDao().listRange(from, to).size
+        val count: Int = db.saleDao().countRange(from, to)
         val expense: Long = db.expenseDao().sumRange(from, to)
         return DaySummary(omzet = omzet, profit = profit, trxCount = count, expense = expense, bersih = profit - expense)
     }
@@ -317,19 +317,24 @@ class ShopRepository(
     // mengembalikan nominal yang benar-benar tercatat.
     suspend fun payDebt(debtId: Long, amount: Long, note: String = ""): Long {
         if (amount <= 0) throw ShopException(ErrorCode.AMOUNT_POSITIVE)
-        val d: DebtEntity = db.debtDao().getById(debtId) ?: throw ShopException(ErrorCode.DEBT_MISSING)
-        if (d.remaining <= 0) throw ShopException(ErrorCode.ALREADY_PAID)
-        val effective: Long = minOf(amount, d.remaining)
-        val now: Long = nowMillis()
-        db.debtDao().insertPayment(DebtPaymentEntity(debtId = debtId, amount = effective, dateMillis = now, note = note))
-        val newPaid: Long = d.paidAmount + effective
-        val newRem: Long = (d.totalAmount - newPaid).coerceAtLeast(0)
-        db.debtDao().update(
-            d.copy(
-                paidAmount = newPaid, remaining = newRem,
-                status = if (newRem == 0L) DebtStatus.LUNAS else DebtStatus.BELUM_LUNAS,
-            ),
-        )
+        var effective = 0L
+        db.useWriterConnection { transactor ->
+            transactor.immediateTransaction {
+                val d: DebtEntity = db.debtDao().getById(debtId) ?: throw ShopException(ErrorCode.DEBT_MISSING)
+                if (d.remaining <= 0) throw ShopException(ErrorCode.ALREADY_PAID)
+                effective = minOf(amount, d.remaining)
+                val now: Long = nowMillis()
+                db.debtDao().insertPayment(DebtPaymentEntity(debtId = debtId, amount = effective, dateMillis = now, note = note))
+                val newPaid: Long = d.paidAmount + effective
+                val newRem: Long = (d.totalAmount - newPaid).coerceAtLeast(0)
+                db.debtDao().update(
+                    d.copy(
+                        paidAmount = newPaid, remaining = newRem,
+                        status = if (newRem == 0L) DebtStatus.LUNAS else DebtStatus.BELUM_LUNAS,
+                    ),
+                )
+            }
+        }
         return effective
     }
 

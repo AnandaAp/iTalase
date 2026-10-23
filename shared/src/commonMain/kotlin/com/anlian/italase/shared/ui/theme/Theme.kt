@@ -217,6 +217,8 @@ fun ITalaseTheme(dark: Boolean = false, content: @Composable () -> Unit) {
     }
 }
 
-// Brand scheme on iOS / older Android, Material You dynamic scheme on Android 12+.
+/**
+ * Skema warna aplikasi brand: konsisten di semua platform.
+ */
 @Composable
-expect fun AppColorScheme(dark: Boolean): ColorScheme
+fun AppColorScheme(dark: Boolean): ColorScheme = if (dark) DarkColors else LightColors

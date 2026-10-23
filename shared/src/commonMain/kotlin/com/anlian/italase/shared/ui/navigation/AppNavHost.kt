@@ -806,7 +806,7 @@ private fun GlassTabItem(
                             alpha = 0.95f,
                             elevation = 8.dp,
                             specular = 0.45f,
-                            veil = false,
+                            veil = true,
                         )
                     } else {
                         Modifier

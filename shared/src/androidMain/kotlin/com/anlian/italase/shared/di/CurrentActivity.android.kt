@@ -15,11 +15,12 @@ import android.content.ContextWrapper
  * Ditaruh di paket `di` bersama [AndroidAppContext] karena keduanya membaca
  * jembatan yang sama.
  */
-internal fun currentActivity(): Activity? = AndroidAppContext.orNull()?.let { findActivityIn(it) }
+internal fun currentActivity(): Activity? =
+    AndroidAppContext.currentActivity ?: AndroidAppContext.orNull()?.let { findActivityIn(it) }
 
 /** Telusuri rantai `ContextWrapper` sampai ketemu Activity. */
 private tailrec fun findActivityIn(context: Context): Activity? = when (context) {
-    is Activity -> context
+    is Activity -> context.takeUnless { it.isFinishing || it.isDestroyed }
     is ContextWrapper -> findActivityIn(context.baseContext)
     else -> null
 }

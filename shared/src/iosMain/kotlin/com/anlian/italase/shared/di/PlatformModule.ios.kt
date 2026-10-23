@@ -2,8 +2,11 @@ package com.anlian.italase.shared.di
 
 import androidx.room.RoomDatabase
 import com.anlian.italase.shared.data.local.ITalaseDatabase
+import com.anlian.italase.shared.data.local.createEncryptedDriver
 import com.anlian.italase.shared.data.local.getDatabaseBuilder
 import com.anlian.italase.shared.data.local.getRoomDatabase
+import com.anlian.italase.shared.data.local.loadOrCreateKey
+import com.anlian.italase.shared.data.local.toKeyPassphrase
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Singleton
 import org.koin.core.component.KoinComponent
@@ -26,8 +29,14 @@ actual class PlatformModule: KoinComponent {
     /**
      * Buka database dari builder tersebut lewat `getRoomDatabase`, tempat driver dan migrasi
      * dipasang.
+     *
+     * Database ini **terenkripsi**: kuncinya disimpan di Keychain
+     * (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`) dan dipasang ke
+     * koneksi lewat driver SQLCipher sebelum Room membaca apa pun.
      */
     @Singleton
-    fun provideDb(builder: RoomDatabase.Builder<ITalaseDatabase>): ITalaseDatabase =
-        getRoomDatabase(builder)
+    fun provideDb(builder: RoomDatabase.Builder<ITalaseDatabase>): ITalaseDatabase {
+        val passphrase: String = loadOrCreateKey().toKeyPassphrase()
+        return getRoomDatabase(builder, createEncryptedDriver(passphrase))
+    }
 }
