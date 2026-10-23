@@ -10,8 +10,12 @@ berjalan tanpa internet.
 * **Kotlin Multiplatform (KMP):** Berbagi *business logic*, data layer, dan manajemen status secara
   penuh antara iOS dan Android — konsistensi fitur dan efisiensi pemeliharaan kode.
 * **Compose Multiplatform:** UI deklaratif dan *native* di kedua platform dari satu basis kode.
-* **Room KMP (Offline-First):** Seluruh data barang, transaksi, dan laporan tersimpan lokal di
-  perangkat. Tidak ada ketergantungan pada *server* cloud.
+* **Room KMP + SQLCipher (Offline-First & Terenkripsi):** Seluruh data barang, transaksi, dan laporan
+  tersimpan lokal di perangkat dan terenkripsi *at-rest* via SQLCipher 4. Kunci dikelola aman
+  lewat platform keystore (Android Keystore dan iOS Keychain), dengan migrasi otomatis dari database
+  polos lama tanpa kehilangan data.
+* **Generator PDF Mandiri:** Pembuat berkas PDF murni (*zero-dependency*) dalam Kotlin untuk ekspor
+  laporan riwayat penjualan tanpa dependensi pustaka luar.
 * **Koin + Coroutines/Flow:** Injeksi dependensi dan aliran data reaktif dari database ke layar.
 * **Versi pustaka terkini** dipusatkan di `gradle/libs.versions.toml`.
 
@@ -50,14 +54,22 @@ garis tepi** (`BorderStroke` adalah penanda paling kentara kartu Material murah)
       terpotong.
     * Kembalian dihitung dari uang diterima.
 
-* **Keandalan Akses Offline**
+* **Keandalan Akses Offline & Keamanan Data**
     * Seluruh data tersimpan lokal via Room DB; operasional harian kasir tidak membutuhkan jaringan
       sama sekali.
+    * Database terenkripsi penuh *at-rest* via SQLCipher 4 (`sqlcipher-android` di Android dan CocoaPods
+      SQLCipher di iOS). Kunci dihasilkan dan dilindungi secara perangkat keras (Keystore / Keychain).
+    * Migrasi transparan: database versi lama yang belum terenkripsi akan dienkripsi otomatis saat
+      pembaruan pertama tanpa intervensi manual.
+    * Skema v4 mengindeks kolom pencarian dan relasi kunci asing (`dateMillis`, `saleId`, `category`,
+      `debtId`, `status`) demi query yang instan.
 
 * **Riwayat & Laporan**
     * Riwayat transaksi dengan saring kategori dan tampilan detail struk.
-    * Ringkasan harian di Beranda: omzet, laba, jumlah transaksi, pengeluaran, dan pendapatan
-      bersih.
+    * **Ekspor Laporan Penjualan ke PDF**: Laporan riwayat transaksi dapat diekspor langsung ke berkas PDF
+      dengan filter rentang tanggal (Hari Ini, 7 Hari Terakhir, 30 Hari Terakhir, Bulan Ini, atau Rentang
+      Kustom) dan dibagikan lewat *system share sheet* (Android Intent / iOS `UIActivityViewController`).
+    * Ringkasan harian di Beranda: omzet, laba, jumlah transaksi, pengeluaran, dan pendapatan bersih.
     * Daftar barang terlaris dan barang yang perlu segera ditambah.
 
 * **Bon & Pengeluaran**
@@ -83,11 +95,10 @@ garis tepi** (`BorderStroke` adalah penanda paling kentara kartu Material murah)
 * **Diskon.** Total masih murni jumlah baris keranjang.
 * **Pembatalan/void transaksi.** Struk yang sudah tersimpan belum bisa dibatalkan dari UI; yang
   tersedia hanya mengubah nama pelanggan dan catatan.
-* **Laporan bulanan.** Ringkasan masih per hari.
+* **Dashboard agregasi bulanan.** Tampilan Beranda saat ini berfokus pada ringkasan harian; untuk
+  laporan bulanan/rentang fleksibel saat ini diakomodasi melalui fitur ekspor PDF di Riwayat.
 * **Pembelian/kulakan sebagai transaksi.** Penambahan stok dilakukan dengan menyunting produk, belum
   sebagai transaksi pembelian yang tercatat.
-* **Enkripsi database.** SQLCipher sudah dideklarasikan sebagai pod iOS, tetapi driver yang dipakai
-  masih driver bawaan dengan passphrase kosong — file database masih polos di disk.
 
 ---
 

@@ -11,7 +11,7 @@ daily use — everything lives on the device.
 | **Beranda**     | Today's omzet, profit, transaction count, expenses and net income (bersih), plus low-stock items and best sellers.                                                               |
 | **Kasir**       | Search and category filter, cart, checkout as cash / transfer / bon (credit). Stock is decremented inside a single database transaction.                                         |
 | **Stok**        | Add, edit and delete products: name, barcode, category, buy price, sell price, stock, minimum stock, unit. Out-of-stock items sort to the bottom; each group stays alphabetical. |
-| **Riwayat**     | Sales list with a category filter and a receipt detail view. Customer and note can be edited on an existing receipt.                                                             |
+| **Riwayat**     | Sales list with category filter and receipt detail view. Customer and note can be edited on an existing receipt. Export sales reports to PDF with custom date ranges and native share sheet. |
 | **Bon**         | Customer debts, recorded manually or created automatically from an unpaid sale. Payments and progress; status is unpaid or paid.                                                 |
 | **Pengeluaran** | Daily operational costs, included in the net-income calculation.                                                                                                                 |
 | **Lainnya**     | Entry points to Riwayat and Pengeluaran, plus app info.                                                                                                                          |
@@ -55,7 +55,8 @@ The glass language with Material3 Expressive structure lives in
 | UI         | Compose Multiplatform / Material3                                                   | 1.12.2 / 1.12.0-alpha03 |
 | Navigation | Navigation Compose (multiplatform)                                                  | 2.9.2                   |
 | DI         | Koin + Koin annotations (KSP)                                                       | 4.2.2                   |
-| Database   | Room (KMP) + bundled SQLite driver                                                  | 2.8.5 / 2.7.1           |
+| Database   | Room (KMP) + SQLCipher (Android & iOS)                                              | 2.8.5 / 4.19.1 (4.6.0)  |
+| Reporting  | Pure Kotlin PDF Engine (zero external dependencies)                                 | In-house                |
 | Async      | Kotlin Coroutines, Flow                                                             | 1.11.0                  |
 | Build      | AGP 9.4.1, KSP 2.3.12, Gradle version catalog                                       |                         |
 | Targets    | Android `minSdk 26` / `targetSdk 37`; iOS arm64 + simulator, deployment target 16.0 |                         |
@@ -73,23 +74,24 @@ iTalase/
     ├── commonMain/
     │   ├── composeResources/     # font/, drawable/ (Material Symbols), values/strings.xml
     │   └── kotlin/com/anlian/italase/shared/
-    │       ├── data/             # Room entities, DAOs, Tables, ShopRepository, ShopDefaults
-    │       ├── ui/components/    # glass primitives, AppIcon, LoadMoreFooter
+    │       ├── data/             # Room entities, DAOs, Tables, ShopRepository, ShopDefaults, encryption
+    │       ├── report/           # pure Kotlin PDF writer & sales report exporter
+    │       ├── ui/components/    # glass primitives, AppIcon, DateRangePicker, LoadMoreFooter
     │       ├── ui/navigation/    # Routes, AppNavHost, BackHandling, TopBarInfo
     │       ├── ui/screens/       # one file per screen
     │       ├── ui/state/         # ViewModels + UiMessage
     │       ├── ui/theme/         # ITalaseTheme, colour tokens, WarungBackground
-    │       └── util/             # ProductFilter, Paging, Format
-    ├── androidMain/              # database driver, DI, theme, time, previews
-    ├── iosMain/                  # database driver, DI, time, MainViewController
-    └── commonTest/               # pure-function tests
+    │       └── util/             # ProductFilter, Paging, Format, Time
+    ├── androidMain/              # database driver (SQLCipher), Keystore key provider, DI, theme, report share
+    ├── iosMain/                  # database driver (SQLCipher), Keychain key provider, DI, UIActivityViewController share
+    └── commonTest/               # pure-function, report PDF, and DB encryption tests
 ```
 
 Exported Room schemas live in `shared/schemas/` and are consumed by Room's migration validation.
 Bump the database version and add a `Migration` in
 `ITalaseDatabase.kt` whenever an entity changes; keep the schema files in sync.
 
-## Data flow and performance
+## Data flow, security, and performance
 
 - **One query, one list.** `ShopRepository` caches `observeProducts()` in a single
   `StateFlow`, so Beranda, Kasir and Stok share one Room query and one copy of the list instead of
@@ -102,17 +104,28 @@ Bump the database version and add a `Migration` in
   `LIMIT` by 20 when the list reaches its end (`util/Paging.kt`). Growing `LIMIT`
   instead of `OFFSET` keeps the query reactive, so a new sale still lands on page one with no extra
   code.
+- **Encrypted at rest.** The database is encrypted via SQLCipher (`sqlcipher-android` on Android,
+  CocoaPods `SQLCipher` on iOS). Master keys are securely generated and kept in hardware-backed
+  storage (`AndroidKeyStore` / iOS Keychain). Existing plain-text databases are seamlessly migrated
+  to encrypted format on first launch without data loss.
+- **Indexed queries.** Database schema version 4 adds indices on foreign keys and filter columns
+  (`dateMillis`, `saleId`, `category`, `debtId`, `status`) so paging and filtering remain instantaneous
+  even with thousands of records.
+- **Zero-dependency PDF export.** Sales history reports are formatted and rendered directly via a
+  pure Kotlin PDF generation pipeline (`com.anlian.italase.shared.report`), generating compliant PDF/1.4
+  documents with JPEG store logo embedding and platform-native share integration.
 - Rendering is always `LazyColumn` — only visible rows compose.
 
 ## Tests
 
 ```bash
-./gradlew :shared:allTests      # 32 tests
+./gradlew :shared:allTests      # 50 tests
 ```
 
-Coverage is on pure functions only (`ProductList`, paging arithmetic, route tables, currency/date
-formatting). There are no Compose UI or Room instrumentation tests yet. `ProductFilterTest` keeps
-the previous filtering pipeline side by side with the new one and asserts both produce identical
+Coverage is on pure functions and platform-agnostic business logic (`ProductList`, paging arithmetic,
+route tables, currency/date formatting, PDF document generation, and SQLite header/key derivation
+in `SalesReportPdfTest` and `DbEncryptionTest`). There are no Compose UI or Room instrumentation tests yet.
+`ProductFilterTest` keeps the previous filtering pipeline side by side with the new one and asserts both produce identical
 ordering — that equivalence is what makes the optimisation safe to trust.
 
 ## Run it
@@ -142,11 +155,8 @@ Real, currently true, and deliberate for now:
 - **No discount field.** `total` is the sum of the cart lines.
 - **No camera barcode scanning.** A product has a barcode field and search matches it, but nothing
   reads a barcode from the camera.
-- **Reports are per-day only** (`ShopRepository.daySummary`); there is no monthly report.
-- **The SQLite file is not encrypted.** SQLCipher is declared as an iOS pod, but the Android builder
-  passes an empty passphrase and uses the bundled driver, so the database is plaintext on disk.
-  Encrypting it means implementing a custom
-  `SQLiteDriver`.
+- **Dashboard summary is per-day only.** Beranda dashboard focuses on today's snapshot (`ShopRepository.daySummary`);
+  arbitrary multi-day/monthly period reporting is handled via Riwayat's PDF export.
 - **No crash reporting.** The Crashlytics plugin was applied with no SDK dependency and no
   `google-services.json`, so it was removed instead of left inert. Re-add it against a real Firebase
   project if crash reports are wanted.
