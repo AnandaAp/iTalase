@@ -2,6 +2,11 @@ package com.anlian.italase.shared.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.anlian.italase.shared.ui.components.GlassButton
+import com.anlian.italase.shared.ui.components.GlassDialog
+import com.anlian.italase.shared.ui.components.GlassTextField
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -357,12 +362,7 @@ private fun PaymentRow(
 }
 
 /**
- * Dialog ubah nama pelanggan dan catatan sebuah nota.
- *
- * Isian di-seed dari [initialCustomer]/[initialNote] lewat `remember(key)`, jadi
- * nilai awal yang berubah akan menyetel ulang yang sedang diketik — pemanggil
- * wajib menutup dialog setelah simpan agar tidak ada editan setengah jalan yang
- * tertimpa. Dipanggil SaleDetailScreen hanya saat `showEditDialog` true.
+ * Dialog edit catatan dan nama pembeli nota dengan bahasa liquid glass.
  */
 @Composable
 fun SaleEditDialog(
@@ -373,29 +373,48 @@ fun SaleEditDialog(
 ) {
     var customer by remember(initialCustomer) { mutableStateOf(initialCustomer) }
     var note by remember(initialNote) { mutableStateOf(initialNote) }
-    AnnounceGlassDialogOpen()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.detail_edit_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    customer, { customer = it },
-                    label = { Text(stringResource(Res.string.debt_name)) }, singleLine = true,
-                )
-                OutlinedTextField(
-                    note, { note = it },
-                    label = { Text(stringResource(Res.string.debt_note)) }, singleLine = true,
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onSave(customer, note) }) {
-                Text(stringResource(Res.string.action_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
-        },
-    )
+    val scheme = MaterialTheme.colorScheme
+
+    GlassDialog(onDismiss = onDismiss) {
+        Text(
+            stringResource(Res.string.detail_edit_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onSurface,
+        )
+        Spacer(Modifier.height(14.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            GlassTextField(
+                value = customer,
+                onValueChange = { customer = it },
+                label = stringResource(Res.string.debt_name),
+            )
+            GlassTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = stringResource(Res.string.debt_note),
+            )
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GlassButton(
+                text = stringResource(Res.string.action_cancel),
+                onClick = onDismiss,
+                container = scheme.onSurface.copy(alpha = 0.08f),
+                content = scheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            GlassButton(
+                text = stringResource(Res.string.action_save),
+                onClick = { onSave(customer, note) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
 }

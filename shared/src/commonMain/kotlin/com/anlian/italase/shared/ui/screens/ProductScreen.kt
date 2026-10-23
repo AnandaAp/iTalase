@@ -2,6 +2,13 @@ package com.anlian.italase.shared.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.sp
+import com.anlian.italase.shared.ui.components.GlassButton
+import com.anlian.italase.shared.ui.components.GlassChip
+import com.anlian.italase.shared.ui.components.GlassDialog
+import italase.shared.generated.resources.action_save
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -323,22 +330,12 @@ fun ProductContent(
 }
 
 /**
- * Formulir tambah/ubah produk, dibuka [ProductScreen]. Field diisi dari
- * [initial] dan hanya di-reset saat identitas [initial] berubah — jadi pindah
- * dari "ubah produk A" ke "tambah" mengosongkan form, sedangkan recomposisi
- * biasa tidak menghapus ketikan user.
- *
- * Tombol simpan mati selama nama kosong atau duplikat.
- *
- * @param products daftar LENGKAP, bukan hasil filter: produk duplikat yang
- *   sedang tersembunyi oleh pencarian tetap harus terdeteksi.
- * @param onSave urutan argumen: (nama, harga beli, harga jual, stok, unit,
- *   barcode, kategori).
+ * Dialog tambah / edit produk dengan bahasa liquid glass & interaksi Apple Fluid Interfaces.
  */
 @Composable
 fun ProductFormDialog(
     initial: ProductEntity?,
-    products: List<ProductEntity>, // for duplicate name validation
+    products: List<ProductEntity>,
     onDismiss: () -> Unit,
     onSave: (String, Long, Long, Int, String, String, String) -> Unit,
 ) {
@@ -349,9 +346,7 @@ fun ProductFormDialog(
     var unit by remember(initial) { mutableStateOf(initial?.unit ?: "") }
     var barcode by remember(initial) { mutableStateOf(initial?.barcode ?: "") }
     var category by remember(initial) { mutableStateOf(initial?.category ?: ProductCategories.OTHER) }
-    var nameError by remember { mutableStateOf<String?>(null) }
-    
-    // Check for duplicate name (exclude current product if editing)
+
     val isDuplicate = remember(name, products, initial) {
         derivedStateOf {
             if (name.isBlank()) false
@@ -360,86 +355,107 @@ fun ProductFormDialog(
             }
         }
     }
-    
-    AnnounceGlassDialogOpen()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                if (initial == null) stringResource(Res.string.prod_new)
-                else stringResource(Res.string.prod_edit_title),
+    val scheme = MaterialTheme.colorScheme
+
+    GlassDialog(onDismiss = onDismiss) {
+        Text(
+            if (initial == null) stringResource(Res.string.prod_new)
+            else stringResource(Res.string.prod_edit_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onSurface,
+        )
+        Spacer(Modifier.height(14.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            GlassTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = stringResource(Res.string.prod_name),
             )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name, onValueChange = { name = it },
-                    label = { Text(stringResource(Res.string.prod_name)) },
-                    singleLine = true
-                )
-                if (isDuplicate.value) {
-                    Text(
-                        "Nama produk sudah ada",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                    )
-                }
+            if (isDuplicate.value) {
                 Text(
-                    stringResource(Res.string.prod_category),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ProductCategories.ALL.forEach { option ->
-                        FilterChip(
-                            selected = category == option,
-                            onClick = { category = option },
-                            label = { Text(option) },
-                        )
-                    }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        buy, { buy = it },
-                        label = { Text(stringResource(Res.string.prod_buy)) },
-                        singleLine = true, modifier = Modifier.weight(1f),
-                    )
-                    OutlinedTextField(
-                        sell, { sell = it },
-                        label = { Text(stringResource(Res.string.prod_sell)) },
-                        singleLine = true, modifier = Modifier.weight(1f),
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        stock, { stock = it },
-                        label = { Text(stringResource(Res.string.prod_stock)) },
-                        singleLine = true, modifier = Modifier.weight(1f),
-                    )
-                    OutlinedTextField(
-                        unit, { unit = it },
-                        label = { Text(stringResource(Res.string.prod_unit)) },
-                        singleLine = true, modifier = Modifier.weight(1f),
-                    )
-                }
-                OutlinedTextField(
-                    barcode, { barcode = it },
-                    label = { Text(stringResource(Res.string.prod_barcode)) }, singleLine = true,
+                    "Nama produk sudah ada",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.error,
+                    modifier = Modifier.padding(start = 4.dp),
                 )
             }
-        },
-        confirmButton = {
-            Button(
+            Text(
+                stringResource(Res.string.prod_category),
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ProductCategories.ALL.forEach { option ->
+                    GlassChip(
+                        text = option,
+                        selected = category == option,
+                        onClick = { category = option },
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GlassTextField(
+                    value = buy,
+                    onValueChange = { buy = it },
+                    label = stringResource(Res.string.prod_buy),
+                    modifier = Modifier.weight(1f),
+                )
+                GlassTextField(
+                    value = sell,
+                    onValueChange = { sell = it },
+                    label = stringResource(Res.string.prod_sell),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GlassTextField(
+                    value = stock,
+                    onValueChange = { stock = it },
+                    label = stringResource(Res.string.prod_stock),
+                    modifier = Modifier.weight(1f),
+                )
+                GlassTextField(
+                    value = unit,
+                    onValueChange = { unit = it },
+                    label = stringResource(Res.string.prod_unit),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            GlassTextField(
+                value = barcode,
+                onValueChange = { barcode = it },
+                label = stringResource(Res.string.prod_barcode),
+            )
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GlassButton(
+                text = stringResource(Res.string.action_cancel),
+                onClick = onDismiss,
+                container = scheme.onSurface.copy(alpha = 0.08f),
+                content = scheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            GlassButton(
+                text = stringResource(Res.string.action_save),
                 onClick = {
                     onSave(name, parseRupiah(buy), parseRupiah(sell), stock.toIntOrNull() ?: 0, unit, barcode, category)
                 },
-                enabled = name.isNotBlank() && !isDuplicate.value
-            ) { Text(stringResource(Res.string.action_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
-        },
-    )
+                enabled = name.isNotBlank() && !isDuplicate.value,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
 }

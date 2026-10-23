@@ -1,5 +1,21 @@
 package com.anlian.italase.shared.ui.navigation
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -601,11 +617,11 @@ fun AppNavHost(
                             // tidak berguna. Beranda berbeda: scrollable-nya
                             // Column(verticalScroll) sepanjang layar, jadi kontennya
                             // memang lewat di belakang bar dan butuh frost.
-                            val frostOffset = if (current == Routes.HOME) {
-                                topBarState.behaviors[current]?.state?.contentOffset ?: 0f
-                            } else {
-                                0f
-                            }
+                            // Top bar overlay (dibaca setelah NavHost = di atas konten).
+                            // Semua nilai diambil dari bucket route AKTIF: judul/eyebrow
+                            // ditulis layar lewat TopBarInfoEffect, frost & interaksi dari scroll
+                            // behavior milik destinasi aktif.
+                            val frostOffset = topBarState.behaviors[current]?.state?.contentOffset ?: 0f
                             PremiumTopBar(
                                 eyebrow = topBarState.eyebrow[current].orEmpty(),
                                 title = topBarState.title[current].orEmpty(),
@@ -833,27 +849,11 @@ private fun GlassTabItem(
 }
 
 /**
- * Top bar overlay: menampilkan IDENTITAS LAYAR (eyebrow + judul) yang ditulis
- * layar aktif lewat [TopBarInfoEffect]. Karena itu setiap layar tidak lagi
- * merender `ScreenHeader` sendiri — dulu judul tampil dua kali (sekali di top
- * bar, sekali di badan layar).
- *
- * Dua keadaan:
- *  • Di paling atas (scroll 0): TANPA latar → background app menembus sampai
- *    ke status bar.
- *  • Setelah di-scroll: FROSTED GLASS dengan bahasa visual yang sama seperti
- *    bottom tab bar — surface α 0.85 + rim specular + shadow diffuse. Tanpa ini
- *    konten menabrak jam status bar dan judulnya tidak terbaca.
- *
- * Sinyal frosted diambil dari `contentOffset`, BUKAN `collapsedFraction`:
- * PinnedScrollBehavior hanya memperbarui contentOffset dan tidak pernah
- * menyentuh heightOffset, sehingga collapsedFraction selalu 0 (lihat material3
- * AppBar.kt). contentOffset bertambah seiring scroll dan tidak butuh TopAppBar
- * material untuk ter-update.
- *
- * `scrollOffset` hanya bergerak kalau layar memanggil
- * Modifier.nestedScrollConnection(scrollBehavior, ...) pada container
- * scroll-nya.
+ * Top bar overlay liquid glass dengan animasi interaktif:
+ *  • Transisi judul & eyebrow antardestinasi menggunakan AnimatedContent dan fisika pegas (Apple Fluid Interfaces).
+ *  • Tombol kembali dengan animasi masuk/keluar pegas dan respon sentuh press-scale (scale 0.88).
+ *  • Permukaan kaca cair (liquid glass) yang merespon scroll di semua layar, lengkap dengan specular sheen rim.
+ *  • Skala judul dinamis yang sedikit memadat (docking) saat konten bergulir di bawah bar.
  */
 @Composable
 private fun PremiumTopBar(
@@ -866,8 +866,27 @@ private fun PremiumTopBar(
     val scheme = MaterialTheme.colorScheme
     val surface = scheme.surface
     val isDark = surface.luminance() < 0.5f
-    // Kaca penuh setelah ±120px scroll; di bawah itu bertahap.
-    val glass = (kotlin.math.abs(scrollOffset) / 120f).coerceIn(0f, 1f)
+
+    // Animasi pegas fluida untuk transparansi kaca menurut contentOffset scroll.
+    val targetGlass = (kotlin.math.abs(scrollOffset) / 80f).coerceIn(0f, 1f)
+    val glass by animateFloatAsState(
+        targetValue = targetGlass,
+        animationSpec = spring(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioNoBouncy,
+        ),
+        label = "TopBarGlass",
+    )
+
+    // Skala tipografi halus saat konten lewat di bawah bar (docking khas Apple UINavigationBar).
+    val titleScale by animateFloatAsState(
+        targetValue = 1f - (0.04f * glass),
+        animationSpec = spring(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioNoBouncy,
+        ),
+        label = "TopBarTitleScale",
+    )
 
     Box(
         Modifier
@@ -875,25 +894,24 @@ private fun PremiumTopBar(
             .then(
                 if (glass > 0.01f) {
                     Modifier.shadow(
-                        elevation = 10.dp * glass,
+                        elevation = 8.dp * glass,
                         shape = RectangleShape,
-                        ambientColor = scheme.onSurface.copy(alpha = 0.10f),
-                        spotColor = scheme.onSurface.copy(alpha = 0.16f),
+                        ambientColor = scheme.onSurface.copy(alpha = 0.08f * glass),
+                        spotColor = scheme.onSurface.copy(alpha = 0.14f * glass),
                     )
                 } else {
                     Modifier
                 },
             ),
     ) {
-        // Panel kaca: satu bidang menutup status bar + bar, sama seperti
-        // perlakuan pada tab bar bawah.
+        // Latar liquid glass dinamis: alpha menyatu halus dengan pergerakan scroll.
         if (glass > 0.01f) {
             Box(
                 Modifier
                     .matchParentSize()
-                    .background(surface.copy(alpha = if (isDark) 0.80f else 0.85f * glass)),
+                    .background(surface.copy(alpha = if (isDark) 0.82f * glass else 0.86f * glass)),
             )
-            // Rim specular di tepi bawah — pantulan cahaya, bukan stroke seragam.
+            // Rim specular halus di tepi bawah (pantulan cahaya tipis 1px).
             Box(
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -902,60 +920,127 @@ private fun PremiumTopBar(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.55f * glass),
-                                scheme.onSurface.copy(alpha = 0.10f * glass),
+                                Color.White.copy(alpha = 0.45f * glass),
+                                scheme.onSurface.copy(alpha = 0.08f * glass),
                             ),
                         ),
                     ),
             )
         }
-        // Baris: [tombol back?] [eyebrow + judul]. Padding kiri dikurangi saat
-        // tombolnya ada, karena IconButton sudah membawa padding sentuh 12dp-nya
-        // sendiri — kalau tidak, judulnya terdorong terlalu jauh ke kanan
-        // dibanding layar yang tanpa tombol back.
+
         Row(
             Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(
-                    start = if (showBack) 8.dp else 20.dp,
+                    start = 16.dp,
                     end = 20.dp,
                     top = 10.dp,
                     bottom = 14.dp,
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (showBack) {
-                IconButton(onClick = onBack) {
+            // Tombol kembali dengan animasi masuk pegas Apple & respon sentuh press-scale
+            AnimatedVisibility(
+                visible = showBack,
+                enter = fadeIn(spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.82f)) +
+                    scaleIn(spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.82f), initialScale = 0.6f) +
+                    expandHorizontally(spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.82f)),
+                exit = fadeOut(spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy)) +
+                    scaleOut(spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy), targetScale = 0.6f) +
+                    shrinkHorizontally(spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy)),
+            ) {
+                val backInteraction = remember { MutableInteractionSource() }
+                val isBackPressed by backInteraction.collectIsPressedAsState()
+                val backScale by animateFloatAsState(
+                    targetValue = if (isBackPressed) 0.88f else 1f,
+                    animationSpec = spring(
+                        stiffness = Spring.StiffnessHigh,
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                    ),
+                    label = "BackButtonScale",
+                )
+
+                Box(
+                    modifier = Modifier
+                        .padding(end = 10.dp)
+                        .graphicsLayer {
+                            scaleX = backScale
+                            scaleY = backScale
+                        }
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(
+                            scheme.surfaceContainerHighest.copy(
+                                alpha = if (isBackPressed) 0.55f else 0.25f,
+                            ),
+                        )
+                        .clickable(
+                            interactionSource = backInteraction,
+                            indication = null,
+                            onClick = onBack,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
                         AppIcon.ARROW_BACK_IOS_NEW.painter(),
                         contentDescription = stringResource(Res.string.cd_back),
                         tint = scheme.onSurface,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (eyebrow.isNotBlank()) {
+
+            // Transisi judul dan eyebrow antarlayar menggunakan fisika pegas (WWDC 2018 Fluid Interfaces)
+            AnimatedContent(
+                targetState = eyebrow to title,
+                transitionSpec = {
+                    val springSpec = spring<Float>(
+                        stiffness = Spring.StiffnessMediumLow,
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                    )
+                    val springOffset = spring<IntOffset>(
+                        stiffness = Spring.StiffnessMediumLow,
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                    )
+                    (fadeIn(animationSpec = springSpec) +
+                        slideInVertically(animationSpec = springOffset) { height -> height / 3 })
+                        .togetherWith(
+                            fadeOut(animationSpec = springSpec) +
+                                slideOutVertically(animationSpec = springOffset) { height -> -height / 3 },
+                        )
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer {
+                        scaleX = titleScale
+                        scaleY = titleScale
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                    },
+                label = "TopBarHeaderTransition",
+            ) { (currentEyebrow, currentTitle) ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    if (currentEyebrow.isNotBlank()) {
+                        Text(
+                            currentEyebrow.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp,
+                            color = scheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Text(
-                        eyebrow.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
+                        currentTitle,
+                        style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp,
-                        color = scheme.primary,
+                        letterSpacing = (-0.25).sp,
+                        color = scheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(
-                    title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.25).sp,
-                    color = scheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
         }
     }

@@ -1,6 +1,6 @@
 package com.anlian.italase
 
-import android.content.res.Configuration
+
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -25,21 +25,17 @@ class MainActivity : ComponentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val isDarkMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
         // Edge-to-edge dengan scrim NOL di kedua system bar.
-        //
-        // Penting: enableEdgeToEdge() tanpa argumen memakai SystemBarStyle.auto()
-        // yang MEMASANG SCRIM pada navigation bar (khususnya di mode 3-tombol).
-        // Scrim itulah strip putih yang menutupi background app di bar bawah.
-        // Dengan scrim transparan, background app menembus sampai ke system bar.
+        // Karena tema app selalu terang (Paper cream #FAF6EE / CardWhite), ikon status bar
+        // dan tombol navigasi wajib disetel gaya terang (ikon gelap) agar tetap terlihat jelas
+        // dan tidak hilang (putih di atas putih) saat sistem Android pengguna dalam mode gelap.
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(
-                lightScrim = Color.TRANSPARENT,
+            statusBarStyle = SystemBarStyle.light(
+                scrim = Color.TRANSPARENT,
                 darkScrim = Color.TRANSPARENT,
             ),
-            navigationBarStyle = SystemBarStyle.auto(
-                lightScrim = Color.TRANSPARENT,
+            navigationBarStyle = SystemBarStyle.light(
+                scrim = Color.TRANSPARENT,
                 darkScrim = Color.TRANSPARENT,
             ),
         )
@@ -50,8 +46,8 @@ class MainActivity : ComponentActivity() {
         // Transparent system bars (YouTube-style edge-to-edge)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.isAppearanceLightStatusBars = !isDarkMode
-        controller.isAppearanceLightNavigationBars = !isDarkMode
+        controller.isAppearanceLightStatusBars = true
+        controller.isAppearanceLightNavigationBars = true
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             window.statusBarColor = Color.TRANSPARENT
             window.navigationBarColor = Color.TRANSPARENT

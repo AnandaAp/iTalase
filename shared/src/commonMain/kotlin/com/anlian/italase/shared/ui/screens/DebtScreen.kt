@@ -2,6 +2,10 @@ package com.anlian.italase.shared.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.anlian.italase.shared.ui.components.GlassDialog
+import com.anlian.italase.shared.ui.components.GlassTextField
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -252,75 +256,101 @@ fun DebtContent(
 }
 
 /**
- * Dialog catat utang manual.
- *
- * Nama, nominal, dan catatan diketik bebas; nominal baru dinormalkan `parseRupiah`
- * saat simpan — pola yang sama dipakai form uang lain. Kolom nominal kosong menjadi
- * 0, dan penolakan (kalau memang perlu) adalah tanggung jawab pemanggil.
+ * Dialog catat utang baru dengan bahasa liquid glass.
  */
 @Composable
 fun DebtFormDialog(onDismiss: () -> Unit, onSave: (String, Long, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
-    AnnounceGlassDialogOpen()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.debt_form)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    name, { name = it },
-                    label = { Text(stringResource(Res.string.debt_name)) }, singleLine = true,
-                )
-                OutlinedTextField(
-                    amount, { amount = it },
-                    label = { Text(stringResource(Res.string.debt_amount)) }, singleLine = true,
-                )
-                OutlinedTextField(
-                    note, { note = it },
-                    label = { Text(stringResource(Res.string.debt_note)) }, singleLine = true,
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onSave(name, parseRupiah(amount), note) }) {
-                Text(stringResource(Res.string.action_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
-        },
-    )
+    val scheme = MaterialTheme.colorScheme
+
+    GlassDialog(onDismiss = onDismiss) {
+        Text(
+            stringResource(Res.string.debt_form),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onSurface,
+        )
+        Spacer(Modifier.height(14.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            GlassTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = stringResource(Res.string.debt_name),
+            )
+            GlassTextField(
+                value = amount,
+                onValueChange = { amount = it },
+                label = stringResource(Res.string.debt_amount),
+            )
+            GlassTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = stringResource(Res.string.debt_note),
+            )
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GlassButton(
+                text = stringResource(Res.string.action_cancel),
+                onClick = onDismiss,
+                container = scheme.onSurface.copy(alpha = 0.08f),
+                content = scheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            GlassButton(
+                text = stringResource(Res.string.action_save),
+                onClick = { onSave(name, parseRupiah(amount), note) },
+                enabled = name.isNotBlank() && amount.isNotBlank(),
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
 }
 
 /**
- * Dialog pembayaran (cicilan) utang.
- *
- * Hanya meminta nominal — id utang tidak ditampilkan maupun dipilih di sini karena
- * pemanggil sudah memegangnya. Nominal tetap dinormalkan `parseRupiah` sebelum
- * dikirim, jadi titik desimal/ribuan yang diketik user tidak bocor ke domain.
+ * Dialog pembayaran (cicilan) utang dengan bahasa liquid glass.
  */
 @Composable
 fun PayDebtDialog(onDismiss: () -> Unit, onSave: (Long) -> Unit) {
     var amount by remember { mutableStateOf("") }
-    AnnounceGlassDialogOpen()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.debt_pay_title)) },
-        text = {
-            OutlinedTextField(
-                amount, { amount = it },
-                label = { Text(stringResource(Res.string.debt_pay_amount)) }, singleLine = true,
+    val scheme = MaterialTheme.colorScheme
+
+    GlassDialog(onDismiss = onDismiss) {
+        Text(
+            stringResource(Res.string.debt_pay_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onSurface,
+        )
+        Spacer(Modifier.height(14.dp))
+        GlassTextField(
+            value = amount,
+            onValueChange = { amount = it },
+            label = stringResource(Res.string.debt_pay_amount),
+        )
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GlassButton(
+                text = stringResource(Res.string.action_cancel),
+                onClick = onDismiss,
+                container = scheme.onSurface.copy(alpha = 0.08f),
+                content = scheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
-        },
-        confirmButton = {
-            Button(onClick = { onSave(parseRupiah(amount)) }) {
-                Text(stringResource(Res.string.action_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
-        },
-    )
+            GlassButton(
+                text = stringResource(Res.string.action_save),
+                onClick = { onSave(parseRupiah(amount)) },
+                enabled = amount.isNotBlank(),
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
 }

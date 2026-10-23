@@ -24,9 +24,11 @@ import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
+import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
 import com.anlian.italase.shared.ui.navigation.Routes
 import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
+import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.cd_open
 import italase.shared.generated.resources.more_about_d
@@ -44,12 +46,11 @@ import org.jetbrains.compose.resources.stringResource
  *
  * [onNavigate] menerima route string (`Routes.*`) alih-alih lambda per tujuan, jadi
  * menambah menu cukup menambah satu baris dan daftar jalur tetap di AppNavHost.
- * Layar ini tidak memasang frost di top bar, karena itu inset atasnya dipasang di
- * luar area scroll (lihat catatan di badan Column).
  */
 @Composable
 fun MoreScreen(onNavigate: (String) -> Unit = {}) {
     val appeared = rememberAppear()
+    val scrollBehavior = LocalTopAppBarScrollBehavior.current
     TopBarInfoEffect(
         eyebrow = stringResource(Res.string.more_sub),
         title = stringResource(Res.string.title_more),
@@ -58,17 +59,12 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
         Modifier
             .fillMaxSize()
             .enter(appeared, 0)
-            // Inset atas di LUAR scrollable. Konten mulai DI BAWAH top bar dan
-            // tidak pernah masuk ke belakangnya — sama seperti layar dalam lain
-            // yang scrollable-nya LazyColumn ber-weight. Ini wajib karena layar
-            // ini TIDAK memasang frost di top bar (frost hanya di Beranda, lihat
-            // AppNavHost): andai kontennya lewat di belakang bar, ia akan
-            // bertabrakan dengan eyebrow + judul tanpa pelindung apa pun.
-            .padding(top = LocalTopOverlayPadding.current + 8.dp)
+            .nestedScrollConnection(scrollBehavior, null)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
         MoreRow(
             title = stringResource(Res.string.title_history),
             desc = stringResource(Res.string.more_history_d),

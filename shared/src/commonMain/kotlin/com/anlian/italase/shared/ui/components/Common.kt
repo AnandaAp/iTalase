@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,7 +31,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -969,13 +973,18 @@ fun GlassIconButton(
 }
 
 /**
- * FAB aksi-utama. SATU-SATUNYA FAB di app ini — warnanya sengaja tidak bisa
- * di-setel per layar, karena begitu satu layar memasang `containerColor` sendiri
- * tema universalnya bocor. Di app ini FAB mint default material3 nyaris tidak
- * terlihat di atas halaman krem, dan mint juga tidak bisa menampilkan gloss
- * putih (putih di atas near-white tetap near-white).
+ * FAB aksi-utama bergaya Liquid Glass × Material3 Expressive × Glassmorphism.
  *
- * Pakai ini bersama `Modifier.aboveTabBar()` supaya posisinya juga seragam.
+ * Mengikuti resep permukaan kaca tunggal [glassSurface]:
+ *  - Surface translusen dengan warna brand primary (WarungGreen) dan alpha 0.92f
+ *  - Elevasi mengambang 14dp dengan tinted shadow ambient (12%) dan spot (20%)
+ *  - Specular sheen 0.42f (rim lit lip di tepi atas tanpa border stroke)
+ *  - Veil sorot brand diagonal (primary di kiri-atas, marigold di kanan-bawah)
+ *  - Bentuk pil (CircleShape) dengan tinggi standar M3 Expressive 56dp
+ *  - Animasi tekan pegas (spring) yang taktil dan responsif (Apple Fluid Interfaces WWDC 2018)
+ *  - Label bold dengan gaya M3 Expressive labelLarge
+ *
+ * Pakai ini bersama `Modifier.aboveTabBar()` supaya posisinya juga seragam di atas bottom tab bar.
  */
 @Composable
 fun PrimaryFab(
@@ -984,30 +993,79 @@ fun PrimaryFab(
     onClick: () -> Unit,
     contentDescription: String,
     modifier: Modifier = Modifier,
+    expanded: Boolean = true,
+    shape: Shape = CircleShape,
 ) {
-    ExtendedFloatingActionButton(
-        text = { Text(text, fontWeight = FontWeight.Bold) },
-        icon = {
+    val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.93f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.75f,
+            stiffness = 500f,
+        ),
+        label = "fabPressScale",
+    )
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .height(56.dp)
+            .then(
+                if (expanded) Modifier
+                else Modifier.size(56.dp)
+            )
+            .glassSurface(
+                shape = shape,
+                tint = scheme.primary,
+                alpha = 0.92f,
+                elevation = 14.dp,
+                specular = 0.42f,
+                veil = true,
+                onClick = null,
+            )
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .clearAndSetSemantics {
+                this.role = Role.Button
+                this.contentDescription = contentDescription
+            }
+            .padding(horizontal = if (expanded) 20.dp else 0.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Icon(
                 icon.painter(),
-                contentDescription = contentDescription,
+                contentDescription = null,
+                tint = scheme.onPrimary,
                 modifier = Modifier.size(20.dp),
             )
-        },
-        onClick = onClick,
-        modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-    )
+            if (expanded) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onPrimary,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
 }
 
 /**
- * Shell dialog bergaya kaca (radius + veil + sheen yang sama dengan kartu).
- *
- * Catatan alpha: PayDialog TIDAK punya backdrop blur seperti ExitConfirmDialog
- * (blur itu dipasang AppNavHost di Scaffold hanya untuk konfirmasi keluar), jadi
- * alpha di sini 0.86 — bukan 0.54. Di atas konten tajam, 0.54 membuat isi dialog
- * bocor dan teksnya susah dibaca.
+ * Shell dialog bergaya liquid glass dengan animasi masuk pegas (Apple Fluid Interfaces WWDC 2018).
  */
 @Composable
 fun GlassDialog(
@@ -1015,9 +1073,23 @@ fun GlassDialog(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // Sama seperti GlassConfirmDialog: latar app diblur oleh AppNavHost selama
-    // dialog ini terbuka, supaya panel 0.86 tidak duduk di atas konten tajam.
     AnnounceGlassDialogOpen()
+    val scheme = MaterialTheme.colorScheme
+
+    // Spring entry: fade + scale 0.94 -> 1.0 (Apple WWDC Fluid Interfaces)
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val appear by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.90f, stiffness = 340f),
+        label = "glassDialogAppear",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (shown) 1f else 0.94f,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+        label = "glassDialogScale",
+    )
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -1026,12 +1098,28 @@ fun GlassDialog(
             usePlatformDefaultWidth = false,
         ),
     ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .imePadding(),
+            contentAlignment = Alignment.Center,
+        ) {
             Column(
                 modifier
-                    .padding(horizontal = 28.dp)
-                    .widthIn(max = 380.dp)
-                    .glassSurface(shape = RoundedCornerShape(GLASS_RADIUS), alpha = 0.86f)
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                    .widthIn(max = 420.dp)
+                    .graphicsLayer {
+                        alpha = appear
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .glassSurface(
+                        shape = RoundedCornerShape(GLASS_RADIUS),
+                        tint = scheme.surface,
+                        alpha = 0.88f,
+                        elevation = 14.dp,
+                        specular = 0.28f,
+                    )
                     .padding(horizontal = 20.dp, vertical = 20.dp),
                 content = content,
             )
