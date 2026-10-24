@@ -991,25 +991,11 @@ private fun PremiumTopBar(
                 }
             }
 
-            // Transisi judul dan eyebrow antarlayar menggunakan fisika pegas (WWDC 2018 Fluid Interfaces)
-            AnimatedContent(
-                targetState = eyebrow to title,
-                transitionSpec = {
-                    val springSpec = spring<Float>(
-                        stiffness = Spring.StiffnessMediumLow,
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                    )
-                    val springOffset = spring<IntOffset>(
-                        stiffness = Spring.StiffnessMediumLow,
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                    )
-                    (fadeIn(animationSpec = springSpec) +
-                        slideInVertically(animationSpec = springOffset) { height -> height / 3 })
-                        .togetherWith(
-                            fadeOut(animationSpec = springSpec) +
-                                slideOutVertically(animationSpec = springOffset) { height -> -height / 3 },
-                        )
-                },
+            // Judul dan eyebrow antarlayar:
+            // Animasi transisi dipisah agar saat angka jumlah stok/catatan berubah (mis. filter kategori di Stok),
+            // HANYA angka yang beranimasi menggunakan counter ticker vertikal, sementara teks judul dan label
+            // tetap stabil tanpa melompat/berkedip.
+            Column(
                 modifier = Modifier
                     .weight(1f)
                     .graphicsLayer {
@@ -1017,20 +1003,34 @@ private fun PremiumTopBar(
                         scaleY = titleScale
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     },
-                label = "TopBarHeaderTransition",
-            ) { (currentEyebrow, currentTitle) ->
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    if (currentEyebrow.isNotBlank()) {
-                        Text(
-                            currentEyebrow.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.2.sp,
-                            color = scheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                if (eyebrow.isNotBlank()) {
+                    TopBarEyebrow(
+                        eyebrow = eyebrow,
+                        color = scheme.primary,
+                    )
+                }
+                AnimatedContent(
+                    targetState = title,
+                    transitionSpec = {
+                        val springSpec = spring<Float>(
+                            stiffness = Spring.StiffnessMediumLow,
+                            dampingRatio = Spring.DampingRatioNoBouncy,
                         )
-                    }
+                        val springOffset = spring<IntOffset>(
+                            stiffness = Spring.StiffnessMediumLow,
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                        )
+                        (fadeIn(animationSpec = springSpec) +
+                            slideInVertically(animationSpec = springOffset) { height -> height / 3 })
+                            .togetherWith(
+                                fadeOut(animationSpec = springSpec) +
+                                    slideOutVertically(animationSpec = springOffset) { height -> -height / 3 },
+                            )
+                    },
+                    label = "TopBarTitleTransition",
+                ) { currentTitle ->
                     Text(
                         currentTitle,
                         style = MaterialTheme.typography.headlineSmall,
@@ -1042,6 +1042,161 @@ private fun PremiumTopBar(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Eyebrow top bar dengan animasi selektif:
+ *  - Jika terdapat angka (misal jumlah stok "2 barang tercatat"), HANYA angka yang dianimasikan
+ *    menggunakan ticker vertikal halus, sementara teks label tetap statis tanpa lompatan visual.
+ *  - Jika tidak terdapat angka (misal "Point of Sale"), teks bertransisi halus saat berpindah layar.
+ */
+@Composable
+private fun TopBarEyebrow(
+    eyebrow: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    val upper = remember(eyebrow) { eyebrow.uppercase() }
+    val match = remember(upper) { Regex("""^(\D*)(\d+)(.*)$""").find(upper) }
+
+    if (match != null) {
+        val prefix = match.groupValues[1]
+        val count = match.groupValues[2]
+        val suffix = match.groupValues[3]
+
+        Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (prefix.isNotEmpty()) {
+                AnimatedContent(
+                    targetState = prefix,
+                    transitionSpec = {
+                        val springSpec = spring<Float>(
+                            stiffness = Spring.StiffnessMediumLow,
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                        )
+                        val springOffset = spring<IntOffset>(
+                            stiffness = Spring.StiffnessMediumLow,
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                        )
+                        (fadeIn(animationSpec = springSpec) +
+                            slideInVertically(animationSpec = springOffset) { height -> height / 3 })
+                            .togetherWith(
+                                fadeOut(animationSpec = springSpec) +
+                                    slideOutVertically(animationSpec = springOffset) { height -> -height / 3 },
+                            )
+                    },
+                    label = "TopBarEyebrowPrefix",
+                ) { targetPrefix ->
+                    Text(
+                        text = targetPrefix,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp,
+                        color = color,
+                        maxLines = 1,
+                    )
+                }
+            }
+            AnimatedContent(
+                targetState = count,
+                transitionSpec = {
+                    val springSpec = spring<Float>(
+                        stiffness = Spring.StiffnessMediumLow,
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                    )
+                    val springOffset = spring<IntOffset>(
+                        stiffness = Spring.StiffnessMediumLow,
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                    )
+                    val isIncreasing = (targetState.toIntOrNull() ?: 0) >= (initialState.toIntOrNull() ?: 0)
+                    val enterOffset = if (isIncreasing) { height: Int -> height / 2 } else { height: Int -> -height / 2 }
+                    val exitOffset = if (isIncreasing) { height: Int -> -height / 2 } else { height: Int -> height / 2 }
+                    (fadeIn(animationSpec = springSpec) +
+                        slideInVertically(animationSpec = springOffset, initialOffsetY = enterOffset))
+                        .togetherWith(
+                            fadeOut(animationSpec = springSpec) +
+                                slideOutVertically(animationSpec = springOffset, targetOffsetY = exitOffset),
+                        )
+                },
+                label = "TopBarEyebrowCount",
+            ) { targetCount ->
+                Text(
+                    text = targetCount,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp,
+                    color = color,
+                    maxLines = 1,
+                )
+            }
+            if (suffix.isNotEmpty()) {
+                AnimatedContent(
+                    targetState = suffix,
+                    transitionSpec = {
+                        val springSpec = spring<Float>(
+                            stiffness = Spring.StiffnessMediumLow,
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                        )
+                        val springOffset = spring<IntOffset>(
+                            stiffness = Spring.StiffnessMediumLow,
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                        )
+                        (fadeIn(animationSpec = springSpec) +
+                            slideInVertically(animationSpec = springOffset) { height -> height / 3 })
+                            .togetherWith(
+                                fadeOut(animationSpec = springSpec) +
+                                    slideOutVertically(animationSpec = springOffset) { height -> -height / 3 },
+                            )
+                    },
+                    label = "TopBarEyebrowSuffix",
+                ) { targetSuffix ->
+                    Text(
+                        text = targetSuffix,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp,
+                        color = color,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    } else {
+        AnimatedContent(
+            targetState = upper,
+            transitionSpec = {
+                val springSpec = spring<Float>(
+                    stiffness = Spring.StiffnessMediumLow,
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                )
+                val springOffset = spring<IntOffset>(
+                    stiffness = Spring.StiffnessMediumLow,
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                )
+                (fadeIn(animationSpec = springSpec) +
+                    slideInVertically(animationSpec = springOffset) { height -> height / 3 })
+                    .togetherWith(
+                        fadeOut(animationSpec = springSpec) +
+                            slideOutVertically(animationSpec = springOffset) { height -> -height / 3 },
+                    )
+            },
+            label = "TopBarEyebrowTransition",
+            modifier = modifier,
+        ) { currentEyebrow ->
+            Text(
+                text = currentEyebrow,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp,
+                color = color,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
