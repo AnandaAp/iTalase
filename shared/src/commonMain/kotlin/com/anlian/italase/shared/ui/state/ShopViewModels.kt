@@ -704,10 +704,16 @@ class HistoryViewModel(private val repo: ShopRepository) : ViewModel() {
      * Simpan nama pelanggan/catatan struk lalu muat ulang detailnya, supaya yang tampil
      * benar-benar isi database dan bukan tebakan layar.
      */
-    fun updateInfo(id: Long, customer: String, note: String) {
+    fun updateInfo(
+        id: Long,
+        customer: String,
+        note: String,
+        payMethod: String? = null,
+        tendered: Long? = null,
+    ) {
         viewModelScope.launch {
             try {
-                repo.updateSaleInfo(id, customer, note)
+                repo.updateSaleInfo(id, customer, note, payMethod, tendered)
                 detail.value = repo.saleDetail(id)
                 detailMessage.value = UiMessage.SaleInfoSaved
             } catch (t: Throwable) {

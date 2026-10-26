@@ -22,6 +22,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -378,6 +381,9 @@ fun ProductFormDialog(
                 value = name,
                 onValueChange = { name = it },
                 label = stringResource(Res.string.prod_name),
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Next,
+                ),
             )
             if (isDuplicate.value) {
                 Text(
@@ -409,28 +415,58 @@ fun ProductFormDialog(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 GlassTextField(
                     value = buy,
-                    onValueChange = { buy = it },
+                    onValueChange = { input ->
+                        val digits = input.filter { it.isDigit() }
+                        if (digits.length <= 15) {
+                            buy = digits
+                        }
+                    },
                     label = stringResource(Res.string.prod_buy),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next,
+                    ),
                     modifier = Modifier.weight(1f),
                 )
                 GlassTextField(
                     value = sell,
-                    onValueChange = { sell = it },
+                    onValueChange = { input ->
+                        val digits = input.filter { it.isDigit() }
+                        if (digits.length <= 15) {
+                            sell = digits
+                        }
+                    },
                     label = stringResource(Res.string.prod_sell),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next,
+                    ),
                     modifier = Modifier.weight(1f),
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 GlassTextField(
                     value = stock,
-                    onValueChange = { stock = it },
+                    onValueChange = { input ->
+                        val digits = input.filter { it.isDigit() }
+                        if (digits.length <= 9) {
+                            stock = digits
+                        }
+                    },
                     label = stringResource(Res.string.prod_stock),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next,
+                    ),
                     modifier = Modifier.weight(1f),
                 )
                 GlassTextField(
                     value = unit,
                     onValueChange = { unit = it },
                     label = stringResource(Res.string.prod_unit),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Next,
+                    ),
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -438,6 +474,9 @@ fun ProductFormDialog(
                 value = barcode,
                 onValueChange = { barcode = it },
                 label = stringResource(Res.string.prod_barcode),
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Done,
+                ),
             )
         }
         Spacer(Modifier.height(18.dp))

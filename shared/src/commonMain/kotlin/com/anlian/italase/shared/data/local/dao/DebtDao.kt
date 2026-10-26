@@ -27,6 +27,10 @@ interface DebtDao {
     @Query("SELECT * FROM ${Tables.DEBTS} WHERE id = :id")
     suspend fun getById(id: Long): DebtEntity?
 
+    /** Bon yang terhubung ke satu struk penjualan tertentu. */
+    @Query("SELECT * FROM ${Tables.DEBTS} WHERE saleId = :saleId LIMIT 1")
+    suspend fun getBySaleId(saleId: Long): DebtEntity?
+
     /** Mengembalikan id bon baru; id di dalam objek diabaikan generator. */
     @Insert
     suspend fun insert(debt: DebtEntity): Long

@@ -538,8 +538,8 @@ fun AppNavHost(
                                     onBack = { navController.popBackStack() },
                                     onEdit = { showEdit = true },
                                     onDismissEdit = { showEdit = false },
-                                    onSaveEdit = { customer, note ->
-                                        vm.updateInfo(selectedId, customer, note)
+                                    onSaveEdit = { customer, note, method, tendered ->
+                                        vm.updateInfo(selectedId, customer, note, method, tendered)
                                         showEdit = false
                                     },
                                 )

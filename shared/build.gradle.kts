@@ -12,6 +12,7 @@ plugins {
     kotlin("plugin.serialization")
     kotlin("native.cocoapods")
     id("kotlin-parcelize")
+    jacoco
 }
 
 
@@ -114,6 +115,8 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.sqlite.bundled)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 
@@ -154,3 +157,96 @@ koinCompiler {
     compileSafety = true
 }
 
+
+jacoco {
+    toolVersion = "0.8.15"
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testAndroidHostTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/html"))
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/jacoco.xml"))
+    }
+
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*_Impl*.*",
+        "**/*_Factory*.*",
+        "**/*$$*.*",
+        "**/*Preview*.*",
+        "**/*PreviewData*.*",
+        "**/ComposableSingletons*.*",
+        "**/Res*.*",
+        "**/generated/**",
+        "**/di/**",
+        "**/ui/theme/**",
+        "**/ui/components/**",
+        "**/ui/screens/**",
+        "**/ui/navigation/AppNavHost*.*"
+    )
+
+    val javaClasses = fileTree(layout.buildDirectory.dir("classes/kotlin/android/main")) {
+        exclude(fileFilter)
+    }
+
+    val sourceDirs = files(
+        "src/commonMain/kotlin",
+        "src/androidMain/kotlin"
+    )
+
+    classDirectories.setFrom(javaClasses)
+    sourceDirectories.setFrom(sourceDirs)
+    executionData.setFrom(fileTree(layout.buildDirectory).include("jacoco/testAndroidHostTest.exec"))
+}
+
+tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn("jacocoTestReport")
+
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*_Impl*.*",
+        "**/*_Factory*.*",
+        "**/*$$*.*",
+        "**/*Preview*.*",
+        "**/*PreviewData*.*",
+        "**/ComposableSingletons*.*",
+        "**/Res*.*",
+        "**/generated/**",
+        "**/di/**",
+        "**/ui/theme/**",
+        "**/ui/components/**",
+        "**/ui/screens/**",
+        "**/ui/navigation/AppNavHost*.*"
+    )
+
+    val javaClasses = fileTree(layout.buildDirectory.dir("classes/kotlin/android/main")) {
+        exclude(fileFilter)
+    }
+
+    val sourceDirs = files(
+        "src/commonMain/kotlin",
+        "src/androidMain/kotlin"
+    )
+
+    classDirectories.setFrom(javaClasses)
+    sourceDirectories.setFrom(sourceDirs)
+    executionData.setFrom(fileTree(layout.buildDirectory).include("jacoco/testAndroidHostTest.exec"))
+
+    violationRules {
+        rule {
+            limit {
+                minimum = "0.75".toBigDecimal()
+            }
+        }
+    }
+}

@@ -261,10 +261,67 @@ class ShopRepository(
         return SaleDetail(sale, db.saleDao().itemsOf(id))
     }
 
-    /** Memperbaiki nama pelanggan dan catatan struk (mis. salah ketik). Angka
-     *  transaksi dan stok sengaja tidak bisa diubah dari sini. */
-    suspend fun updateSaleInfo(id: Long, customer: String, note: String) {
-        db.saleDao().updateInfo(id, customer.trim(), note.trim())
+    /** Memperbaiki nama pelanggan, catatan, metode bayar, dan nominal diterima struk.
+     *  Angka total transaksi dan stok sengaja tidak bisa diubah dari sini. */
+    suspend fun updateSaleInfo(
+        id: Long,
+        customer: String,
+        note: String,
+        payMethod: String? = null,
+        tendered: Long? = null,
+    ) {
+        val current: SaleEntity = db.saleDao().getSale(id) ?: return
+        val targetMethod = payMethod ?: current.payMethod
+        val targetTendered = tendered ?: current.tendered ?: current.paidAmount
+
+        val isBon: Boolean = targetMethod == PayMethod.BON || targetTendered < current.total
+        val newStatus: String = if (isBon) TxnStatus.BON else TxnStatus.LUNAS
+        val actualMethod: String = if (isBon) PayMethod.BON else targetMethod
+        val newPaidAmount: Long = if (isBon) targetTendered.coerceAtLeast(0) else current.total
+        val newTendered: Long = targetTendered.coerceAtLeast(0)
+
+        db.saleDao().updatePaymentInfo(
+            id = id,
+            customer = customer.trim(),
+            note = note.trim(),
+            payMethod = actualMethod,
+            paidAmount = newPaidAmount,
+            tendered = newTendered,
+            status = newStatus,
+        )
+
+        val existingDebt = db.debtDao().getBySaleId(id)
+        if (isBon) {
+            val sisa: Long = (current.total - newPaidAmount).coerceAtLeast(0)
+            if (existingDebt != null) {
+                db.debtDao().update(
+                    existingDebt.copy(
+                        customerName = customer.trim().ifBlank { ShopDefaults.CUSTOMER },
+                        totalAmount = current.total,
+                        paidAmount = newPaidAmount,
+                        remaining = sisa,
+                        status = if (sisa == 0L) DebtStatus.LUNAS else DebtStatus.BELUM_LUNAS,
+                    ),
+                )
+            } else if (sisa > 0) {
+                db.debtDao().insert(
+                    DebtEntity(
+                        customerName = customer.trim().ifBlank { ShopDefaults.CUSTOMER },
+                        saleId = id,
+                        totalAmount = current.total,
+                        paidAmount = newPaidAmount,
+                        remaining = sisa,
+                        status = DebtStatus.BELUM_LUNAS,
+                        dateMillis = current.dateMillis,
+                        note = "",
+                    ),
+                )
+            }
+        } else {
+            if (existingDebt != null) {
+                db.debtDao().delete(existingDebt.id)
+            }
+        }
     }
 
     /** Rincian satu struk saja, untuk layar yang sudah punya header struknya. */

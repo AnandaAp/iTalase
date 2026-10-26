@@ -88,6 +88,23 @@ interface SaleDao {
     @Query("UPDATE ${Tables.SALES} SET customerName = :customer, note = :note WHERE id = :id")
     suspend fun updateInfo(id: Long, customer: String, note: String)
 
+    /** Memperbarui informasi pembayaran struk (nama pelanggan, catatan, metode bayar,
+     *  uang diterima, dan status) tanpa mengubah total transaksi maupun pergerakan stok. */
+    @Query(
+        "UPDATE ${Tables.SALES} SET customerName = :customer, note = :note, " +
+                "payMethod = :payMethod, paidAmount = :paidAmount, tendered = :tendered, " +
+                "status = :status WHERE id = :id",
+    )
+    suspend fun updatePaymentInfo(
+        id: Long,
+        customer: String,
+        note: String,
+        payMethod: String,
+        paidAmount: Long,
+        tendered: Long,
+        status: String,
+    )
+
     /** Menyisipkan seluruh rincian struk sekaligus; saleId tiap baris harus
      *  sudah diisi karena tabel ini tidak punya autoGenerate untuk relasinya. */
     @Insert

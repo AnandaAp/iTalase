@@ -2,6 +2,7 @@ package com.anlian.italase.shared.ui.preview
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.anlian.italase.shared.data.local.entity.PayMethod
 import com.anlian.italase.shared.data.repository.CartLine
 import com.anlian.italase.shared.data.repository.DaySummary
 import com.anlian.italase.shared.ui.screens.CashierContent
@@ -169,7 +170,15 @@ fun SaleDetailPreview() {
 @Composable
 fun SaleEditPreview() {
     PreviewWrapper {
-        SaleEditDialog(initialCustomer = "Bu RT", initialNote = "", onDismiss = {}, onSave = { _, _ -> })
+        SaleEditDialog(
+            initialCustomer = "Bu RT",
+            initialNote = "",
+            initialPayMethod = PayMethod.TUNAI,
+            initialTendered = 50000L,
+            total = 45000L,
+            onDismiss = {},
+            onSave = { _, _, _, _ -> },
+        )
     }
 }
 

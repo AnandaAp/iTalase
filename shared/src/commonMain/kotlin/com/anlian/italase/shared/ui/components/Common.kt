@@ -28,6 +28,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -789,6 +791,8 @@ fun GlassTextField(
     label: String,
     modifier: Modifier = Modifier,
     leadingIcon: (@Composable () -> Unit)? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     val scheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(18.dp)
@@ -799,6 +803,8 @@ fun GlassTextField(
         leadingIcon = leadingIcon,
         singleLine = true,
         shape = shape,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
         modifier = modifier
             .fillMaxWidth()
             .glassSurface(shape = shape, alpha = 0.80f, elevation = 10.dp, specular = 0.22f),

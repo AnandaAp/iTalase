@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -43,6 +46,8 @@ import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.GlassCard
+import com.anlian.italase.shared.ui.components.GlassChip
+import com.anlian.italase.shared.ui.components.glassSurface
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.SectionHeader
 import com.anlian.italase.shared.ui.components.StatusChip
@@ -58,12 +63,17 @@ import com.anlian.italase.shared.ui.navigation.bottomActionTailPadding
 import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.util.formatDateTime
 import com.anlian.italase.shared.util.formatRupiah
+import com.anlian.italase.shared.util.parseRupiah
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.action_cancel
 import italase.shared.generated.resources.action_edit
 import italase.shared.generated.resources.action_save
 import italase.shared.generated.resources.cash_m_cash
 import italase.shared.generated.resources.cash_m_transfer
+import italase.shared.generated.resources.cash_paid
+import italase.shared.generated.resources.cash_change
+import italase.shared.generated.resources.cash_short
+import italase.shared.generated.resources.cash_short_hint
 import italase.shared.generated.resources.debt_name
 import italase.shared.generated.resources.debt_note
 import italase.shared.generated.resources.detail_back
@@ -101,7 +111,7 @@ fun SaleDetailScreen(
     onBack: () -> Unit = {},
     onEdit: () -> Unit = {},
     onDismissEdit: () -> Unit = {},
-    onSaveEdit: (String, String) -> Unit = { _, _ -> },
+    onSaveEdit: (String, String, String, Long) -> Unit = { _, _, _, _ -> },
 ) {
     Box(Modifier.fillMaxSize()) {
         // FAB di sini milik composable ini; list-nya ada di SaleDetailContent
@@ -147,6 +157,9 @@ fun SaleDetailScreen(
         SaleEditDialog(
             initialCustomer = detail.sale.customerName,
             initialNote = detail.sale.note,
+            initialPayMethod = detail.sale.payMethod,
+            initialTendered = detail.sale.tendered ?: detail.sale.paidAmount,
+            total = detail.sale.total,
             onDismiss = onDismissEdit,
             onSave = onSaveEdit,
         )
@@ -368,11 +381,19 @@ private fun PaymentRow(
 fun SaleEditDialog(
     initialCustomer: String,
     initialNote: String,
+    initialPayMethod: String = PayMethod.TUNAI,
+    initialTendered: Long = 0L,
+    total: Long = 0L,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit,
+    onSave: (String, String, String, Long) -> Unit,
 ) {
     var customer by remember(initialCustomer) { mutableStateOf(initialCustomer) }
     var note by remember(initialNote) { mutableStateOf(initialNote) }
+    var method by remember(initialPayMethod) { mutableStateOf(initialPayMethod) }
+    var tenderedText by remember(initialTendered) {
+        mutableStateOf(if (initialTendered > 0) initialTendered.toString() else "")
+    }
+    val tendered = parseRupiah(tenderedText)
     val scheme = MaterialTheme.colorScheme
 
     GlassDialog(onDismiss = onDismiss) {
@@ -382,6 +403,14 @@ fun SaleEditDialog(
             fontWeight = FontWeight.Bold,
             color = scheme.onSurface,
         )
+        if (total > 0) {
+            Text(
+                stringResource(Res.string.detail_total) + ": " + formatRupiah(total),
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.primary,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
         Spacer(Modifier.height(14.dp))
         Column(
             modifier = Modifier
@@ -394,11 +423,83 @@ fun SaleEditDialog(
                 value = customer,
                 onValueChange = { customer = it },
                 label = stringResource(Res.string.debt_name),
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Next,
+                ),
             )
+
+            GlassTextField(
+                value = tenderedText,
+                onValueChange = { input ->
+                    val digits = input.filter { it.isDigit() }
+                    if (digits.length <= 15) {
+                        tenderedText = digits
+                    }
+                },
+                label = stringResource(Res.string.cash_paid),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next,
+                ),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GlassChip(
+                    text = stringResource(Res.string.cash_m_cash),
+                    selected = method == PayMethod.TUNAI,
+                    onClick = { method = PayMethod.TUNAI },
+                )
+                GlassChip(
+                    text = stringResource(Res.string.cash_m_transfer),
+                    selected = method == PayMethod.TRANSFER,
+                    onClick = { method = PayMethod.TRANSFER },
+                )
+                GlassChip(
+                    text = stringResource(Res.string.tab_debt),
+                    selected = method == PayMethod.BON,
+                    onClick = { method = PayMethod.BON },
+                )
+            }
+            if (total > 0) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .glassSurface(
+                            shape = RoundedCornerShape(16.dp),
+                            tint = scheme.surfaceContainerLow,
+                            alpha = 0.90f,
+                            elevation = 6.dp,
+                            specular = 0.18f,
+                            veil = false,
+                        )
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        if (tendered >= total) stringResource(Res.string.cash_change)
+                        else stringResource(Res.string.cash_short),
+                        color = scheme.onSurfaceVariant,
+                    )
+                    Text(
+                        formatRupiah(if (tendered >= total) tendered - total else total - tendered),
+                        fontWeight = FontWeight.Bold,
+                        color = scheme.onSurface,
+                    )
+                }
+                if (method != PayMethod.BON && tendered < total) {
+                    Text(
+                        stringResource(Res.string.cash_short_hint),
+                        color = scheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
             GlassTextField(
                 value = note,
                 onValueChange = { note = it },
                 label = stringResource(Res.string.debt_note),
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Done,
+                ),
             )
         }
         Spacer(Modifier.height(18.dp))
@@ -412,7 +513,7 @@ fun SaleEditDialog(
             )
             GlassButton(
                 text = stringResource(Res.string.action_save),
-                onClick = { onSave(customer, note) },
+                onClick = { onSave(customer, note, method, tendered) },
                 modifier = Modifier.weight(1f),
             )
         }

@@ -13,6 +13,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -459,12 +462,24 @@ fun PayDialog(total: Long, onDismiss: () -> Unit, onConfirm: (Long, String, Stri
             value = customer,
             onValueChange = { customer = it },
             label = stringResource(Res.string.cash_customer),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Next,
+            ),
         )
         Spacer(Modifier.height(10.dp))
         GlassTextField(
             value = paidText,
-            onValueChange = { paidText = it },
+            onValueChange = { input ->
+                val digits = input.filter { it.isDigit() }
+                if (digits.length <= 15) {
+                    paidText = digits
+                }
+            },
             label = stringResource(Res.string.cash_paid),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done,
+            ),
         )
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -19,23 +19,24 @@ composeMultiplatform = "1.12.2"
 compose-bom = "2026.09.00"
 junit = "4.13.2"
 koin = "4.2.2"
-kotlin-coroutines = "1.11.0"
+koin-ksp = "4.2.2"
+koin-plugin = "1.2.1"
 kotlin = "2.4.21"
+kotlin-coroutines = "1.11.0"
+kotlinx-collections-immutable = "0.5.2"
+kotlinx-datetime = "0.8.0"
+ksp = "2.3.12"
+ktor = "3.6.0"
 material3 = "1.12.0-alpha03"
 navigation-compose-multiplaform = "2.9.2"
 navigation-compose-android = "2.10.2"
-ksp = "2.3.12"
-koin-ksp = "4.2.2"
-koin-plugin = "1.2.1"
-ktor = "3.6.0"
 napier = "2.7.1"
+
+room = "2.8.5"
 slfj4 = "2.0.20"
 stability-analyzer = "0.15.0"
-room = "2.8.5"
 sqlite = "2.7.1"
 sqlcipher = "4.19.1"
-kotlinx-collections-immutable = "0.5.2"
-kotlinx-datetime = "0.8.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -66,6 +67,7 @@ androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle
 androidx-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime", version.ref = "androidx-lifecycle" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlin-coroutines" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
 compose-navigation-multiplatform = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation-compose-multiplaform" }
@@ -102,6 +104,8 @@ slfj4 = { module = "org.slf4j:slf4j-api", version.ref = "slfj4" }
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 
+
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
@@ -121,7 +125,8 @@ android-compose = [
     "android-compose-ui",
     "android-compose-ui-tooling",
     "androidx-activity-compose",
-    "compose-navigation-android"
+    "compose-navigation-android",
+
 ]
 
 android-essentials = [
@@ -136,7 +141,8 @@ ktor-core = [
     "ktor-client-content-negotiation",
     "ktor-client-core",
     "ktor-json",
-    "slfj4"
+    "slfj4",
+
 ]
 
 ktor-shared-android = [

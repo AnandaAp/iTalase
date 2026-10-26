@@ -44,6 +44,9 @@ dependencies {
     implementation(libs.koin.annotations)
 
     debugImplementation(libs.compose.uiTooling)
+    androidTestImplementation(libs.androidx.testExt.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.kotlin.test)
 }
 
 val localProps = Properties().apply {
@@ -68,6 +71,7 @@ android {
         version = libs.versions.app.version.get()
         versionCode = libs.versions.app.versioncode.get().toInt()
         versionName = version.toString()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
         create("release") {
