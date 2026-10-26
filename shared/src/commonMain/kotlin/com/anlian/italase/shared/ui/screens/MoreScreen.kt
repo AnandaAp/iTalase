@@ -33,8 +33,13 @@ import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.cd_open
 import italase.shared.generated.resources.more_about_d
 import italase.shared.generated.resources.more_about_t
+import italase.shared.generated.resources.more_app_info_d
+import italase.shared.generated.resources.more_app_info_t
+import italase.shared.generated.resources.more_db_security_d
+import italase.shared.generated.resources.more_db_security_t
 import italase.shared.generated.resources.more_expense_d
 import italase.shared.generated.resources.more_history_d
+import italase.shared.generated.resources.more_menu_count
 import italase.shared.generated.resources.more_sub
 import italase.shared.generated.resources.title_expenses
 import italase.shared.generated.resources.title_history
@@ -52,7 +57,7 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
     val appeared = rememberAppear()
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     TopBarInfoEffect(
-        eyebrow = stringResource(Res.string.more_sub),
+        eyebrow = stringResource(Res.string.more_menu_count, 4),
         title = stringResource(Res.string.title_more),
     )
     Column(
@@ -62,7 +67,7 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
             .nestedScrollConnection(scrollBehavior, null)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
         MoreRow(
@@ -75,38 +80,29 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
             desc = stringResource(Res.string.more_expense_d),
             icon = AppIcon.PAYMENTS,
         ) { onNavigate(Routes.EXPENSE) }
-        GlassCard {
-            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    AppIcon.STOREFRONT.painter(),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(end = 12.dp),
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        stringResource(Res.string.more_about_t),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        stringResource(Res.string.more_about_d),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-        // Card terakhir bisa digulir ke atas tab bar kaca yang mengambang.
-        Spacer(Modifier.height(LocalBottomOverlayPadding.current))
+        MoreInfoCard(
+            title = stringResource(Res.string.more_about_t),
+            desc = stringResource(Res.string.more_about_d),
+            icon = AppIcon.STOREFRONT,
+        )
+        MoreInfoCard(
+            title = stringResource(Res.string.more_db_security_t),
+            desc = stringResource(Res.string.more_db_security_d),
+            icon = AppIcon.HANDSHAKE,
+        )
+        MoreInfoCard(
+            title = stringResource(Res.string.more_app_info_t),
+            desc = stringResource(Res.string.more_app_info_d),
+            icon = AppIcon.INVENTORY,
+        )
+        // Ruang ekor untuk scroll menembus bottom tab bar
+        Spacer(Modifier.height(LocalBottomOverlayPadding.current + 32.dp))
     }
 }
 
 /**
- * Satu baris menu: ikon berwarna primary, judul, deskripsi, lalu chevron penanda
+ * Satu baris menu interaktif: ikon berwarna primary, judul, deskripsi, lalu chevron penanda
  * "bisa dibuka".
- *
- * Seluruh kartu adalah target klik (`onClick` dipegang GlassCard), bukan chevron-nya
- * — jadi area sentuh lebih besar dari yang terlihat.
  */
 @Composable
 private fun MoreRow(title: String, desc: String, icon: AppIcon, onClick: () -> Unit) {
@@ -127,6 +123,34 @@ private fun MoreRow(title: String, desc: String, icon: AppIcon, onClick: () -> U
                 contentDescription = stringResource(Res.string.cd_open),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+/**
+ * Kartu informasi statis: menampilkan informasi keamanan database, status offline, atau versi app.
+ */
+@Composable
+private fun MoreInfoCard(title: String, desc: String, icon: AppIcon) {
+    GlassCard {
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                icon.painter(),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(end = 12.dp),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    title,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    desc,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

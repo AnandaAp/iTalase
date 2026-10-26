@@ -162,10 +162,15 @@
 
     <!-- Lainnya -->
     <string name="more_sub">Menu tambahan warung</string>
+    <string name="more_menu_count">%1$d menu &amp; info</string>
     <string name="more_history_d">Semua struk penjualan</string>
     <string name="more_expense_d">Biaya operasional toko</string>
     <string name="more_about_t">iTalase • Offline</string>
     <string name="more_about_d">Data tersimpan aman di HP, tanpa internet.</string>
+    <string name="more_db_security_t">Keamanan Database</string>
+    <string name="more_db_security_d">Tersimpan aman &amp; terenkripsi SQLCipher di HP.</string>
+    <string name="more_app_info_t">Tentang iTalase</string>
+    <string name="more_app_info_d">Aplikasi POS &amp; kasir offline UMKM v1.0.0</string>
 
     <!-- Konfirmasi keluar -->
     <string name="exit_eyebrow">KONFIRMASI</string>

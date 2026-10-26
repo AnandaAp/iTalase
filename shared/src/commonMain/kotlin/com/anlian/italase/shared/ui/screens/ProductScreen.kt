@@ -182,7 +182,8 @@ fun ProductContent(
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .nestedScrollConnection(scrollBehavior, listState),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))

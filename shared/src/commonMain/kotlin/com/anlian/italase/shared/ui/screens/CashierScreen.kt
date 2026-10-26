@@ -73,6 +73,7 @@ import italase.shared.generated.resources.cash_sub
 import italase.shared.generated.resources.cd_add
 import italase.shared.generated.resources.cd_remove
 import italase.shared.generated.resources.cd_search
+import italase.shared.generated.resources.prod_count
 import italase.shared.generated.resources.prod_out
 import italase.shared.generated.resources.tab_debt
 import italase.shared.generated.resources.title_cashier
@@ -183,8 +184,14 @@ fun CashierContent(
     // merender apa pun, jadi kalau jadi child Column ia tetap memakan jarak
     // Arrangement.spacedBy di dua sisinya.
     val appeared = rememberAppear()
+    val cartCount = lines.sumOf { it.qty }
+    val cashierEyebrow = if (cartCount > 0) {
+        stringResource(Res.string.cash_cart_items, cartCount)
+    } else {
+        stringResource(Res.string.prod_count, list.size)
+    }
     TopBarInfoEffect(
-        eyebrow = stringResource(Res.string.cash_sub),
+        eyebrow = cashierEyebrow,
         title = stringResource(Res.string.title_cashier),
     )
 
@@ -192,7 +199,8 @@ fun CashierContent(
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .nestedScrollConnection(scrollBehavior, listState),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
