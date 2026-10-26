@@ -1,4 +1,6 @@
+import org.gradle.kotlin.dsl.java
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -44,6 +46,17 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
 }
 
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) {
+        f.inputStream().use { load(it) }
+    }
+}
+val releaseStorePath = localProps.getProperty("RELEASE_STORE_FILE")
+val releaseStorePassword = localProps.getProperty("RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = localProps.getProperty("RELEASE_KEY_ALIAS")
+val releaseKeyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD")
+
 android {
     namespace = libs.versions.app.id.get()
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -55,6 +68,16 @@ android {
         version = libs.versions.app.version.get()
         versionCode = libs.versions.app.versioncode.get().toInt()
         versionName = version.toString()
+    }
+    signingConfigs {
+        create("release") {
+            if (!releaseStorePath.isNullOrEmpty() && file(releaseStorePath).exists()) {
+                storeFile = file(releaseStorePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
     packaging {
         resources {
@@ -72,7 +95,11 @@ android {
                     file("proguard-rules.pro")
                 )
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (!releaseStorePath.isNullOrEmpty() && file(releaseStorePath).exists() && !releaseKeyAlias.isNullOrEmpty()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
