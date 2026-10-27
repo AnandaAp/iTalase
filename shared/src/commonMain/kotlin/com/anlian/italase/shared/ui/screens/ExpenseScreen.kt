@@ -2,6 +2,8 @@ package com.anlian.italase.shared.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.anlian.italase.shared.ui.components.GlassButton
@@ -41,6 +43,7 @@ import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.LoadMoreFooter
+import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.OnBottomReached
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.enter
@@ -130,102 +133,159 @@ fun ExpenseContent(
     onDelete: (Long) -> Unit = {},
     onLoadMore: () -> Unit = {},
 ) {
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val isLandscape = maxWidth > maxHeight && maxWidth >= 540.dp
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
         val appeared = rememberAppear()
+        val totalAmount = remember(items) { items.sumOf { it.amount } }
         TopBarInfoEffect(
             eyebrow = stringResource(Res.string.exp_count, items.size),
             title = stringResource(Res.string.title_expenses),
         )
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .nestedScrollConnection(scrollBehavior, listState),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-            // Kartu total: primitif kaca yang sama dengan layar lain, warna
-            // maknanya tetap (sand) — lihat DebtScreen untuk alasannya.
-            GlassCard(
-                modifier = Modifier.fillMaxWidth().enter(appeared, 0),
-                tint = MaterialTheme.colorScheme.secondaryContainer,
-                alpha = 0.95f,
+
+        if (isLandscape) {
+            // Tata letak Landscape POS: Split screen Master-Detail
+            // Kiri: Kartu Ringkasan Total Beban & Status, Kanan: Daftar Catatan Beban
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        stringResource(Res.string.exp_total),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        formatRupiah(items.sumOf { it.amount }),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
-            }
-            if (message.isNotBlank()) {
-                Text(
-                    message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            if (items.isEmpty()) {
-                EmptyState(
-                    stringResource(Res.string.exp_empty_t),
-                    stringResource(Res.string.exp_empty_h),
-                )
-            } else {
-                // Lihat catatan di HistoryScreen: isi LazyColumn bukan scope
-                // @Composable, jadi pemicunya dipasang di luar.
-                listState.OnBottomReached(
-                    enabled = hasMore && !loadingMore,
-                    onLoadMore = onLoadMore,
-                )
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f).enter(appeared, 1),
-                    contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                Column(
+                    Modifier
+                        .weight(0.38f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(items, key = { it.id }) { e ->
-                        GlassCard(shape = RoundedCornerShape(20.dp)) {
-                            Row(
-                                Modifier.fillMaxWidth().padding(14.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(e.name, fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        e.category + if (e.note.isNotBlank()) " • ${e.note}" else "",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(formatRupiah(e.amount), fontWeight = FontWeight.Bold)
-                                    TextButton(onClick = { onDelete(e.id) }) {
-                                        Icon(
-                                            AppIcon.DELETE.painter(),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                        Text(
-                                            stringResource(Res.string.action_delete),
-                                            modifier = Modifier.padding(start = 4.dp),
-                                        )
-                                    }
-                                }
-                            }
+                    Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth().enter(appeared, 0),
+                        tint = MaterialTheme.colorScheme.secondaryContainer,
+                        alpha = 0.95f,
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                stringResource(Res.string.exp_total),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                formatRupiah(totalAmount),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            StatusChip(
+                                text = stringResource(Res.string.exp_count, items.size),
+                                good = true,
+                            )
                         }
                     }
-                    item(key = "load-more") { LoadMoreFooter(loadingMore) }
+                    if (message.isNotBlank()) {
+                        Text(
+                            message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+
+                Column(
+                    Modifier
+                        .weight(0.62f)
+                        .fillMaxHeight()
+                        .nestedScrollConnection(scrollBehavior, listState),
+                ) {
+                    Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+                    if (items.isEmpty()) {
+                        EmptyState(
+                            stringResource(Res.string.exp_empty_t),
+                            stringResource(Res.string.exp_empty_h),
+                        )
+                    } else {
+                        listState.OnBottomReached(
+                            enabled = hasMore && !loadingMore,
+                            onLoadMore = onLoadMore,
+                        )
+                        LazyColumn(
+                            state = listState,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxSize().enter(appeared, 1),
+                            contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                        ) {
+                            items(items, key = { it.id }) { e ->
+                                ExpenseItemCard(e = e, onDelete = onDelete)
+                            }
+                            item(key = "load-more") { LoadMoreFooter(loadingMore) }
+                        }
+                    }
+                }
+            }
+        } else {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+                    .nestedScrollConnection(scrollBehavior, listState),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+                // Kartu total: primitif kaca yang sama dengan layar lain, warna
+                // maknanya tetap (sand) — lihat DebtScreen untuk alasannya.
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth().enter(appeared, 0),
+                    tint = MaterialTheme.colorScheme.secondaryContainer,
+                    alpha = 0.95f,
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            stringResource(Res.string.exp_total),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            formatRupiah(totalAmount),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
+                }
+                if (message.isNotBlank()) {
+                    Text(
+                        message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (items.isEmpty()) {
+                    EmptyState(
+                        stringResource(Res.string.exp_empty_t),
+                        stringResource(Res.string.exp_empty_h),
+                    )
+                } else {
+                    // Lihat catatan di HistoryScreen: isi LazyColumn bukan scope
+                    // @Composable, jadi pemicunya dipasang di luar.
+                    listState.OnBottomReached(
+                        enabled = hasMore && !loadingMore,
+                        onLoadMore = onLoadMore,
+                    )
+                    LazyColumn(
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f).enter(appeared, 1),
+                        contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                    ) {
+                        items(items, key = { it.id }) { e ->
+                            ExpenseItemCard(e = e, onDelete = onDelete)
+                        }
+                        item(key = "load-more") { LoadMoreFooter(loadingMore) }
+                    }
                 }
             }
         }
@@ -236,6 +296,43 @@ fun ExpenseContent(
             onClick = onAdd,
             modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar().enter(appeared, 2),
         )
+    }
+}
+
+@Composable
+private fun ExpenseItemCard(
+    e: ExpenseEntity,
+    onDelete: (Long) -> Unit,
+) {
+    GlassCard(shape = RoundedCornerShape(20.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(e.name, fontWeight = FontWeight.SemiBold)
+                Text(
+                    e.category + if (e.note.isNotBlank()) " • ${e.note}" else "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(formatRupiah(e.amount), fontWeight = FontWeight.Bold)
+                TextButton(onClick = { onDelete(e.id) }) {
+                    Icon(
+                        AppIcon.DELETE.painter(),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        stringResource(Res.string.action_delete),
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -31,8 +31,12 @@ Activate and execute this skill whenever:
 Whenever an AI agent is working on a task in iTalase, the agent MUST follow this 4-phase protocol:
 
 ### Phase 1: Task Inspection & Ingestion (Sprint Start)
-Before touching any Kotlin, Compose, or Gradle code, check current dashboard status:
+Before touching any Kotlin, Compose, or Gradle code, ensure background services and check current dashboard status:
 ```powershell
+# 1. Ensure MCP and Kanban Server are running on a detached terminal (via npm start / launch_server.vbs)
+node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --ensure-services
+
+# 2. Check current telemetry & kanban status
 node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --status
 ```
 Update the current active task and transition the relevant Kanban card to `inProgress`:
@@ -73,5 +77,7 @@ node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --set-task "<Brief 
 
 ## 🛡️ Critical Safety Constraints
 - **NEVER RUN `git commit` OR `git push`** without explicit user permission.
+- **NEVER HALT TO ASK USER FOR SELECTION**: Autonomous orchestrators must reason, decide, and execute candidates independently.
+- **iOS HARDWARE QUARANTINE**: All iOS/Swift/Xcode tasks remain in `backlog` until macOS hardware is present.
 - Always maintain minimum **75% JaCoCo test coverage**.
 - Preserve the *Warung Liquid Glass* and *Apple Design* visual standards.

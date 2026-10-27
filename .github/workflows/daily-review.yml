@@ -1,0 +1,36 @@
+name: iTalase Daily Cloud Review & CI Verification
+
+# Triggers daily at 09:00 AM WIB (02:00 UTC) even when local machine is shutdown
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  daily-review:
+    name: Daily Code Review & Test Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle Cache
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Run Host Unit Tests
+        run: ./gradlew :shared:testAndroidHostTest
+
+      - name: Verify JaCoCo Code Coverage (>= 75%)
+        run: ./gradlew :shared:jacocoTestCoverageVerification
+
+      - name: Assemble Release APK Build Check
+        run: ./gradlew :androidApp:assembleRelease
