@@ -23,6 +23,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -39,10 +40,12 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,9 +60,11 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +91,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.anlian.italase.shared.util.endOfListReached
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.action_cancel
+import italase.shared.generated.resources.action_save
 import italase.shared.generated.resources.cat_all
 import italase.shared.generated.resources.cd_confirm_warning
 import italase.shared.generated.resources.exit_cancel
@@ -1335,7 +1341,13 @@ fun PrimaryFab(
 }
 
 /**
+ * Menyimpan status orientasi layar (landscape/layar lebar) di dalam hierarki dialog.
+ */
+val LocalIsLandscape = compositionLocalOf { false }
+
+/**
  * Shell dialog bergaya liquid glass dengan animasi masuk pegas (Apple Fluid Interfaces WWDC 2018).
+ * Adaptif terhadap orientasi layar dan soft keyboard (IME).
  */
 @Composable
 fun GlassDialog(
@@ -1368,31 +1380,154 @@ fun GlassDialog(
             usePlatformDefaultWidth = false,
         ),
     ) {
-        Box(
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .imePadding(),
-            contentAlignment = Alignment.Center,
         ) {
-            Column(
-                modifier
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-                    .widthIn(max = 480.dp)
-                    .graphicsLayer {
-                        alpha = appear
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                    .glassSurface(
-                        shape = RoundedCornerShape(GLASS_RADIUS),
-                        tint = scheme.surface,
-                        alpha = 0.88f,
-                        elevation = 14.dp,
-                        specular = 0.28f,
+            val isLandscape = maxWidth > maxHeight || maxWidth >= 600.dp
+            CompositionLocalProvider(LocalIsLandscape provides isLandscape) {
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = if (isLandscape) Alignment.TopCenter else Alignment.Center,
+                ) {
+                    Column(
+                        modifier
+                            .padding(
+                                horizontal = 16.dp,
+                                vertical = if (isLandscape) 6.dp else 10.dp,
+                            )
+                            .widthIn(max = if (isLandscape) 560.dp else 480.dp)
+                            .graphicsLayer {
+                                alpha = appear
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                            .glassSurface(
+                                shape = RoundedCornerShape(GLASS_RADIUS),
+                                tint = scheme.surface,
+                                alpha = 0.88f,
+                                elevation = 14.dp,
+                                specular = 0.28f,
+                            )
+                            .padding(
+                                horizontal = 20.dp,
+                                vertical = if (isLandscape) 10.dp else 16.dp,
+                            ),
+                        content = content,
                     )
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Dialog formulir bergaya liquid glass yang adaptif terhadap layout layar lebar/landscape
+ * dan kemunculan keyboard virtual (IME).
+ *
+ * Pada mode landscape / compact: Judul & tombol aksi (Batal & Simpan) otomatis diposisikan
+ * sejajar di baris atas (header), membebaskan ruang vertikal sehingga kolom input teks di dalam form tidak
+ * terhimpit atau tertutup keyboard saat user mengetik.
+ *
+ * Pada mode portrait: Menggunakan tata letak standar (Judul di atas, formulir di tengah,
+ * tombol aksi di bawah).
+ */
+@Composable
+fun GlassFormDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
+    confirmText: String = stringResource(Res.string.action_save),
+    cancelText: String = stringResource(Res.string.action_cancel),
+    confirmEnabled: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+
+    GlassDialog(onDismiss = onDismiss, modifier = modifier) {
+        val isLandscape = LocalIsLandscape.current
+
+        if (isLandscape) {
+            // Header baris tunggal: Judul di kiri, tombol aksi di kanan (menghemat ~68dp vertikal)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onSurface,
+                    modifier = Modifier.weight(1f, fill = false),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    GlassButton(
+                        text = cancelText,
+                        onClick = onDismiss,
+                        container = scheme.onSurface.copy(alpha = 0.08f),
+                        content = scheme.onSurface,
+                        height = 36.dp,
+                    )
+                    GlassButton(
+                        text = confirmText,
+                        onClick = onConfirm,
+                        enabled = confirmEnabled,
+                        height = 36.dp,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 content = content,
             )
+        } else {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = scheme.onSurface,
+            )
+            Spacer(Modifier.height(14.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                content = content,
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                GlassButton(
+                    text = cancelText,
+                    onClick = onDismiss,
+                    container = scheme.onSurface.copy(alpha = 0.08f),
+                    content = scheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                GlassButton(
+                    text = confirmText,
+                    onClick = onConfirm,
+                    enabled = confirmEnabled,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }

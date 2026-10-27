@@ -195,7 +195,7 @@ class ShopViewModelsTest {
         backgroundScope.launch { vm.activeDebts.collect() }
 
         vm.refresh()
-        advanceUntilIdle()
+        vm.isLoading.first { !it }
 
         assertNull(vm.error.value)
         assertEquals(false, vm.isLoading.value)
@@ -224,7 +224,11 @@ class ShopViewModelsTest {
         backgroundScope.launch { histVm.sales.collect() }
         backgroundScope.launch { expVm.items.collect() }
 
-        advanceUntilIdle()
+        prodVm.isLoading.first { !it }
+        cashVm.isLoading.first { !it }
+        debtVm.isLoading.first { !it }
+        histVm.isLoading.first { !it }
+        expVm.isLoading.first { !it }
 
         assertEquals(false, prodVm.isLoading.value)
         assertEquals(false, cashVm.isLoading.value)

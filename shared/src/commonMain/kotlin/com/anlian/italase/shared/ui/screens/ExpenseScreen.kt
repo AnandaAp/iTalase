@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.anlian.italase.shared.ui.components.GlassButton
 import com.anlian.italase.shared.ui.components.GlassDialog
+import com.anlian.italase.shared.ui.components.GlassFormDialog
 import com.anlian.italase.shared.ui.components.GlassTextField
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -402,63 +403,36 @@ fun ExpenseFormDialog(onDismiss: () -> Unit, onSave: (String, String, Long, Stri
     var cat by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
-    val scheme = MaterialTheme.colorScheme
 
-    GlassDialog(onDismiss = onDismiss) {
-        Text(
-            stringResource(Res.string.exp_form),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = scheme.onSurface,
+    GlassFormDialog(
+        title = stringResource(Res.string.exp_form),
+        onDismiss = onDismiss,
+        onConfirm = { onSave(name, cat, parseRupiah(amount), note) },
+        confirmEnabled = name.isNotBlank() && amount.isNotBlank(),
+    ) {
+        GlassTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = stringResource(Res.string.exp_name),
         )
-        Spacer(Modifier.height(14.dp))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = stringResource(Res.string.exp_name),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GlassTextField(
-                    value = cat,
-                    onValueChange = { cat = it },
-                    label = stringResource(Res.string.exp_category),
-                    modifier = Modifier.weight(1f),
-                )
-                GlassTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = stringResource(Res.string.exp_amount),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            GlassTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = stringResource(Res.string.debt_note),
-            )
-        }
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GlassButton(
-                text = stringResource(Res.string.action_cancel),
-                onClick = onDismiss,
-                container = scheme.onSurface.copy(alpha = 0.08f),
-                content = scheme.onSurface,
+                value = cat,
+                onValueChange = { cat = it },
+                label = stringResource(Res.string.exp_category),
                 modifier = Modifier.weight(1f),
             )
-            GlassButton(
-                text = stringResource(Res.string.action_save),
-                onClick = { onSave(name, cat, parseRupiah(amount), note) },
-                enabled = name.isNotBlank() && amount.isNotBlank(),
+            GlassTextField(
+                value = amount,
+                onValueChange = { amount = it },
+                label = stringResource(Res.string.exp_amount),
                 modifier = Modifier.weight(1f),
             )
         }
+        GlassTextField(
+            value = note,
+            onValueChange = { note = it },
+            label = stringResource(Res.string.debt_note),
+        )
     }
 }

@@ -1,4 +1,3 @@
-import org.gradle.kotlin.dsl.java
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -42,6 +41,7 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
+    implementation(libs.androidx.profileinstaller)
 
     debugImplementation(libs.compose.uiTooling)
     androidTestImplementation(libs.androidx.testExt.junit)

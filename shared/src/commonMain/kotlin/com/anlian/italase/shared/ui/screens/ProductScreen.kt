@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.sp
 import com.anlian.italase.shared.ui.components.GlassButton
 import com.anlian.italase.shared.ui.components.GlassChip
 import com.anlian.italase.shared.ui.components.GlassDialog
+import com.anlian.italase.shared.ui.components.GlassFormDialog
 import italase.shared.generated.resources.action_save
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -380,23 +381,16 @@ fun ProductFormDialog(
     }
     val scheme = MaterialTheme.colorScheme
 
-    GlassDialog(onDismiss = onDismiss) {
-        Text(
-            if (initial == null) stringResource(Res.string.prod_new)
-            else stringResource(Res.string.prod_edit_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = scheme.onSurface,
-        )
-        Spacer(Modifier.height(14.dp))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            GlassTextField(
+    GlassFormDialog(
+        title = if (initial == null) stringResource(Res.string.prod_new)
+        else stringResource(Res.string.prod_edit_title),
+        onDismiss = onDismiss,
+        onConfirm = {
+            onSave(name, parseRupiah(buy), parseRupiah(sell), stock.toIntOrNull() ?: 0, unit, barcode, category)
+        },
+        confirmEnabled = name.isNotBlank() && !isDuplicate.value,
+    ) {
+        GlassTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = stringResource(Res.string.prod_name),
@@ -497,24 +491,5 @@ fun ProductFormDialog(
                     imeAction = ImeAction.Done,
                 ),
             )
-        }
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GlassButton(
-                text = stringResource(Res.string.action_cancel),
-                onClick = onDismiss,
-                container = scheme.onSurface.copy(alpha = 0.08f),
-                content = scheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            GlassButton(
-                text = stringResource(Res.string.action_save),
-                onClick = {
-                    onSave(name, parseRupiah(buy), parseRupiah(sell), stock.toIntOrNull() ?: 0, unit, barcode, category)
-                },
-                enabled = name.isNotBlank() && !isDuplicate.value,
-                modifier = Modifier.weight(1f),
-            )
-        }
     }
 }

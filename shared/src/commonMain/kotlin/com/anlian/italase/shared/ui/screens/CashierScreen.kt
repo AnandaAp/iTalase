@@ -50,6 +50,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.BoxWithConstraints
 import com.anlian.italase.shared.ui.components.GlassChip
 import com.anlian.italase.shared.ui.components.GlassDialog
+import com.anlian.italase.shared.ui.components.GlassFormDialog
 import com.anlian.italase.shared.ui.components.GlassEmptyState
 import com.anlian.italase.shared.ui.components.GlassShimmerRow
 import com.anlian.italase.shared.ui.components.ShimmerCrossfade
@@ -768,106 +769,82 @@ fun PayDialog(total: Long, onDismiss: () -> Unit, onConfirm: (Long, String, Stri
     val paid = parseRupiah(paidText)
     val scheme = MaterialTheme.colorScheme
 
-    GlassDialog(onDismiss = onDismiss) {
-        Text(
-            stringResource(Res.string.cash_pay_title, formatRupiah(total)),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = scheme.onSurface,
+    GlassFormDialog(
+        title = stringResource(Res.string.cash_pay_title, formatRupiah(total)),
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(paid, method, customer) },
+        cancelText = stringResource(Res.string.action_close),
+        confirmText = stringResource(Res.string.action_save),
+    ) {
+        GlassTextField(
+            value = customer,
+            onValueChange = { customer = it },
+            label = stringResource(Res.string.cash_customer),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Next,
+            ),
         )
-        Spacer(Modifier.height(12.dp))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            GlassTextField(
-                value = customer,
-                onValueChange = { customer = it },
-                label = stringResource(Res.string.cash_customer),
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Next,
-                ),
+        GlassTextField(
+            value = paidText,
+            onValueChange = { input ->
+                val digits = input.filter { it.isDigit() }
+                if (digits.length <= 15) {
+                    paidText = digits
+                }
+            },
+            label = stringResource(Res.string.cash_paid),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done,
+            ),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GlassChip(
+                text = stringResource(Res.string.cash_m_cash),
+                selected = method == PayMethod.TUNAI,
+                onClick = { method = PayMethod.TUNAI },
             )
-            GlassTextField(
-                value = paidText,
-                onValueChange = { input ->
-                    val digits = input.filter { it.isDigit() }
-                    if (digits.length <= 15) {
-                        paidText = digits
-                    }
-                },
-                label = stringResource(Res.string.cash_paid),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Done,
-                ),
+            GlassChip(
+                text = stringResource(Res.string.cash_m_transfer),
+                selected = method == PayMethod.TRANSFER,
+                onClick = { method = PayMethod.TRANSFER },
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GlassChip(
-                    text = stringResource(Res.string.cash_m_cash),
-                    selected = method == PayMethod.TUNAI,
-                    onClick = { method = PayMethod.TUNAI },
-                )
-                GlassChip(
-                    text = stringResource(Res.string.cash_m_transfer),
-                    selected = method == PayMethod.TRANSFER,
-                    onClick = { method = PayMethod.TRANSFER },
-                )
-                GlassChip(
-                    text = stringResource(Res.string.tab_debt),
-                    selected = method == PayMethod.BON,
-                    onClick = { method = PayMethod.BON },
-                )
-            }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .glassSurface(
-                        shape = RoundedCornerShape(16.dp),
-                        tint = scheme.surfaceContainerLow,
-                        alpha = 0.90f,
-                        elevation = 6.dp,
-                        specular = 0.18f,
-                        veil = false,
-                    )
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    if (paid >= total) stringResource(Res.string.cash_change)
-                    else stringResource(Res.string.cash_short),
-                    color = scheme.onSurfaceVariant,
-                )
-                Text(
-                    formatRupiah(if (paid >= total) paid - total else total - paid),
-                    fontWeight = FontWeight.Bold,
-                    color = scheme.onSurface,
-                )
-            }
-            if (method != PayMethod.BON && paid < total) {
-                Text(
-                    stringResource(Res.string.cash_short_hint),
-                    color = scheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
+            GlassChip(
+                text = stringResource(Res.string.tab_debt),
+                selected = method == PayMethod.BON,
+                onClick = { method = PayMethod.BON },
+            )
         }
-        Spacer(Modifier.height(14.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GlassButton(
-                text = stringResource(Res.string.action_close),
-                onClick = onDismiss,
-                container = scheme.onSurface.copy(alpha = 0.06f),
-                content = scheme.onSurface,
-                modifier = Modifier.weight(1f),
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .glassSurface(
+                    shape = RoundedCornerShape(16.dp),
+                    tint = scheme.surfaceContainerLow,
+                    alpha = 0.90f,
+                    elevation = 6.dp,
+                    specular = 0.18f,
+                    veil = false,
+                )
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                if (paid >= total) stringResource(Res.string.cash_change)
+                else stringResource(Res.string.cash_short),
+                color = scheme.onSurfaceVariant,
             )
-            GlassButton(
-                text = stringResource(Res.string.action_save),
-                onClick = { onConfirm(paid, method, customer) },
-                modifier = Modifier.weight(1f),
+            Text(
+                formatRupiah(if (paid >= total) paid - total else total - paid),
+                fontWeight = FontWeight.Bold,
+                color = scheme.onSurface,
+            )
+        }
+        if (method != PayMethod.BON && paid < total) {
+            Text(
+                stringResource(Res.string.cash_short_hint),
+                color = scheme.error,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }

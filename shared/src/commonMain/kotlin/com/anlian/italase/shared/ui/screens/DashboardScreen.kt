@@ -179,7 +179,7 @@ fun DashboardContent(
                 ) {
                     Spacer(Modifier.height(overlayTop + 4.dp))
                     DashboardShimmer(isLandscape = isLandscape)
-                    Spacer(Modifier.height(overlayBottom))
+                    Spacer(Modifier.height(overlayBottom + if (isLandscape) 14.dp else 0.dp))
                 }
             },
             content = {
@@ -289,7 +289,7 @@ fun DashboardContent(
                         }
                     }
                 }
-                Spacer(Modifier.height(overlayBottom))
+                Spacer(Modifier.height(overlayBottom + 14.dp))
             }
         } else {
             // Tata letak Portrait: Original

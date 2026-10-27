@@ -1,0 +1,115 @@
+# ==============================================================================
+# iTalase Android Baseline Profile (AUD-14 / CARD-14)
+# Optimizes Cold App Launch, Dashboard, and Cashier startup paths for ART runtime.
+# ==============================================================================
+
+# Core Application & Activity
+Lcom/anlian/italase/ITalaseApplication;
+HSPLcom/anlian/italase/ITalaseApplication;-><init>()V
+HSPLcom/anlian/italase/ITalaseApplication;->onCreate()V
+Lcom/anlian/italase/MainActivity;
+HSPLcom/anlian/italase/MainActivity;-><init>()V
+HSPLcom/anlian/italase/MainActivity;->onCreate(Landroid/os/Bundle;)V
+
+# Dependency Injection & Koin Graph
+Lcom/anlian/italase/shared/di/AndroidAppContext;
+Lcom/anlian/italase/shared/di/AndroidAppContextKt;
+Lcom/anlian/italase/shared/di/ITalaseApp;
+Lcom/anlian/italase/shared/di/ITalaseAppKt;
+Lcom/anlian/italase/shared/di/PlatformModule;
+Lcom/anlian/italase/shared/di/SharedModule;
+Lcom/anlian/italase/shared/di/ComAnlianItalaseSharedDiPlatformModuleModuleKt;
+Lcom/anlian/italase/shared/di/ComAnlianItalaseSharedDiSharedModuleModuleKt;
+
+# SQLite & Encrypted Room Database Layer
+Lcom/anlian/italase/shared/data/local/ITalaseDatabase;
+Lcom/anlian/italase/shared/data/local/ITalaseDatabase_Impl;
+Lcom/anlian/italase/shared/data/local/ITalaseDatabaseKt;
+Lcom/anlian/italase/shared/data/local/Database_androidKt;
+Lcom/anlian/italase/shared/data/local/DbEncryptionKt;
+Lcom/anlian/italase/shared/data/local/DbKey;
+Lcom/anlian/italase/shared/data/local/DbKey_androidKt;
+Lcom/anlian/italase/shared/data/local/DbKeyKt;
+Lcom/anlian/italase/shared/data/local/DbFiles;
+Lcom/anlian/italase/shared/data/local/Tables;
+
+# DAOs
+Lcom/anlian/italase/shared/data/local/dao/ProductDao;
+Lcom/anlian/italase/shared/data/local/dao/ProductDao_Impl;
+Lcom/anlian/italase/shared/data/local/dao/SaleDao;
+Lcom/anlian/italase/shared/data/local/dao/SaleDao_Impl;
+Lcom/anlian/italase/shared/data/local/dao/DebtDao;
+Lcom/anlian/italase/shared/data/local/dao/DebtDao_Impl;
+Lcom/anlian/italase/shared/data/local/dao/ExpenseDao;
+Lcom/anlian/italase/shared/data/local/dao/ExpenseDao_Impl;
+Lcom/anlian/italase/shared/data/local/dao/TopRow;
+
+# Entities & Domain Models
+Lcom/anlian/italase/shared/data/local/entity/ProductEntity;
+Lcom/anlian/italase/shared/data/local/entity/SaleEntity;
+Lcom/anlian/italase/shared/data/local/entity/SaleItemEntity;
+Lcom/anlian/italase/shared/data/local/entity/DebtEntity;
+Lcom/anlian/italase/shared/data/local/entity/DebtPaymentEntity;
+Lcom/anlian/italase/shared/data/local/entity/ExpenseEntity;
+Lcom/anlian/italase/shared/data/local/entity/TxnStatus;
+Lcom/anlian/italase/shared/data/local/entity/PayMethod;
+Lcom/anlian/italase/shared/data/local/entity/DebtStatus;
+Lcom/anlian/italase/shared/data/ProductCategories;
+Lcom/anlian/italase/shared/data/ShopDefaults;
+Lcom/anlian/italase/shared/data/StockRules;
+
+# Repository Layer
+Lcom/anlian/italase/shared/data/repository/ShopRepository;
+Lcom/anlian/italase/shared/data/repository/DaySummary;
+Lcom/anlian/italase/shared/data/repository/CartLine;
+Lcom/anlian/italase/shared/data/repository/ErrorCode;
+Lcom/anlian/italase/shared/data/repository/ShopException;
+
+# ViewModels & UI States (Dashboard, Kasir, Stok, Bon, History, Pengeluaran)
+Lcom/anlian/italase/shared/ui/state/DashboardViewModel;
+Lcom/anlian/italase/shared/ui/state/CashierViewModel;
+Lcom/anlian/italase/shared/ui/state/ProductViewModel;
+Lcom/anlian/italase/shared/ui/state/HistoryViewModel;
+Lcom/anlian/italase/shared/ui/state/DebtViewModel;
+Lcom/anlian/italase/shared/ui/state/ExpenseViewModel;
+Lcom/anlian/italase/shared/ui/state/UiMessage;
+Lcom/anlian/italase/shared/ui/state/ShopViewModelsKt;
+
+# App Root & Navigation
+Lcom/anlian/italase/shared/AppKt;
+Lcom/anlian/italase/shared/ui/navigation/AppNavHostKt;
+Lcom/anlian/italase/shared/ui/navigation/Routes;
+Lcom/anlian/italase/shared/ui/navigation/Tab;
+Lcom/anlian/italase/shared/ui/navigation/TopBarState;
+Lcom/anlian/italase/shared/ui/navigation/BackHandlingKt;
+Lcom/anlian/italase/shared/ui/navigation/NestedScrollKt;
+
+# Screens
+Lcom/anlian/italase/shared/ui/screens/DashboardScreenKt;
+Lcom/anlian/italase/shared/ui/screens/CashierScreenKt;
+Lcom/anlian/italase/shared/ui/screens/ProductScreenKt;
+Lcom/anlian/italase/shared/ui/screens/HistoryScreenKt;
+Lcom/anlian/italase/shared/ui/screens/DebtScreenKt;
+Lcom/anlian/italase/shared/ui/screens/ExpenseScreenKt;
+Lcom/anlian/italase/shared/ui/screens/MoreScreenKt;
+Lcom/anlian/italase/shared/ui/screens/SaleDetailScreenKt;
+
+# Warung Liquid Glass Design System Components & Theme
+Lcom/anlian/italase/shared/ui/components/CommonKt;
+Lcom/anlian/italase/shared/ui/components/AppIcon;
+Lcom/anlian/italase/shared/ui/components/AppIconKt;
+Lcom/anlian/italase/shared/ui/components/AppLogoKt;
+Lcom/anlian/italase/shared/ui/components/Field;
+Lcom/anlian/italase/shared/ui/components/GlassDialogBackdrop;
+Lcom/anlian/italase/shared/ui/components/DateRangePickerKt;
+Lcom/anlian/italase/shared/ui/theme/ThemeKt;
+Lcom/anlian/italase/shared/ui/theme/BackgroundKt;
+
+# Utilities & Formatting
+Lcom/anlian/italase/shared/util/FormatKt;
+Lcom/anlian/italase/shared/util/TimeKt;
+Lcom/anlian/italase/shared/util/PagingKt;
+Lcom/anlian/italase/shared/util/ProductList;
+
+# Package Wildcards for Automated AGP R8 Optimization
+Lcom/anlian/italase/**;

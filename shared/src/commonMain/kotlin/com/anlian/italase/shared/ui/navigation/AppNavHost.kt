@@ -19,6 +19,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -398,6 +399,8 @@ fun AppNavHost(
                 val endSystem = WindowInsets.systemBars.asPaddingValues().calculateEndPadding(layoutDir)
                 val contentEndPadding = if (useNavRail) maxOf(endCutout, endNav, endSystem) else 0.dp
 
+                val contentBottomPadding = if (useNavRail) maxOf(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(), 10.dp) + 6.dp else 0.dp
+
                 // Overlay: full-bleed content behind the status bar + translucent top bar on top.
                 // Only the bottom bar reserves layout space; top offset is handled per-screen
                 // as scrollable content padding so lists slide underneath it.
@@ -405,7 +408,10 @@ fun AppNavHost(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .padding(end = contentEndPadding),
+                        .padding(
+                            end = contentEndPadding,
+                            bottom = contentBottomPadding,
+                        ),
                 ) {
                     val topBarContentHeight = if (isLandscape) 48.dp else TOP_BAR_CONTENT_HEIGHT
                     val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + topBarContentHeight
@@ -414,7 +420,7 @@ fun AppNavHost(
                     val barMargin = if (isLandscape) 6.dp else 12.dp
                     val bottomBarFootprint = navInset + barMargin + barHeight
                     val overlayBottom = if (useNavRail) {
-                        navInset + 12.dp
+                        maxOf(navInset, 16.dp) + 20.dp
                     } else {
                         bottomBarFootprint + 24.dp
                     }
@@ -680,12 +686,13 @@ fun AppNavHost(
                             // ditulis layar lewat TopBarInfoEffect, frost & interaksi dari scroll
                             // behavior milik destinasi aktif.
                             // Di mode adaptive layout (landscape / tablet), efek frost & collapse
-                            // HANYA berlaku untuk Beranda (Routes.HOME) karena di Beranda seluruh layout
-                            // scrollable dan melintas di bawah bar. Di layar lain (Kasir, Stok, Bon, Riwayat),
+                            // HANYA berlaku untuk Beranda (Routes.HOME) dan Lainnya (Routes.MORE)
+                            // karena di kedua layar tersebut seluruh layout scrollable dan melintas di bawah bar.
+                            // Di layar lain (Kasir, Stok, Bon, Riwayat, Pengeluaran),
                             // hanya daftar item internal yang bergulir di bawah search bar/filter tetap,
                             // sehingga top bar tetap di posisi rest (transparan & stabil).
                             val rawOffset = topBarState.behaviors[current]?.state?.contentOffset ?: 0f
-                            val frostOffset = if (isLandscape && current != Routes.HOME) 0f else rawOffset
+                            val frostOffset = if (isLandscape && current != Routes.HOME && current != Routes.MORE) 0f else rawOffset
                             PremiumTopBar(
                                 eyebrow = topBarState.eyebrow[current].orEmpty(),
                                 title = topBarState.title[current].orEmpty(),
@@ -754,8 +761,8 @@ private fun LiquidGlassNavRail(
         modifier = modifier
             .padding(
                 start = startInset + 10.dp,
-                top = statusTop + 6.dp,
-                bottom = navBottom + 6.dp,
+                top = statusTop + 8.dp,
+                bottom = maxOf(navBottom, 12.dp) + 14.dp,
                 end = 6.dp,
             )
             .width(72.dp)
@@ -771,7 +778,7 @@ private fun LiquidGlassNavRail(
                     elevation = 20.dp,
                     specular = 0.55f,
                 )
-                .padding(vertical = 8.dp, horizontal = 4.dp),
+                .padding(vertical = 12.dp, horizontal = 4.dp),
             contentAlignment = Alignment.Center,
         ) {
             Column(
@@ -1114,31 +1121,45 @@ private fun PremiumTopBar(
     )
 
     // Padding vertikal dinamis:
-    // Di landscape: saat rest (4dp top, 6dp bottom), saat scrolled (2dp top, 3dp bottom)
+    // Di landscape: saat rest (4dp top, 8dp bottom), saat scrolled (2dp top, 5dp bottom)
     val topPad = if (isLandscape) (4.dp * (1f - landscapeCollapse * 0.5f)) else 10.dp
-    val bottomPad = if (isLandscape) (6.dp * (1f - landscapeCollapse * 0.5f)) else 14.dp
+    val bottomPad = if (isLandscape) (8.dp * (1f - landscapeCollapse * 0.4f)) else 14.dp
 
     // Bayangan halus saat docked agar bar terangkat elegan di atas konten yang bergulir
-    val shadowElevation = if (isLandscape) 3.dp * glass else 6.dp * glass
-    val shadowAmbient = if (isLandscape) 0.04f * glass else 0.06f * glass
-    val shadowSpot = if (isLandscape) 0.08f * glass else 0.12f * glass
+    val shadowElevation = if (isLandscape) 4.dp * glass else 6.dp * glass
+    val shadowAmbient = if (isLandscape) 0.05f * glass else 0.06f * glass
+    val shadowSpot = if (isLandscape) 0.10f * glass else 0.12f * glass
 
     // Latar frosted glass yang kedap:
     // Menggunakan alpha tinggi (0.97f terang / 0.94f gelap) saat docked penuh agar
     // kartu dan teks tebal yang lewat di bawahnya terlindung total tanpa tabrakan teks.
     val glassBgAlpha = if (isDark) 0.94f * glass else 0.97f * glass
 
+    val topBarShape = if (isLandscape) {
+        RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+    } else {
+        RectangleShape
+    }
+
     Box(
         Modifier
             .fillMaxWidth()
             .then(
                 if (glass > 0.01f) {
-                    Modifier.shadow(
-                        elevation = shadowElevation,
-                        shape = RectangleShape,
-                        ambientColor = scheme.onSurface.copy(alpha = shadowAmbient),
-                        spotColor = scheme.onSurface.copy(alpha = shadowSpot),
-                    )
+                    Modifier
+                        .then(
+                            if (isLandscape) {
+                                Modifier.padding(start = 4.dp, end = 8.dp)
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .shadow(
+                            elevation = shadowElevation,
+                            shape = topBarShape,
+                            ambientColor = scheme.onSurface.copy(alpha = shadowAmbient),
+                            spotColor = scheme.onSurface.copy(alpha = shadowSpot),
+                        )
                 } else {
                     Modifier
                 },
@@ -1149,6 +1170,14 @@ private fun PremiumTopBar(
             Box(
                 Modifier
                     .matchParentSize()
+                    .then(
+                        if (isLandscape) {
+                            Modifier.padding(start = 4.dp, end = 8.dp)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .clip(topBarShape)
                     .background(
                         Brush.verticalGradient(
                             listOf(
@@ -1156,32 +1185,43 @@ private fun PremiumTopBar(
                                 surface.copy(alpha = glassBgAlpha * 0.98f),
                             ),
                         ),
+                    )
+                    .border(
+                        width = if (isLandscape) 1.dp else 0.5.dp,
+                        color = if (isDark) {
+                            Color.White.copy(alpha = 0.15f * glass)
+                        } else {
+                            scheme.outlineVariant.copy(alpha = 0.40f * glass)
+                        },
+                        shape = topBarShape,
                     ),
             )
-            // Rim specular Apple Liquid Glass: pantulan cahaya tipis 1px di bibir bawah bar
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.25f * glass),
-                                Color.White.copy(alpha = 0.60f * glass),
-                                Color.White.copy(alpha = 0.25f * glass),
+            if (!isLandscape) {
+                // Rim specular Apple Liquid Glass: pantulan cahaya tipis 1px di bibir bawah bar (portrait mode)
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.25f * glass),
+                                    Color.White.copy(alpha = 0.60f * glass),
+                                    Color.White.copy(alpha = 0.25f * glass),
+                                ),
                             ),
                         ),
-                    ),
-            )
-            // Garis pembatas tipis 0.5dp untuk kontras pemisah konten
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(0.5.dp)
-                    .background(scheme.onSurface.copy(alpha = 0.08f * glass)),
-            )
+                )
+                // Garis pembatas tipis 0.5dp untuk kontras pemisah konten
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .background(scheme.onSurface.copy(alpha = 0.08f * glass)),
+                )
+            }
         }
 
         Row(

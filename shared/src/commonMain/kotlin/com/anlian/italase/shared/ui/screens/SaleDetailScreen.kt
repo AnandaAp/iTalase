@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.anlian.italase.shared.ui.components.GlassButton
 import com.anlian.italase.shared.ui.components.GlassDialog
+import com.anlian.italase.shared.ui.components.GlassFormDialog
 import com.anlian.italase.shared.ui.components.GlassTextField
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -406,13 +407,11 @@ fun SaleEditDialog(
     val tendered = parseRupiah(tenderedText)
     val scheme = MaterialTheme.colorScheme
 
-    GlassDialog(onDismiss = onDismiss) {
-        Text(
-            stringResource(Res.string.detail_edit_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = scheme.onSurface,
-        )
+    GlassFormDialog(
+        title = stringResource(Res.string.detail_edit_title),
+        onDismiss = onDismiss,
+        onConfirm = { onSave(customer, note, method, tendered) },
+    ) {
         if (total > 0) {
             Text(
                 stringResource(Res.string.detail_total) + ": " + formatRupiah(total),
@@ -421,111 +420,87 @@ fun SaleEditDialog(
                 fontWeight = FontWeight.SemiBold,
             )
         }
-        Spacer(Modifier.height(14.dp))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            GlassTextField(
-                value = customer,
-                onValueChange = { customer = it },
-                label = stringResource(Res.string.debt_name),
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Next,
-                ),
-            )
+        GlassTextField(
+            value = customer,
+            onValueChange = { customer = it },
+            label = stringResource(Res.string.debt_name),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Next,
+            ),
+        )
 
-            GlassTextField(
-                value = tenderedText,
-                onValueChange = { input ->
-                    val digits = input.filter { it.isDigit() }
-                    if (digits.length <= 15) {
-                        tenderedText = digits
-                    }
-                },
-                label = stringResource(Res.string.cash_paid),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Next,
-                ),
+        GlassTextField(
+            value = tenderedText,
+            onValueChange = { input ->
+                val digits = input.filter { it.isDigit() }
+                if (digits.length <= 15) {
+                    tenderedText = digits
+                }
+            },
+            label = stringResource(Res.string.cash_paid),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Next,
+            ),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GlassChip(
+                text = stringResource(Res.string.cash_m_cash),
+                selected = method == PayMethod.TUNAI,
+                onClick = { method = PayMethod.TUNAI },
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GlassChip(
-                    text = stringResource(Res.string.cash_m_cash),
-                    selected = method == PayMethod.TUNAI,
-                    onClick = { method = PayMethod.TUNAI },
-                )
-                GlassChip(
-                    text = stringResource(Res.string.cash_m_transfer),
-                    selected = method == PayMethod.TRANSFER,
-                    onClick = { method = PayMethod.TRANSFER },
-                )
-                GlassChip(
-                    text = stringResource(Res.string.tab_debt),
-                    selected = method == PayMethod.BON,
-                    onClick = { method = PayMethod.BON },
-                )
-            }
-            if (total > 0) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .glassSurface(
-                            shape = RoundedCornerShape(16.dp),
-                            tint = scheme.surfaceContainerLow,
-                            alpha = 0.90f,
-                            elevation = 6.dp,
-                            specular = 0.18f,
-                            veil = false,
-                        )
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        if (tendered >= total) stringResource(Res.string.cash_change)
-                        else stringResource(Res.string.cash_short),
-                        color = scheme.onSurfaceVariant,
-                    )
-                    Text(
-                        formatRupiah(if (tendered >= total) tendered - total else total - tendered),
-                        fontWeight = FontWeight.Bold,
-                        color = scheme.onSurface,
-                    )
-                }
-                if (method != PayMethod.BON && tendered < total) {
-                    Text(
-                        stringResource(Res.string.cash_short_hint),
-                        color = scheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-            GlassTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = stringResource(Res.string.debt_note),
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Done,
-                ),
+            GlassChip(
+                text = stringResource(Res.string.cash_m_transfer),
+                selected = method == PayMethod.TRANSFER,
+                onClick = { method = PayMethod.TRANSFER },
+            )
+            GlassChip(
+                text = stringResource(Res.string.tab_debt),
+                selected = method == PayMethod.BON,
+                onClick = { method = PayMethod.BON },
             )
         }
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GlassButton(
-                text = stringResource(Res.string.action_cancel),
-                onClick = onDismiss,
-                container = scheme.onSurface.copy(alpha = 0.08f),
-                content = scheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            GlassButton(
-                text = stringResource(Res.string.action_save),
-                onClick = { onSave(customer, note, method, tendered) },
-                modifier = Modifier.weight(1f),
-            )
+        if (total > 0) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .glassSurface(
+                        shape = RoundedCornerShape(16.dp),
+                        tint = scheme.surfaceContainerLow,
+                        alpha = 0.90f,
+                        elevation = 6.dp,
+                        specular = 0.18f,
+                        veil = false,
+                    )
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    if (tendered >= total) stringResource(Res.string.cash_change)
+                    else stringResource(Res.string.cash_short),
+                    color = scheme.onSurfaceVariant,
+                )
+                Text(
+                    formatRupiah(if (tendered >= total) tendered - total else total - tendered),
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onSurface,
+                )
+            }
+            if (method != PayMethod.BON && tendered < total) {
+                Text(
+                    stringResource(Res.string.cash_short_hint),
+                    color = scheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
+        GlassTextField(
+            value = note,
+            onValueChange = { note = it },
+            label = stringResource(Res.string.debt_note),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Done,
+            ),
+        )
     }
 }

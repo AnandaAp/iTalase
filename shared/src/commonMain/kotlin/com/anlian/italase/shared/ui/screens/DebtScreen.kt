@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.anlian.italase.shared.ui.components.GlassDialog
+import com.anlian.italase.shared.ui.components.GlassFormDialog
 import com.anlian.italase.shared.ui.components.GlassTextField
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -401,55 +402,28 @@ fun DebtFormDialog(onDismiss: () -> Unit, onSave: (String, Long, String) -> Unit
     var name by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
-    val scheme = MaterialTheme.colorScheme
 
-    GlassDialog(onDismiss = onDismiss) {
-        Text(
-            stringResource(Res.string.debt_form),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = scheme.onSurface,
+    GlassFormDialog(
+        title = stringResource(Res.string.debt_form),
+        onDismiss = onDismiss,
+        onConfirm = { onSave(name, parseRupiah(amount), note) },
+        confirmEnabled = name.isNotBlank() && amount.isNotBlank(),
+    ) {
+        GlassTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = stringResource(Res.string.debt_name),
         )
-        Spacer(Modifier.height(14.dp))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            GlassTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = stringResource(Res.string.debt_name),
-            )
-            GlassTextField(
-                value = amount,
-                onValueChange = { amount = it },
-                label = stringResource(Res.string.debt_amount),
-            )
-            GlassTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = stringResource(Res.string.debt_note),
-            )
-        }
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GlassButton(
-                text = stringResource(Res.string.action_cancel),
-                onClick = onDismiss,
-                container = scheme.onSurface.copy(alpha = 0.08f),
-                content = scheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            GlassButton(
-                text = stringResource(Res.string.action_save),
-                onClick = { onSave(name, parseRupiah(amount), note) },
-                enabled = name.isNotBlank() && amount.isNotBlank(),
-                modifier = Modifier.weight(1f),
-            )
-        }
+        GlassTextField(
+            value = amount,
+            onValueChange = { amount = it },
+            label = stringResource(Res.string.debt_amount),
+        )
+        GlassTextField(
+            value = note,
+            onValueChange = { note = it },
+            label = stringResource(Res.string.debt_note),
+        )
     }
 }
 
@@ -459,36 +433,17 @@ fun DebtFormDialog(onDismiss: () -> Unit, onSave: (String, Long, String) -> Unit
 @Composable
 fun PayDebtDialog(onDismiss: () -> Unit, onSave: (Long) -> Unit) {
     var amount by remember { mutableStateOf("") }
-    val scheme = MaterialTheme.colorScheme
 
-    GlassDialog(onDismiss = onDismiss) {
-        Text(
-            stringResource(Res.string.debt_pay_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = scheme.onSurface,
-        )
-        Spacer(Modifier.height(14.dp))
+    GlassFormDialog(
+        title = stringResource(Res.string.debt_pay_title),
+        onDismiss = onDismiss,
+        onConfirm = { onSave(parseRupiah(amount)) },
+        confirmEnabled = amount.isNotBlank(),
+    ) {
         GlassTextField(
             value = amount,
             onValueChange = { amount = it },
             label = stringResource(Res.string.debt_pay_amount),
         )
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GlassButton(
-                text = stringResource(Res.string.action_cancel),
-                onClick = onDismiss,
-                container = scheme.onSurface.copy(alpha = 0.08f),
-                content = scheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            GlassButton(
-                text = stringResource(Res.string.action_save),
-                onClick = { onSave(parseRupiah(amount)) },
-                enabled = amount.isNotBlank(),
-                modifier = Modifier.weight(1f),
-            )
-        }
     }
 }

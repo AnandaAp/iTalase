@@ -2,6 +2,8 @@ package com.anlian.italase.shared
 
 import androidx.compose.ui.window.ComposeUIViewController
 import com.anlian.italase.shared.di.initKoin
+import org.koin.core.annotation.KoinViewModelScopeApi
+import org.koin.core.option.viewModelScopeFactory
 import platform.UIKit.UIViewController
 
 /**
@@ -11,6 +13,9 @@ import platform.UIKit.UIViewController
  * Koin di-init di `configure` — callback itu jalan sebelum komposisi pertama,
  * jadi ViewModel sudah bisa di-resolve saat layar pertama dirender.
  */
+@OptIn(KoinViewModelScopeApi::class)
 fun MainViewController(): UIViewController = ComposeUIViewController(
-    configure = { initKoin() },
+    configure = { initKoin {
+        options(viewModelScopeFactory())
+    } },
 ) { App() }
