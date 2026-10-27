@@ -30,6 +30,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,6 +43,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -343,6 +350,7 @@ fun AppNavHost(
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
+        val useNavRail = isLandscape || maxWidth >= 600.dp
         Scaffold(
             // Backdrop blur: Modifier.blur memburam SELURUH subtree Scaffold, yaitu
             // konten app di belakang dialog. Dialog-nya sendiri adalah jendela
@@ -374,24 +382,47 @@ fun AppNavHost(
             // sibling supaya konten bisa menggulir menembusnya.
             bottomBar = {},
         ) {
-            // Overlay: full-bleed content behind the status bar + translucent top bar on top.
-            // Only the bottom bar reserves layout space; top offset is handled per-screen
-            // as scrollable content padding so lists slide underneath it.
-            Box(Modifier.fillMaxSize()) {
-                val topBarContentHeight = if (isLandscape) 52.dp else TOP_BAR_CONTENT_HEIGHT
-                val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + topBarContentHeight
-                val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                val barHeight = if (isLandscape) 48.dp else 64.dp
-                val barMargin = if (isLandscape) 6.dp else 12.dp
-                val bottomBarFootprint = navInset + barMargin + barHeight
-                val overlayBottom = bottomBarFootprint + (if (isLandscape) 12.dp else 24.dp)
-                // Behavior scroll diberikan per-destinasi lewat ScreenScope, bukan di sini.
-                CompositionLocalProvider(
-                    LocalTopOverlayPadding provides overlayTop,
-                    LocalBottomOverlayPadding provides overlayBottom,
-                    LocalTopBarState provides topBarState,
+            Row(Modifier.fillMaxSize()) {
+                if (useNavRail) {
+                    LiquidGlassNavRail(
+                        current = current,
+                        onSelect = goToTab,
+                    )
+                }
+
+                val layoutDir = LocalLayoutDirection.current
+                val endCutout = WindowInsets.displayCutout.asPaddingValues().calculateEndPadding(layoutDir)
+                val endNav = WindowInsets.navigationBars.asPaddingValues().calculateEndPadding(layoutDir)
+                val endSystem = WindowInsets.systemBars.asPaddingValues().calculateEndPadding(layoutDir)
+                val contentEndPadding = if (useNavRail) maxOf(endCutout, endNav, endSystem) else 0.dp
+
+                // Overlay: full-bleed content behind the status bar + translucent top bar on top.
+                // Only the bottom bar reserves layout space; top offset is handled per-screen
+                // as scrollable content padding so lists slide underneath it.
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(end = contentEndPadding),
                 ) {
-                    NavHost(
+                    val topBarContentHeight = if (isLandscape) 52.dp else TOP_BAR_CONTENT_HEIGHT
+                    val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + topBarContentHeight
+                    val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    val barHeight = if (isLandscape) 48.dp else 64.dp
+                    val barMargin = if (isLandscape) 6.dp else 12.dp
+                    val bottomBarFootprint = navInset + barMargin + barHeight
+                    val overlayBottom = if (useNavRail) {
+                        navInset + 12.dp
+                    } else {
+                        bottomBarFootprint + 24.dp
+                    }
+                    // Behavior scroll diberikan per-destinasi lewat ScreenScope, bukan di sini.
+                    CompositionLocalProvider(
+                        LocalTopOverlayPadding provides overlayTop,
+                        LocalBottomOverlayPadding provides overlayBottom,
+                        LocalTopBarState provides topBarState,
+                    ) {
+                        NavHost(
                         navController = navController,
                         startDestination = startRoute,
                         modifier = modifier.fillMaxSize(),
@@ -656,20 +687,22 @@ fun AppNavHost(
                                 isLandscape = isLandscape,
                             )
                         }
+                    }
+                }
             }
-        }
         // Tab bar sebagai overlay SIBLING — dirender setelah NavHost, di atasnya.
-        // Karena Scaffold.bottomBar dikosongkan, konten sekarang bisa menggulir
-        // menembus bar. Bar tetap mengambang di bagian bawah layar.
-        LiquidGlassTabBar(
-            current = current,
-            onSelect = goToTab,
-            isLandscape = isLandscape,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .widthIn(max = 560.dp),
-        )
-    }  // Box(Modifier.fillMaxSize())
+        // HANYA jika tidak memakai Navigation Rail (yaitu mode ponsel portrait).
+        if (!useNavRail) {
+            LiquidGlassTabBar(
+                current = current,
+                onSelect = goToTab,
+                isLandscape = isLandscape,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .widthIn(max = 560.dp),
+            )
+        }
+    }
     ExitOnBackFromTab(
         currentRoute = current,
         visible = confirmExit,
@@ -684,6 +717,139 @@ fun AppNavHost(
 
 /** Lama pesan sekali-jalan (hasil ekspor) tampil sebelum dibersihkan otomatis. */
 private const val MESSAGE_VISIBLE_MILLIS = 2_500L
+
+// ════════════════════════════════════════════════════════════════════════
+//  LIQUID GLASS NAVIGATION RAIL (ADAPTIVE: LANDSCAPE & TABLETS)
+// ════════════════════════════════════════════════════════════════════════
+/**
+ * Adaptive Liquid Glass Navigation Rail untuk landscape, foldable (Duo), dan tablet.
+ * Menggantikan bottom tab bar agar ruang vertikal layar yang terbatas (terutama di landscape HP)
+ * tidak terhalang atau terpotong oleh tab bar horizontal dan gradient scrim-nya.
+ */
+@Composable
+private fun LiquidGlassNavRail(
+    current: String?,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val isDark = scheme.surface.luminance() < 0.5f
+    val layoutDir = LocalLayoutDirection.current
+    val cutoutStart = WindowInsets.displayCutout.asPaddingValues().calculateStartPadding(layoutDir)
+    val navStart = WindowInsets.navigationBars.asPaddingValues().calculateStartPadding(layoutDir)
+    val systemStart = WindowInsets.systemBars.asPaddingValues().calculateStartPadding(layoutDir)
+    val startInset = maxOf(cutoutStart, navStart, systemStart)
+    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    Box(
+        modifier = modifier
+            .padding(
+                start = startInset + 10.dp,
+                top = statusTop + 6.dp,
+                bottom = navBottom + 6.dp,
+                end = 6.dp,
+            )
+            .width(72.dp)
+            .fillMaxHeight(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glassSurface(
+                    shape = RoundedCornerShape(24.dp),
+                    alpha = if (isDark) 0.82f else 0.88f,
+                    elevation = 20.dp,
+                    specular = 0.55f,
+                )
+                .padding(vertical = 8.dp, horizontal = 4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                modifier = Modifier.fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceEvenly,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                TABS.forEach { t ->
+                    GlassNavRailItem(
+                        tab = t,
+                        selected = current == t.route,
+                        isDark = isDark,
+                        onClick = { onSelect(t.route) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Item navigasi tunggal di dalam [LiquidGlassNavRail].
+ * Dilengkapi dengan press-scale fisika fluida Apple (0.92f) dan indikator pill kaca saat aktif.
+ */
+@Composable
+private fun GlassNavRailItem(
+    tab: Tab,
+    selected: Boolean,
+    isDark: Boolean,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val label = stringResource(tab.label)
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(interaction, indication = null) { onClick() }
+            .graphicsLayer {
+                val s = if (pressed) 0.92f else 1f
+                scaleX = s
+                scaleY = s
+            }
+            .padding(vertical = 4.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier
+                .size(width = 48.dp, height = 30.dp)
+                .then(
+                    if (selected) {
+                        Modifier.glassSurface(
+                            shape = CircleShape,
+                            tint = scheme.primaryContainer,
+                            alpha = 0.95f,
+                            elevation = 8.dp,
+                            specular = 0.45f,
+                            veil = true,
+                        )
+                    } else {
+                        Modifier
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                tab.icon.painter(),
+                contentDescription = label,
+                tint = if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.height(3.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
 
 // ════════════════════════════════════════════════════════════════════════
 //  LIQUID GLASS TAB BAR

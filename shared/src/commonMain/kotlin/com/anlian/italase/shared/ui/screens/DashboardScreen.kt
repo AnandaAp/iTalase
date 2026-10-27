@@ -159,7 +159,7 @@ fun DashboardContent(
     )
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val isLandscape = maxWidth > maxHeight && maxWidth >= 540.dp
+        val isLandscape = (maxWidth > maxHeight && maxWidth >= 540.dp) || maxWidth >= 600.dp
 
         ShimmerCrossfade(
             loading = isLoading,

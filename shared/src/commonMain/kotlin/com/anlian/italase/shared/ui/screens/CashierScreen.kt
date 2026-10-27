@@ -215,7 +215,7 @@ fun CashierContent(
     )
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val isLandscape = maxWidth > maxHeight && maxWidth >= 540.dp
+        val isLandscape = (maxWidth > maxHeight && maxWidth >= 540.dp) || maxWidth >= 600.dp
 
         if (isLandscape) {
             // Tata letak Landscape POS: Split screen Master-Detail

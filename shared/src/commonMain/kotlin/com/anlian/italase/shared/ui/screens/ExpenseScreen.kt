@@ -140,7 +140,7 @@ fun ExpenseContent(
     onLoadMore: () -> Unit = {},
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val isLandscape = maxWidth > maxHeight && maxWidth >= 540.dp
+        val isLandscape = (maxWidth > maxHeight && maxWidth >= 540.dp) || maxWidth >= 600.dp
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
         val appeared = rememberAppear(!isLoading)
