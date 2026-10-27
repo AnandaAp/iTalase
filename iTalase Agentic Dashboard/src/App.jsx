@@ -2,16 +2,17 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import ReactDOM from 'react-dom';
 
 const CATEGORY_COLORS = {
-  arch: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
-  security: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-  size: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  perf: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-  test: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+  arch: 'bg-sky-500/20 text-sky-300 border border-sky-500/35',
+  security: 'bg-rose-500/20 text-rose-300 border border-rose-500/35',
+  size: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/35',
+  perf: 'bg-amber-500/20 text-amber-300 border border-amber-500/35',
+  test: 'bg-purple-500/20 text-purple-300 border border-purple-500/35',
 };
 
-const COL_ORDER = ['backlog', 'inProgress', 'verified', 'recommendations'];
+// User UX Flow: Recommendations on LEFT of Backlog
+export const COL_ORDER = ['recommendations', 'backlog', 'inProgress', 'verified'];
 
-// Dynamic endpoint helper: uses relative paths for VS Code DevTunnels/port-forwarding and localhost
+// Dynamic endpoint helper
 const getApiUrl = (endpoint) => {
   if (typeof window !== 'undefined' && window.location.protocol.startsWith('http')) {
     return endpoint;
@@ -80,8 +81,8 @@ export function formatTimeInfo(timestampStr) {
   };
 }
 
-// Interactive Portal-Based Tooltip for Timestamps (Immune to table overflow-x clipping and window edge cutoff)
-export function TimeHoverCell({ timestamp, label = "Timestamp Eksekusi Tool" }) {
+// Interactive Portal-Based Tooltip for Timestamps (Immune to clipping)
+export function TimeHoverCell({ timestamp, label = "Timestamp Eksekusi Tool", isDarkHero = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState({ x: 0, y: 0, placement: 'bottom', triggerCenterX: 0 });
   const triggerRef = useRef(null);
@@ -136,17 +137,31 @@ export function TimeHoverCell({ timestamp, label = "Timestamp Eksekusi Tool" }) 
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/40 transition cursor-help group">
-        <svg className="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span className="text-[11px] font-mono text-slate-300 group-hover:text-emerald-300 font-medium">
-          {info.displayTime}
-        </span>
-        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/10 text-slate-400 group-hover:text-emerald-200">
-          {info.relative}
-        </span>
-      </div>
+      {isDarkHero ? (
+        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 transition cursor-help group backdrop-blur-md">
+          <svg className="w-3 h-3 text-emerald-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-[11px] font-mono text-white font-medium">
+            {info.displayTime}
+          </span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/20 text-white/90">
+            {info.relative}
+          </span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.06] hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/40 transition cursor-help group">
+          <svg className="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-[11px] font-mono text-slate-200 group-hover:text-emerald-300 font-semibold">
+            {info.displayTime}
+          </span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/10 text-slate-300 group-hover:text-emerald-200 border border-white/10">
+            {info.relative}
+          </span>
+        </div>
+      )}
 
       {isOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
         <div 
@@ -158,14 +173,14 @@ export function TimeHoverCell({ timestamp, label = "Timestamp Eksekusi Tool" }) 
             zIndex: 999999,
             pointerEvents: 'none'
           }}
-          className="p-4 rounded-2xl glass-card border border-emerald-500/50 shadow-2xl shadow-black/95 text-left animate-fadeIn"
+          className="p-4 rounded-2xl bg-[#09120D]/95 backdrop-blur-2xl border border-emerald-500/40 shadow-2xl shadow-black/80 text-left animate-fadeIn text-white"
         >
           <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2.5">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               <span className="text-xs font-bold text-white font-sans">{label}</span>
             </div>
-            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30 font-semibold">
+            <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40 font-bold">
               WIB (UTC+7)
             </span>
           </div>
@@ -173,7 +188,7 @@ export function TimeHoverCell({ timestamp, label = "Timestamp Eksekusi Tool" }) 
           <div className="space-y-2 text-[11px] font-mono">
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Waktu Lokal (WIB):</span>
-              <span className="font-bold text-emerald-300">{info.localFull}</span>
+              <span className="font-bold text-emerald-400">{info.localFull}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Waktu Server (UTC):</span>
@@ -181,23 +196,23 @@ export function TimeHoverCell({ timestamp, label = "Timestamp Eksekusi Tool" }) 
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Status Waktu:</span>
-              <span className="text-amber-300 font-semibold">{info.relative}</span>
+              <span className="text-amber-400 font-bold">{info.relative}</span>
             </div>
           </div>
 
-          <div className="mt-3 pt-2.5 border-t border-white/10 text-[10px] text-slate-400 leading-relaxed font-sans">
-            💡 <strong className="text-emerald-400">Bukan Limit Window:</strong> Jam di atas adalah waktu saat AI Agent mengeksekusi aksi/perintah (diurutkan kronologis dari terbaru ke terlama). Nilai waktu menyusut ke bawah karena tabel diurutkan dari aktivitas paling akhir.
+          <div className="mt-3 pt-2.5 border-t border-white/10 text-[10px] text-slate-300 leading-relaxed font-sans">
+            💡 <strong className="text-emerald-400">Bukan Limit Window:</strong> Jam di atas adalah waktu saat AI Agent mengeksekusi aksi/perintah (diurutkan kronologis dari terbaru ke terlama).
           </div>
 
           {coords.placement === 'bottom' ? (
             <div 
               style={{ left: `${arrowLeft}px` }}
-              className="absolute -top-1.5 w-3 h-3 bg-[#161B18] border-t border-l border-emerald-500/50 rotate-45"
+              className="absolute -top-1.5 w-3 h-3 bg-[#09120D] border-t border-l border-emerald-500/40 rotate-45"
             ></div>
           ) : (
             <div 
               style={{ left: `${arrowLeft}px` }}
-              className="absolute -bottom-1.5 w-3 h-3 bg-[#161B18] border-b border-r border-emerald-500/50 rotate-45"
+              className="absolute -bottom-1.5 w-3 h-3 bg-[#09120D] border-b border-r border-emerald-500/40 rotate-45"
             ></div>
           )}
         </div>,
@@ -208,16 +223,7 @@ export function TimeHoverCell({ timestamp, label = "Timestamp Eksekusi Tool" }) 
 }
 
 export default function App() {
-  try {
-    const keysToPurge = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && (k.includes('ITALASE') || k.includes('KANBAN') || k.includes('STATE'))) keysToPurge.push(k);
-    }
-    keysToPurge.forEach(k => localStorage.removeItem(k));
-  } catch(e) {}
-
-  const [state, setState] = useState(window.AUDIT_STATE || null);
+  const [state, setState] = useState(typeof window !== 'undefined' ? window.AUDIT_STATE || null : null);
   const [isLiveSync, setIsLiveSync] = useState(true);
   const [serverOnline, setServerOnline] = useState(typeof window !== 'undefined' && window.location.protocol.startsWith('http'));
   const [lastSyncTime, setLastSyncTime] = useState(new Date());
@@ -233,6 +239,17 @@ export default function App() {
 
   const cardPositionsRef = useRef({});
 
+  // Lock body scroll on modal
+  useEffect(() => {
+    if (selectedTask || isNewTaskOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [selectedTask, isNewTaskOpen]);
+
   const flashNotice = useCallback((msg) => {
     setStatusNotice(msg);
     setTimeout(() => setStatusNotice(''), 4500);
@@ -240,9 +257,10 @@ export default function App() {
 
   const applyFreshState = useCallback((freshData) => {
     if (!freshData || !freshData.kanban) return;
-    window.AUDIT_STATE = freshData;
+    if (typeof window !== 'undefined') {
+      window.AUDIT_STATE = freshData;
+    }
 
-    // Detect Card Movement Across Columns
     const newPositions = {};
     const newlyMoved = {};
     COL_ORDER.forEach(col => {
@@ -266,10 +284,10 @@ export default function App() {
       setRecentlyMoved(prev => ({ ...prev, ...newlyMoved }));
       const first = Object.values(newlyMoved)[0];
       const colTitles = {
+        recommendations: 'Rekomendasi AI',
         backlog: 'Backlog',
-        inProgress: 'In Progress',
-        verified: 'Verified & Tested',
-        recommendations: 'Recommendations'
+        inProgress: 'Sedang Dikerjakan',
+        verified: 'Teruji & Terverifikasi'
       };
       flashNotice(`🚀 "${first.card.title}" otomatis berpindah ke ${colTitles[first.toCol] || first.toCol}!`);
 
@@ -323,14 +341,12 @@ export default function App() {
       script.id = 'dynamicStatePoller';
       script.src = 'audit_state.js?t=' + Date.now();
       script.onload = () => {
-        if (window.AUDIT_STATE) {
+        if (typeof window !== 'undefined' && window.AUDIT_STATE) {
           applyFreshState(window.AUDIT_STATE);
         }
       };
       document.body.appendChild(script);
-    } catch (e) {
-      console.error('[iTalase Sync Error]', e);
-    }
+    } catch (e) {}
   }, [applyFreshState]);
 
   useEffect(() => {
@@ -345,7 +361,6 @@ export default function App() {
           setServerOnline(true);
         } catch (e) {}
       };
-      es.onerror = () => {};
     } catch (e) {}
 
     return () => {
@@ -368,7 +383,9 @@ export default function App() {
 
   const persistState = useCallback(async (updatedState) => {
     setState(updatedState);
-    window.AUDIT_STATE = updatedState;
+    if (typeof window !== 'undefined') {
+      window.AUDIT_STATE = updatedState;
+    }
 
     try {
       const res = await fetch(getApiUrl('/api/save-state'), {
@@ -430,7 +447,7 @@ export default function App() {
       keysToPurge.forEach(k => localStorage.removeItem(k));
     } catch (e) {}
     await syncFreshState();
-    flashNotice('↺ Synchronized with disk state (audit_state.js)!');
+    flashNotice('↺ Sinkronisasi dengan status disk (audit_state.js)!');
   };
 
   const handleDragStart = (e, key) => {
@@ -442,50 +459,51 @@ export default function App() {
   const handleDragOver = (e, colKey) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (dropTargetCol !== colKey) setDropTargetCol(colKey);
+    if (dropTargetCol !== colKey) {
+      setDropTargetCol(colKey);
+    }
   };
 
   const handleDrop = (e, targetColKey) => {
     e.preventDefault();
     setDropTargetCol(null);
     const cardKey = e.dataTransfer.getData('text/plain') || draggedCardKey;
-    if (!cardKey || !state || !state.kanban) return;
-
+    if (!cardKey) return;
     moveCardInState(cardKey, targetColKey);
     setDraggedCardKey(null);
   };
 
   const handleCreateTask = (newTask) => {
-    if (!state || !state.kanban) return;
-    const targetCol = newTask.column || 'backlog';
-    const newKanban = {
-      ...state.kanban,
-      [targetCol]: [newTask, ...(state.kanban[targetCol] || [])]
+    if (!state) return;
+    const targetCol = newTask.column || 'recommendations';
+    const updatedState = {
+      ...state,
+      kanban: {
+        ...state.kanban,
+        [targetCol]: [newTask, ...(state.kanban[targetCol] || [])]
+      }
     };
-    const updatedState = { ...state, kanban: newKanban };
     persistState(updatedState);
     setIsNewTaskOpen(false);
   };
 
   const filteredKanban = useMemo(() => {
-    if (!state || !state.kanban) return { backlog: [], inProgress: [], verified: [], recommendations: [] };
-
-    const filterFn = (card) => {
-      const matchesSearch = searchQuery.trim() === '' || 
-        card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        card.snippet.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        card.id.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesCat = selectedCategory === 'ALL' || card.category === selectedCategory.toLowerCase();
-      return matchesSearch && matchesCat;
-    };
-
-    return {
-      backlog: (state.kanban.backlog || []).filter(filterFn),
-      inProgress: (state.kanban.inProgress || []).filter(filterFn),
-      verified: (state.kanban.verified || []).filter(filterFn),
-      recommendations: (state.kanban.recommendations || []).filter(filterFn),
-    };
+    if (!state || !state.kanban) {
+      return { recommendations: [], backlog: [], inProgress: [], verified: [] };
+    }
+    const result = {};
+    COL_ORDER.forEach(col => {
+      result[col] = (state.kanban[col] || []).filter(card => {
+        const matchesSearch = !searchQuery || 
+          card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          card.snippet.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          card.id.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategory === 'ALL' || 
+          card.category.toUpperCase() === selectedCategory.toUpperCase();
+        return matchesSearch && matchesCategory;
+      });
+    });
+    return result;
   }, [state, searchQuery, selectedCategory]);
 
   const filteredPermissions = useMemo(() => {
@@ -498,39 +516,44 @@ export default function App() {
 
   if (!state) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-white font-mono">
-        Loading iTalase React Agentic Dashboard...
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-slate-400 font-mono text-sm">Memuat iTalase Agentic Dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Header */}
+      {/* Header Glass Navigation */}
       <header className="glass-card p-6 rounded-3xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-black text-2xl">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-800 flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white font-black text-2xl font-serif border border-white/25">
             iT
           </div>
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-bold tracking-tight text-white">iTalase Agentic Dashboard</h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-xs border border-emerald-500/30">React 19</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono text-xs border border-blue-500/30">Interactive</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-xs border border-emerald-500/30 font-bold">POS & Accounting</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono text-xs border border-amber-500/30 font-bold">Warung Liquid Glass</span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Kotlin Multiplatform POS & Accounting • Two-Way Persistence • Apple Fluid Motion
+            <p className="text-xs text-slate-400 mt-1 font-medium">
+              Kotlin Multiplatform POS & Accounting • Two-Way Persistence • Authentic Liquid Glassmorphism
             </p>
           </div>
         </div>
 
+        {/* Action Buttons & Status Indicators */}
         <div className="flex flex-wrap items-center gap-3">
           <div 
-            className={`flex items-center gap-2 px-3 py-2 rounded-2xl border text-xs font-mono transition ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-2xl border text-xs font-mono transition backdrop-blur-md ${
               serverOnline 
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
+                ? 'bg-emerald-500/20 border-emerald-500/35 text-emerald-300 font-bold' 
                 : 'bg-white/5 border-white/10 text-slate-400'
             }`}
+            title={serverOnline ? "Bridge server running on localhost:3300. Drag & Drop writes directly to audit_state.js on disk!" : "Standalone mode"}
           >
             <span className={`w-2 h-2 rounded-full ${serverOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></span>
             <span>{serverOnline ? 'Disk Server (Auto-save)' : 'Browser Storage'}</span>
@@ -538,10 +561,10 @@ export default function App() {
 
           <button
             onClick={() => setIsLiveSync(!isLiveSync)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border text-xs font-mono transition ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border text-xs font-mono font-medium transition backdrop-blur-md ${
               isLiveSync 
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20' 
-                : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25' 
+                : 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
             }`}
           >
             <span className={`w-2 h-2 rounded-full ${isLiveSync ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
@@ -550,114 +573,133 @@ export default function App() {
 
           <button
             onClick={() => setIsNewTaskOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition shadow-lg shadow-emerald-600/30"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs transition shadow-lg shadow-emerald-600/35 border border-emerald-400/30"
           >
-            Add Task
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Tambah Task
           </button>
 
           <button
             onClick={handleResetToDisk}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-mono transition"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-slate-300 text-xs font-mono transition backdrop-blur-md"
+            title="Discard browser localStorage overrides and reload disk state"
           >
             ↺ Reset
           </button>
         </div>
       </header>
 
+      {/* Status Toast Notice */}
       {statusNotice && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl shadow-emerald-600/40 text-xs font-bold font-mono animate-bounce flex items-center gap-2">
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600/90 backdrop-blur-xl text-white px-5 py-3 rounded-2xl shadow-2xl shadow-emerald-950/80 text-xs font-bold font-mono animate-bounce flex items-center gap-2 border border-emerald-400/40">
           <span>{statusNotice}</span>
         </div>
       )}
 
-      {/* Active Task Banner */}
-      <div className="glass-card p-5 rounded-3xl border-l-4 border-l-emerald-500 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
-              Current Autonomous Sprint
-            </span>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-              <span>Started:</span>
-              <TimeHoverCell timestamp={state.currentTask.startedAt} label="Waktu Mulai Sprint" align="left" />
-            </div>
-          </div>
-          <h2 className="text-base font-bold text-white">{state.currentTask.name}</h2>
-          <p className="text-xs text-slate-400 max-w-2xl">{state.currentTask.description}</p>
-        </div>
+      {/* Active Task Hero Card (Authentic Warung Liquid Glass OmzetHero) */}
+      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-[#124827]/90 via-[#0E3D20]/85 to-[#062412]/90 backdrop-blur-2xl border border-emerald-400/30 text-white shadow-2xl shadow-emerald-950/60 transition-all duration-300">
+        {/* Ambient concentric glowing orbs inside hero glass */}
+        <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-emerald-400/20 blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-8 -left-8 w-48 h-48 rounded-full bg-emerald-300/15 blur-2xl pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10 pointer-events-none"></div>
 
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-36 text-right">
-            <div className="text-xs font-mono font-bold text-emerald-400">{state.currentTask.progressPercent}%</div>
-            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-1">
-              <div 
-                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700"
-                style={{ width: `${state.currentTask.progressPercent}%` }}
-              ></div>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="flex items-center gap-1.5 text-[10px] uppercase font-black tracking-widest px-3 py-1 rounded-full bg-white/15 text-white backdrop-blur-md border border-white/20">
+                <svg className="w-3.5 h-3.5 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Current Autonomous Sprint
+              </span>
+              <div className="flex items-center gap-1.5 text-xs text-white/80 font-mono">
+                <span>Dimulai:</span>
+                <TimeHoverCell timestamp={state.currentTask.startedAt} label="Waktu Mulai Sprint" isDarkHero={true} />
+              </div>
             </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">{state.currentTask.name}</h2>
+            <p className="text-xs text-white/85 max-w-2xl leading-relaxed font-normal">{state.currentTask.description}</p>
           </div>
-          <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-medium border border-emerald-500/30">
-            {state.currentTask.status}
-          </span>
+
+          <div className="flex items-center gap-4 shrink-0 bg-white/10 p-3.5 rounded-2xl backdrop-blur-xl border border-white/20 shadow-lg">
+            <div className="w-36 text-right">
+              <div className="text-xs font-mono font-black text-white">{state.currentTask.progressPercent}%</div>
+              <div className="w-full bg-black/40 h-2.5 rounded-full overflow-hidden mt-1 p-0.5 border border-white/10">
+                <div 
+                  className="bg-gradient-to-r from-emerald-400 to-white h-full rounded-full transition-all duration-700 shadow-md shadow-emerald-400/50"
+                  style={{ width: `${state.currentTask.progressPercent}%` }}
+                ></div>
+              </div>
+            </div>
+            <span className="px-3.5 py-1.5 rounded-full bg-white text-[#0E3D20] text-xs font-black shadow-md border border-white/40">
+              {state.currentTask.status}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* KPI Metrics */}
+      {/* KPI Metrics Grid (Authentic GlassStat Replicas) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-card p-5 rounded-3xl space-y-2">
+        <div className="glass-card p-5 rounded-3xl space-y-2 relative overflow-hidden group">
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:bg-emerald-500/20 transition duration-500"></div>
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Release APK Size</span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono text-[11px] font-semibold">
+            <span className="font-bold uppercase tracking-wider text-[11px] text-slate-300">Release APK Size</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-bold border border-emerald-500/30">
               {state.kpis.apkSize.delta}
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-white tracking-tight">{state.kpis.apkSize.current}</div>
-          <p className="text-[11px] text-slate-400">Previous: {state.kpis.apkSize.previous}</p>
+          <div className="text-3xl font-black text-white tracking-tight">{state.kpis.apkSize.current}</div>
+          <p className="text-xs text-slate-400">Sebelumnya: {state.kpis.apkSize.previous}</p>
         </div>
 
-        <div className="glass-card p-5 rounded-3xl space-y-2">
+        <div className="glass-card p-5 rounded-3xl space-y-2 relative overflow-hidden group">
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:bg-emerald-500/20 transition duration-500"></div>
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Single DEX Bytecode</span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono text-[11px] font-semibold">
+            <span className="font-bold uppercase tracking-wider text-[11px] text-slate-300">Single DEX Bytecode</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-bold border border-emerald-500/30">
               {state.kpis.dexBytecode.delta}
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-white tracking-tight">{state.kpis.dexBytecode.current}</div>
-          <p className="text-[11px] text-slate-400">No multidex overhead</p>
+          <div className="text-3xl font-black text-white tracking-tight">{state.kpis.dexBytecode.current}</div>
+          <p className="text-xs text-slate-400">Eliminated multidex overhead</p>
         </div>
 
-        <div className="glass-card p-5 rounded-3xl space-y-2">
+        <div className="glass-card p-5 rounded-3xl space-y-2 relative overflow-hidden group">
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-emerald-500/15 blur-xl pointer-events-none group-hover:bg-emerald-500/25 transition duration-500"></div>
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>JaCoCo Instruction Coverage</span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono text-[11px] font-semibold">
+            <span className="font-bold uppercase tracking-wider text-[11px] text-slate-300">JaCoCo Instruction Coverage</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-bold border border-emerald-500/30">
               ≥ 75% Gate
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-emerald-400 tracking-tight">{state.kpis.testCoverage.instruction}</div>
-          <p className="text-[11px] text-slate-400">{state.kpis.testCoverage.passedTests}</p>
+          <div className="text-3xl font-black text-emerald-400 tracking-tight">{state.kpis.testCoverage.instruction}</div>
+          <p className="text-xs text-slate-400">{state.kpis.testCoverage.passedTests}</p>
         </div>
 
-        <div className="glass-card p-5 rounded-3xl space-y-2">
+        <div className="glass-card p-5 rounded-3xl space-y-2 relative overflow-hidden group">
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:bg-emerald-500/20 transition duration-500"></div>
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Database Security</span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono text-[11px] font-semibold">
+            <span className="font-bold uppercase tracking-wider text-[11px] text-slate-300">Database Security</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-bold border border-emerald-500/30">
               Verified
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-white tracking-tight">{state.kpis.securityRating.score}</div>
-          <p className="text-[11px] text-slate-400">{state.kpis.securityRating.encryption}</p>
+          <div className="text-3xl font-black text-white tracking-tight">{state.kpis.securityRating.score}</div>
+          <p className="text-xs text-slate-400">{state.kpis.securityRating.encryption}</p>
         </div>
       </div>
 
-      {/* Filters & Search */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 glass-card p-4 rounded-3xl">
+      {/* Interactive Filters & Search */}
+      <div className="glass-card p-4 rounded-3xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md">
           <input
             type="text"
-            placeholder="Search tasks, IDs, or keywords..."
+            placeholder="Cari task, ID, atau kata kunci..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
+            className="w-full bg-black/40 border border-white/15 focus:border-emerald-400 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none transition backdrop-blur-md"
           />
           {searchQuery && (
             <button 
@@ -669,15 +711,16 @@ export default function App() {
           )}
         </div>
 
+        {/* Category Pills */}
         <div className="flex flex-wrap items-center gap-1.5">
           {['ALL', 'ARCH', 'SECURITY', 'PERF', 'SIZE'].map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono transition ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition backdrop-blur-md ${
                 selectedCategory === cat
-                  ? 'bg-emerald-500 text-white font-bold shadow-md shadow-emerald-500/30'
-                  : 'bg-white/5 hover:bg-white/10 text-slate-400'
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-600/40 border border-emerald-400/40'
+                  : 'bg-white/[0.05] hover:bg-white/[0.12] text-slate-300 border border-white/10'
               }`}
             >
               {cat}
@@ -686,13 +729,14 @@ export default function App() {
         </div>
       </div>
 
-      {/* Kanban Board */}
+      {/* Interactive Kanban Board */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <h3 className="text-xl font-black text-white flex items-center gap-2.5">
+            <span className="w-2.5 h-6 rounded-full bg-emerald-400 shadow-md shadow-emerald-400/50"></span>
             Agentic Workflow Kanban
             <span className="text-xs font-normal text-slate-400">
-              (Drag & Drop cards or use arrows ← → to move across columns)
+              (Drag & Drop cards atau klik panah ← → untuk memindahkan antar kolom)
             </span>
           </h3>
         </div>
@@ -700,16 +744,16 @@ export default function App() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {COL_ORDER.map((colKey) => {
             const titles = {
+              recommendations: 'Rekomendasi AI',
               backlog: 'Backlog',
-              inProgress: 'In Progress',
-              verified: 'Verified & Tested',
-              recommendations: 'Recommendations'
+              inProgress: 'Sedang Dikerjakan',
+              verified: 'Teruji & Terverifikasi'
             };
             const colors = {
-              backlog: 'border-slate-500/30',
-              inProgress: 'border-amber-500/40',
-              verified: 'border-emerald-500/40',
-              recommendations: 'border-teal-500/40'
+              recommendations: 'bg-emerald-950/25 border border-emerald-500/25 shadow-[0_0_25px_-5px_rgba(16,185,129,0.12)]',
+              backlog: 'bg-slate-950/35 border border-white/[0.08]',
+              inProgress: 'bg-amber-950/25 border border-amber-500/35 shadow-[0_0_25px_-5px_rgba(245,158,11,0.15)]',
+              verified: 'bg-emerald-950/35 border border-emerald-400/35 shadow-[0_0_25px_-5px_rgba(52,211,153,0.18)]'
             };
             return (
               <KanbanColumn
@@ -732,25 +776,27 @@ export default function App() {
         </div>
       </div>
 
-      {/* Autonomous Permissions Table */}
-      <div className="glass-card p-6 rounded-3xl space-y-4">
+      {/* Autonomous Permissions Audit Table */}
+      <div className="glass-card p-6 sm:p-7 rounded-3xl space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <h3 className="text-xl font-black text-white flex items-center gap-2.5">
+              <span className="w-2.5 h-6 rounded-full bg-emerald-400 shadow-md shadow-emerald-400/50"></span>
               Autonomous Agentic Permissions & Tool Log
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">
                 {state.agenticPermissions.length} Logged
               </span>
             </h3>
-            <p className="text-xs text-slate-400">All tools executed under Turbo Mode are verified and tracked</p>
+            <p className="text-xs text-slate-400 mt-1 font-medium">Seluruh aksi dan perintah dieksekusi otomatis secara transparan dan terekam di audit store</p>
           </div>
 
+          {/* Tool Filter */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">Filter Tool:</span>
+            <span className="text-xs text-slate-400 font-semibold">Filter Tool:</span>
             <select
               value={toolFilter}
               onChange={(e) => setToolFilter(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+              className="bg-black/50 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white font-bold focus:ring-2 focus:ring-emerald-400 cursor-pointer"
             >
               <option value="ALL">All Tools</option>
               <option value="run_command">run_command</option>
@@ -760,39 +806,42 @@ export default function App() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
           <table className="w-full text-left text-xs font-mono">
             <thead>
-              <tr className="border-b border-white/10 text-slate-400 text-[11px]">
-                <th className="py-2.5 px-3 font-semibold">ID</th>
-                <th className="py-2.5 px-3 font-semibold">
+              <tr className="border-b border-white/10 text-emerald-300 text-xs bg-white/[0.04] font-bold">
+                <th className="py-3 px-4 font-bold">ID</th>
+                <th className="py-3 px-4 font-bold">
                   <div className="flex items-center gap-1.5" title="Jam saat perintah dieksekusi oleh AI Agent (hover baris untuk rincian WIB & UTC)">
                     <span>Time (WIB)</span>
-                    <span className="text-[10px] text-slate-500 cursor-help">ℹ️</span>
+                    <span className="text-[10px] text-slate-400 cursor-help">ℹ️</span>
                   </div>
                 </th>
-                <th className="py-2.5 px-3 font-semibold">Tool</th>
-                <th className="py-2.5 px-3 font-semibold">Action & Context</th>
-                <th className="py-2.5 px-3 font-semibold">Target Path</th>
-                <th className="py-2.5 px-3 font-semibold text-right">Status</th>
+                <th className="py-3 px-4 font-bold">Tool</th>
+                <th className="py-3 px-4 font-bold">Action & Context</th>
+                <th className="py-3 px-4 font-bold">Target Path</th>
+                <th className="py-3 px-4 font-bold text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-white/5 bg-transparent">
               {filteredPermissions.slice(0, 10).map((perm, idx) => (
-                <tr key={perm.id + idx} className="hover:bg-white/[0.02] transition">
-                  <td className="py-2 px-3 text-emerald-400 font-bold">{perm.id}</td>
-                  <td className="py-2 px-3">
-                    <TimeHoverCell timestamp={perm.timestamp} label="Log Eksekusi Otonom" align="left" />
+                <tr key={perm.id + idx} className="hover:bg-white/[0.05] transition">
+                  <td className="py-3 px-4 text-emerald-400 font-black">{perm.id}</td>
+                  <td className="py-3 px-4">
+                    <TimeHoverCell timestamp={perm.timestamp} label="Log Eksekusi Otonom" />
                   </td>
-                  <td className="py-2 px-3">
-                    <span className="px-2 py-0.5 rounded bg-white/10 text-slate-300 text-[10px]">
+                  <td className="py-3 px-4">
+                    <span className="px-2.5 py-1 rounded-md bg-white/10 text-white font-bold text-[10px] border border-white/15">
                       {perm.tool}
                     </span>
                   </td>
-                  <td className="py-2 px-3 text-white font-sans font-medium">{perm.action}</td>
-                  <td className="py-2 px-3 text-slate-400 truncate max-w-xs" title={perm.target}>{perm.target}</td>
-                  <td className="py-2 px-3 text-right">
-                    <span className="text-emerald-400 font-semibold">{perm.status}</span>
+                  <td className="py-3 px-4 text-slate-100 font-sans font-semibold text-xs">{perm.action}</td>
+                  <td className="py-3 px-4 text-slate-400 truncate max-w-xs font-mono text-[11px]" title={perm.target}>{perm.target}</td>
+                  <td className="py-3 px-4 text-right">
+                    <span className="text-emerald-400 font-black flex items-center justify-end gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      {perm.status}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -802,23 +851,24 @@ export default function App() {
       </div>
 
       {/* Activity Stream Feed */}
-      <div className="glass-card p-6 rounded-3xl space-y-4">
-        <h3 className="text-base font-bold text-white flex items-center gap-2">
+      <div className="glass-card p-6 sm:p-7 rounded-3xl space-y-5">
+        <h3 className="text-xl font-black text-white flex items-center gap-2.5">
+          <span className="w-2.5 h-6 rounded-full bg-emerald-400 shadow-md shadow-emerald-400/50"></span>
           Chronological Engineering Stream
           <span className="text-xs text-slate-400 font-normal">({state.activityLogs.length} Events)</span>
         </h3>
 
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {state.activityLogs.map((log, index) => (
-            <div key={index} className="flex items-start gap-3 p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-emerald-500/30 transition">
-              <div className="shrink-0">
-                <TimeHoverCell timestamp={log.timestamp} label="Rekam Jejak Engineering" align="left" />
+            <div key={index} className="flex items-start gap-4 p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] backdrop-blur-lg border-l-4 border-l-emerald-500 border border-white/[0.07] shadow-md transition">
+              <div className="shrink-0 mt-0.5">
+                <TimeHoverCell timestamp={log.timestamp} label="Rekam Jejak Engineering" />
               </div>
-              <div className="space-y-0.5 flex-1">
-                <div className="text-xs font-bold text-white">{log.title}</div>
-                <div className="text-[11px] text-slate-400">{log.detail}</div>
+              <div className="space-y-1 flex-1">
+                <div className="text-sm font-bold text-white">{log.title}</div>
+                <div className="text-xs text-slate-300 leading-relaxed">{log.detail}</div>
               </div>
-              <span className="text-[10px] font-mono text-emerald-400 shrink-0 font-semibold px-2 py-0.5 rounded bg-emerald-500/10">
+              <span className="text-[10px] font-mono text-emerald-300 shrink-0 font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30">
                 {log.status}
               </span>
             </div>
@@ -826,50 +876,82 @@ export default function App() {
         </div>
       </div>
 
-      {/* Task Modal */}
-      {selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-          <div className="glass-card p-6 rounded-3xl max-w-lg w-full space-y-4 border border-emerald-500/30">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
-                {selectedTask.id} • {selectedTask.categoryLabel || selectedTask.category}
-              </span>
+      {/* Detail Task Modal: Rendered to document.body via Portal to guarantee 100% full-screen blur */}
+      {selectedTask && typeof document !== 'undefined' && ReactDOM.createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-fadeIn"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(5, 10, 7, 0.78)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+            zIndex: 99999
+          }}
+          onClick={() => setSelectedTask(null)}
+        >
+          <div 
+            className="p-6 sm:p-7 rounded-3xl max-w-lg w-full space-y-4 bg-[#0B120E]/95 backdrop-blur-2xl border border-emerald-500/40 shadow-2xl shadow-black/90 animate-fadeIn text-white"
+            style={{
+              boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.9), inset 0 1px 1px rgba(255, 255, 255, 0.25)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-mono font-bold text-emerald-400">{selectedTask.id}</span>
+                <span className={`px-2 py-0.5 rounded-full border text-[10px] ${
+                  CATEGORY_COLORS[selectedTask.category] || 'bg-white/10 text-white border-white/20'
+                }`}>
+                  {selectedTask.categoryLabel || selectedTask.category}
+                </span>
+              </div>
               <button 
                 onClick={() => setSelectedTask(null)}
-                className="text-slate-400 hover:text-white text-lg font-bold"
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center text-xs font-bold transition border border-white/15"
               >
                 ✕
               </button>
             </div>
 
-            <h3 className="text-lg font-bold text-white">{selectedTask.title}</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">{selectedTask.snippet}</p>
-
-            <div className="p-3 rounded-2xl bg-white/5 space-y-1 text-xs font-mono text-slate-400">
-              <div>Tag: <span className="text-white">{selectedTask.tag || '-'}</span></div>
-              <div>Risk: <span className="text-white">{selectedTask.risk || 'Low Risk'}</span></div>
-              <div>Key: <span className="text-white">{selectedTask.key}</span></div>
+            <div className="space-y-2">
+              <h4 className="text-base font-bold text-white">{selectedTask.title}</h4>
+              <p className="text-xs text-slate-300 leading-relaxed">{selectedTask.snippet}</p>
             </div>
 
-            <div className="pt-2 border-t border-white/10 space-y-2">
-              <div className="text-xs text-slate-400 font-semibold">Move Card To Column:</div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {COL_ORDER.map(col => (
-                  <button
-                    key={col}
-                    onClick={() => {
-                      moveCardInState(selectedTask.key, col);
-                      setSelectedTask(null);
-                    }}
-                    className="px-2 py-1.5 rounded-xl bg-white/10 hover:bg-emerald-500 hover:text-white text-[11px] font-mono font-bold transition text-center"
-                  >
-                    {col === 'inProgress' ? 'In Progress' : col.charAt(0).toUpperCase() + col.slice(1)}
-                  </button>
-                ))}
+            <div className="pt-2 border-t border-white/10 flex flex-col gap-2">
+              <span className="text-xs text-slate-400 font-semibold">Pindahkan Langsung ke Kolom:</span>
+              <div className="grid grid-cols-4 gap-2">
+                {COL_ORDER.map(col => {
+                  const colNames = {
+                    recommendations: 'Rekomendasi',
+                    backlog: 'Backlog',
+                    inProgress: 'In Progress',
+                    verified: 'Verified'
+                  };
+                  return (
+                    <button
+                      key={col}
+                      onClick={() => {
+                        moveCardInState(selectedTask.key, col);
+                        setSelectedTask(null);
+                      }}
+                      className="px-2 py-2 rounded-xl bg-white/[0.06] hover:bg-emerald-600 hover:text-white text-slate-200 text-[11px] font-mono font-bold transition text-center border border-white/15 hover:border-emerald-400"
+                    >
+                      {colNames[col] || col}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {isNewTaskOpen && (
@@ -882,30 +964,41 @@ export default function App() {
   );
 }
 
+// Kanban Column Component
 function KanbanColumn({ title, count, cards, columnKey, recentlyMoved, dropActive, onDragOver, onDrop, onDragStart, onCardClick, onQuickMove, color }) {
   const colIdx = COL_ORDER.indexOf(columnKey);
   const prevCol = colIdx > 0 ? COL_ORDER[colIdx - 1] : null;
   const nextCol = colIdx < COL_ORDER.length - 1 ? COL_ORDER[colIdx + 1] : null;
 
+  const headerIcons = {
+    recommendations: '✨',
+    backlog: '📋',
+    inProgress: '⚡',
+    verified: '✓'
+  };
+
   return (
     <div 
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`glass-card p-4 rounded-3xl space-y-3.5 border ${color} kanban-col transition-colors ${
+      className={`p-4 rounded-3xl space-y-3.5 ${color} kanban-col transition-all duration-200 ${
         dropActive ? 'drop-active' : ''
       }`}
     >
       <div className="flex items-center justify-between px-1">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">{title}</h4>
-        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/10 text-white font-semibold">
+        <h4 className="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+          <span>{headerIcons[columnKey]}</span>
+          <span>{title}</span>
+        </h4>
+        <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-white/10 text-white font-bold border border-white/15 shadow-sm">
           {count}
         </span>
       </div>
 
       <div className="space-y-3 min-h-[360px]">
         {cards.length === 0 ? (
-          <div className="border border-dashed border-white/10 rounded-2xl p-6 text-center text-xs text-slate-500 font-mono">
-            No cards here. Drag a card here.
+          <div className="bg-white/[0.03] border border-dashed border-white/15 rounded-2xl p-6 text-center text-xs text-slate-400 font-medium">
+            Belum ada task di kolom ini. Drag card ke sini.
           </div>
         ) : (
           cards.map((card) => {
@@ -918,43 +1011,45 @@ function KanbanColumn({ title, count, cards, columnKey, recentlyMoved, dropActiv
                 draggable
                 onDragStart={(e) => onDragStart(e, cardKey)}
                 onClick={() => onCardClick(card)}
-                className={`kanban-card p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-emerald-500/40 space-y-2.5 relative transition-all ${
+                className={`kanban-card p-4 rounded-2xl space-y-2.5 relative transition-all ${
                   isMoved ? 'card-spring-in' : ''
                 }`}
               >
+                {/* Live Movement Badge */}
                 {isMoved && (
-                  <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/30">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/40">
                     <span className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-emerald-300">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                       ✨ Otomatis Berpindah
                     </span>
-                    <span className="text-[9px] font-mono text-emerald-400/80">
+                    <span className="text-[9px] font-mono text-emerald-400">
                       dari {recentlyMoved[cardKey].fromCol}
                     </span>
                   </div>
                 )}
 
                 <div className="flex items-center justify-between text-[10px] font-mono">
-                  <span className="text-emerald-400 font-bold">{card.id}</span>
-                  <span className={`px-2 py-0.5 rounded-full border text-[9px] ${
-                    CATEGORY_COLORS[card.category] || 'bg-white/5 text-slate-300 border-white/10'
+                  <span className="text-emerald-400 font-black text-xs">{card.id}</span>
+                  <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                    CATEGORY_COLORS[card.category] || 'bg-white/10 text-slate-200'
                   }`}>
                     {card.categoryLabel || card.category}
                   </span>
                 </div>
 
-                <h5 className="text-xs font-bold text-white leading-snug">{card.title}</h5>
-                <p className="text-[11px] text-slate-400 line-clamp-2">{card.snippet}</p>
+                <h5 className="text-sm font-bold text-white leading-snug">{card.title}</h5>
+                <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">{card.snippet}</p>
 
-                <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                  <span className="text-[10px] text-slate-500 font-mono">{card.risk || card.tag}</span>
+                <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                  <span className="text-[10px] text-slate-400 font-mono font-semibold">{card.risk || card.tag}</span>
                   
+                  {/* Directional Move Buttons */}
                   <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                     {prevCol && (
                       <button
                         onClick={() => onQuickMove(cardKey, prevCol)}
-                        className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-emerald-500 hover:text-white text-slate-300 text-xs font-bold transition"
-                        title={`Move back to ${prevCol}`}
+                        className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-emerald-600 hover:text-white text-slate-300 text-xs font-bold transition border border-white/15"
+                        title={`Pindahkan ke ${prevCol}`}
                       >
                         ←
                       </button>
@@ -962,8 +1057,8 @@ function KanbanColumn({ title, count, cards, columnKey, recentlyMoved, dropActiv
                     {nextCol && (
                       <button
                         onClick={() => onQuickMove(cardKey, nextCol)}
-                        className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-emerald-500 hover:text-white text-slate-300 text-xs font-bold transition"
-                        title={`Advance to ${nextCol}`}
+                        className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-emerald-600 hover:text-white text-slate-300 text-xs font-bold transition border border-white/15"
+                        title={`Pindahkan ke ${nextCol}`}
                       >
                         →
                       </button>
@@ -979,11 +1074,12 @@ function KanbanColumn({ title, count, cards, columnKey, recentlyMoved, dropActiv
   );
 }
 
+// Modal to Create New Task
 function NewTaskModal({ onClose, onSubmit }) {
   const [title, setTitle] = useState('');
   const [snippet, setSnippet] = useState('');
   const [category, setCategory] = useState('arch');
-  const [column, setColumn] = useState('backlog');
+  const [column, setColumn] = useState('recommendations');
   const [tag, setTag] = useState('');
 
   const handleSubmit = (e) => {
@@ -1006,45 +1102,74 @@ function NewTaskModal({ onClose, onSubmit }) {
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-      <form onSubmit={handleSubmit} className="glass-card p-6 rounded-3xl max-w-md w-full space-y-4 border border-emerald-500/30">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-white">Create New Task</h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
+  const modalContent = (
+    <div 
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-fadeIn"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(5, 10, 7, 0.80)',
+        backdropFilter: 'blur(28px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        zIndex: 99999
+      }}
+      onClick={onClose}
+    >
+      <form 
+        onSubmit={handleSubmit} 
+        className="p-6 rounded-3xl max-w-md w-full space-y-4 bg-[#0B120E]/95 backdrop-blur-2xl border border-emerald-500/40 shadow-2xl shadow-black/90 animate-fadeIn text-white"
+        style={{
+          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.9), inset 0 1px 1px rgba(255, 255, 255, 0.25)'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <h3 className="text-base font-bold text-white">Tambah Task Baru</h3>
+          <button 
+            type="button"
+            onClick={onClose}
+            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center text-xs font-bold transition border border-white/15"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="space-y-3 text-xs">
           <div>
-            <label className="block text-slate-400 mb-1">Task Title</label>
+            <label className="block text-slate-300 mb-1 font-medium">Judul Task</label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Implement Room Index on saleId"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+              placeholder="Contoh: Implementasi Room Index pada saleId"
+              className="w-full bg-black/50 border border-white/15 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
             />
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">Description / Snippet</label>
+            <label className="block text-slate-300 mb-1 font-medium">Deskripsi / Detail</label>
             <textarea
               rows="3"
               value={snippet}
               onChange={(e) => setSnippet(e.target.value)}
-              placeholder="Details of the task..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+              placeholder="Rincian task..."
+              className="w-full bg-black/50 border border-white/15 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
             ></textarea>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-400 mb-1">Category</label>
+              <label className="block text-slate-300 mb-1 font-medium">Kategori</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-black/50 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-400"
               >
                 <option value="arch">Architecture</option>
                 <option value="security">Security</option>
@@ -1055,28 +1180,28 @@ function NewTaskModal({ onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="block text-slate-400 mb-1">Initial Column</label>
+              <label className="block text-slate-300 mb-1 font-medium">Kolom Awal</label>
               <select
                 value={column}
                 onChange={(e) => setColumn(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-black/50 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-400"
               >
+                <option value="recommendations">Rekomendasi</option>
                 <option value="backlog">Backlog</option>
                 <option value="inProgress">In Progress</option>
                 <option value="verified">Verified</option>
-                <option value="recommendations">Recommendations</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">Badge Tag</label>
+            <label className="block text-slate-300 mb-1 font-medium">Badge Tag</label>
             <input
               type="text"
               value={tag}
               onChange={(e) => setTag(e.target.value)}
-              placeholder="e.g. Room v5, KMP"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+              placeholder="Contoh: Room v5, KMP"
+              className="w-full bg-black/50 border border-white/15 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
             />
           </div>
         </div>
@@ -1085,18 +1210,20 @@ function NewTaskModal({ onClose, onSubmit }) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-mono transition"
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-mono transition border border-white/15"
           >
-            Cancel
+            Batal
           </button>
           <button
             type="submit"
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/30"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/40 border border-emerald-400/30"
           >
-            Create Task
+            Simpan Task
           </button>
         </div>
       </form>
     </div>
   );
+
+  return typeof document !== 'undefined' ? ReactDOM.createPortal(modalContent, document.body) : null;
 }

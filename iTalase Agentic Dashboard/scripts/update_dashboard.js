@@ -5,6 +5,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const { execSync, spawn } = require('child_process');
 
 const STATE_FILE = path.resolve(__dirname, '../audit_state.js');
 
@@ -72,6 +74,29 @@ function moveCard(state, cardIdOrKey, targetCol) {
   console.log(`[iTalase Kanban] Moved card "${foundCard.title}" (${cardIdOrKey}) to ${targetCol}`);
 }
 
+function addCard(state, column, id, title, snippet, category, tag, risk) {
+  const col = column || 'recommendations';
+  if (!state.kanban[col]) {
+    state.kanban[col] = [];
+  }
+  const cardKey = `CARD-${Math.floor(10 + Math.random() * 90)}`;
+  const cardId = id ? (id.startsWith('#') ? id : `#${id}`) : `#AUD-${Math.floor(10 + Math.random() * 90)}`;
+  const cat = category || 'arch';
+  const newCard = {
+    id: cardId,
+    key: cardKey,
+    title: title || 'Rekomendasi Task Otonom',
+    category: cat,
+    categoryLabel: cat.toUpperCase(),
+    snippet: snippet || '',
+    tag: tag || 'Recommendation',
+    risk: risk || 'Normal'
+  };
+  state.kanban[col].unshift(newCard);
+  console.log(`[iTalase Kanban] Added new card "${newCard.title}" (${cardKey}) to ${col}`);
+  return newCard;
+}
+
 function logPermission(state, tool, action, target, status) {
   const newId = `PERM-${String(state.agenticPermissions.length + 1).padStart(2, '0')}`;
   const now = new Date();
@@ -102,6 +127,94 @@ function setCurrentTask(state, name, progressPercent, status, description) {
   console.log(`[iTalase Task] Active task updated: "${state.currentTask.name}" (${state.currentTask.progressPercent}%)`);
 }
 
+function checkKanbanServer(port = 3300) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://127.0.0.1:${port}/api/status`, { timeout: 1500 }, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          resolve({ running: true, info: data });
+        } else {
+          resolve({ running: false });
+        }
+      });
+    });
+    req.on('error', () => resolve({ running: false }));
+    req.on('timeout', () => { req.destroy(); resolve({ running: false }); });
+  });
+}
+
+function checkCodebaseMcp() {
+  try {
+    const output = execSync('tasklist /fi "IMAGENAME eq codebase-memory-mcp.exe"', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return output.toLowerCase().includes('codebase-memory-mcp.exe');
+  } catch (e) {
+    return false;
+  }
+}
+
+async function ensureServices() {
+  console.log(`\n=== Checking & Ensuring Background Services ===`);
+
+  // 1. Check MCP (codebase-memory-mcp)
+  const mcpRunning = checkCodebaseMcp();
+  if (mcpRunning) {
+    console.log(`[MCP Service] codebase-memory-mcp is ONLINE (Process active).`);
+  } else {
+    console.log(`[MCP Service] codebase-memory-mcp is NOT running. Launching on separate terminal...`);
+    const mcpExe = 'C:\\Users\\anand\\AppData\\Local\\Programs\\codebase-memory-mcp\\codebase-memory-mcp.exe';
+    if (fs.existsSync(mcpExe)) {
+      try {
+        const p = spawn('cmd.exe', ['/c', 'start', 'codebase-memory-mcp', mcpExe], {
+          detached: true,
+          stdio: 'ignore'
+        });
+        p.unref();
+        console.log(`[MCP Service] Spawned codebase-memory-mcp in separate detached terminal.`);
+      } catch (err) {
+        console.warn(`[MCP Service] Failed to spawn MCP executable:`, err.message);
+      }
+    } else {
+      console.log(`[MCP Service] Executable will be invoked on-demand by Antigravity stdio.`);
+    }
+  }
+
+  // 2. Check Kanban Server
+  let kanbanStatus = await checkKanbanServer(3300);
+  if (kanbanStatus.running) {
+    console.log(`[Kanban Server] Server is ONLINE on http://localhost:3300.`);
+  } else {
+    console.log(`[Kanban Server] Server is NOT running on port 3300. Launching via npm start on separate detached process...`);
+    const workingDir = path.resolve(__dirname, '..');
+    const vbsScript = path.resolve(__dirname, 'launch_server.vbs');
+    try {
+      if (process.platform === 'win32' && fs.existsSync(vbsScript)) {
+        execSync(`wscript "${vbsScript}"`, { stdio: 'ignore' });
+      } else {
+        const p = spawn('npm', ['start'], {
+          detached: true,
+          stdio: 'ignore',
+          cwd: workingDir,
+          shell: true
+        });
+        p.unref();
+      }
+      // Wait for server to bind port
+      await new Promise(r => setTimeout(r, 1500));
+      kanbanStatus = await checkKanbanServer(3300);
+      if (kanbanStatus.running) {
+        console.log(`[Kanban Server] Successfully started with npm start and ONLINE on http://localhost:3300.`);
+      } else {
+        console.log(`[Kanban Server] Launch command executed. Verifying http://localhost:3300...`);
+      }
+    } catch (err) {
+      console.error(`[Kanban Server] Failed to spawn Kanban server via npm start:`, err.message);
+    }
+  }
+  console.log(`===============================================\n`);
+}
+
 // CLI Argument Parsing
 const args = process.argv.slice(2);
 if (args.length === 0 || args.includes('--help')) {
@@ -110,7 +223,9 @@ Usage: node update_dashboard.js [options]
 
 Commands:
   --status                              Print current dashboard & kanban overview
+  --ensure-services                     Check and auto-start MCP & Kanban server on separate terminal
   --move <CARD_KEY> --to <COLUMN>       Move card (columns: backlog, inProgress, verified, recommendations)
+  --add-rec --title <T> --snippet <S>   Add a proactive recommendation card to the Recommendations column
   --set-task <NAME> --progress <NUM>    Update current active task and percentage
   --log-perm <TOOL> <ACTION> <TARGET>   Record an autonomous tool permission execution
   --test-coverage <PERCENT>             Update JaCoCo test coverage metric
@@ -118,41 +233,57 @@ Commands:
   process.exit(0);
 }
 
-try {
-  const state = loadState();
+(async () => {
+  try {
+    const state = loadState();
 
-  if (args.includes('--status')) {
-    printStatus(state);
-  } else if (args.includes('--move')) {
-    const cardIdx = args.indexOf('--move') + 1;
-    const toIdx = args.indexOf('--to') + 1;
-    if (!args[cardIdx] || !args[toIdx]) {
-      throw new Error('Must provide card ID/Key and target column, e.g., --move CARD-01 --to inProgress');
+    if (args.includes('--ensure-services')) {
+      await ensureServices();
     }
-    moveCard(state, args[cardIdx], args[toIdx]);
-    saveState(state);
-  } else if (args.includes('--set-task')) {
-    const taskIdx = args.indexOf('--set-task') + 1;
-    const progIdx = args.indexOf('--progress') + 1;
-    const taskName = args[taskIdx];
-    const progress = progIdx > 0 ? args[progIdx] : 50;
-    setCurrentTask(state, taskName, progress, 'In Progress');
-    saveState(state);
-  } else if (args.includes('--log-perm')) {
-    const baseIdx = args.indexOf('--log-perm');
-    const tool = args[baseIdx + 1];
-    const action = args[baseIdx + 2];
-    const target = args[baseIdx + 3];
-    logPermission(state, tool, action, target, 'EXECUTED');
-    saveState(state);
-  } else if (args.includes('--test-coverage')) {
-    const covIdx = args.indexOf('--test-coverage') + 1;
-    state.kpis.testCoverage.instruction = args[covIdx] + '%';
-    console.log(`[iTalase KPI] Updated test coverage to ${args[covIdx]}%`);
-    saveState(state);
-  }
 
-} catch (err) {
-  console.error(`Error: ${err.message}`);
-  process.exit(1);
-}
+    if (args.includes('--status')) {
+      printStatus(state);
+    } else if (args.includes('--move')) {
+      const cardIdx = args.indexOf('--move') + 1;
+      const toIdx = args.indexOf('--to') + 1;
+      if (!args[cardIdx] || !args[toIdx]) {
+        throw new Error('Must provide card ID/Key and target column, e.g., --move CARD-01 --to inProgress');
+      }
+      moveCard(state, args[cardIdx], args[toIdx]);
+      saveState(state);
+    } else if (args.includes('--set-task')) {
+      const taskIdx = args.indexOf('--set-task') + 1;
+      const progIdx = args.indexOf('--progress') + 1;
+      const taskName = args[taskIdx];
+      const progress = progIdx > 0 ? args[progIdx] : 50;
+      setCurrentTask(state, taskName, progress, 'In Progress');
+      saveState(state);
+    } else if (args.includes('--log-perm')) {
+      const baseIdx = args.indexOf('--log-perm');
+      const tool = args[baseIdx + 1];
+      const action = args[baseIdx + 2];
+      const target = args[baseIdx + 3];
+      logPermission(state, tool, action, target, 'EXECUTED');
+      saveState(state);
+    } else if (args.includes('--test-coverage')) {
+      const covIdx = args.indexOf('--test-coverage') + 1;
+      state.kpis.testCoverage.instruction = args[covIdx] + '%';
+      console.log(`[iTalase KPI] Updated test coverage to ${args[covIdx]}%`);
+      saveState(state);
+    } else if (args.includes('--add-rec') || args.includes('--add-card')) {
+      const col = args.includes('--col') ? args[args.indexOf('--col') + 1] : 'recommendations';
+      const id = args.includes('--id') ? args[args.indexOf('--id') + 1] : null;
+      const title = args.includes('--title') ? args[args.indexOf('--title') + 1] : 'Autonomous Task';
+      const snippet = args.includes('--snippet') ? args[args.indexOf('--snippet') + 1] : '';
+      const category = args.includes('--category') ? args[args.indexOf('--category') + 1] : (args.includes('--cat') ? args[args.indexOf('--cat') + 1] : 'arch');
+      const tag = args.includes('--tag') ? args[args.indexOf('--tag') + 1] : 'Recommendation';
+      const risk = args.includes('--risk') ? args[args.indexOf('--risk') + 1] : 'Normal';
+      addCard(state, col, id, title, snippet, category, tag, risk);
+      saveState(state);
+    }
+
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  }
+})();

@@ -7,7 +7,7 @@ window.AUDIT_STATE = {
     "version": "1.0.0",
     "versionCode": 100000,
     "platform": "Kotlin Multiplatform (Android + iOS)",
-    "lastUpdated": "2026-10-27 02:49:28",
+    "lastUpdated": "2026-10-27 05:25:47",
     "turboMode": true,
     "agentMode": "Autonomous Turbo Pair Programmer",
     "connectedDevice": {
@@ -19,9 +19,9 @@ window.AUDIT_STATE = {
   },
   "kpis": {
     "apkSize": {
-      "current": "11.88 MB",
+      "current": "11.78 MB",
       "previous": "14.37 MB",
-      "delta": "-1.91 MB (-13.3%)",
+      "delta": "-2.59 MB (-18.0%)",
       "status": "Optimized"
     },
     "dexBytecode": {
@@ -31,10 +31,10 @@ window.AUDIT_STATE = {
       "status": "Single Dex Only"
     },
     "testCoverage": {
-      "instruction": "76.84%",
-      "lines": "78.15%",
-      "classes": "80.23%",
-      "passedTests": "83 unit + 5 device instrumentation tests",
+      "instruction": "78.38%",
+      "lines": "79.62%",
+      "classes": "81.40%",
+      "passedTests": "91 unit + 5 device instrumentation tests",
       "status": "Passes >= 75% Gate"
     },
     "securityRating": {
@@ -45,13 +45,274 @@ window.AUDIT_STATE = {
     }
   },
   "currentTask": {
-    "name": "AUD-01 & AUD-11: Room Migration 4->5 with Index on debts.saleId",
+    "name": "AUD-15 & AUD-17 Verified & Installed on Hardware",
     "progressPercent": 100,
     "status": "Completed & Verified",
-    "startedAt": "2026-10-27 02:13:53",
-    "description": "Room Auto-Migration skema v1-v5 diverifikasi penuh dengan penambahan index pada debts.saleId (MIGRATION_4_5). 83 unit tests lulus 100% dengan JaCoCo 76.84%."
+    "startedAt": "2026-10-27 05:23:16",
+    "description": "Eksekusi AUD-17 (Pencatatan resmi ADR-006 & ADR-007) dan AUD-15 (Responsive Landscape Split Pane Layout pada DebtScreen & ExpenseScreen) selesai dan diverifikasi. Build release APK (11.78 MB) berhasil diinstal ke Samsung Galaxy A54 5G (SM-A546E), seluruh 5 instrumentasi hardware dan 91 unit test lulus 100%."
   },
   "agenticPermissions": [
+    {
+      "id": "PERM-50",
+      "timestamp": "2026-10-27 05:25:47",
+      "tool": "run_command",
+      "action": "Git Commit & Push Synchronization (User Verbatim Request)",
+      "target": "git commit & git push origin automation/daily-review-20261027",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-49",
+      "timestamp": "2026-10-27 05:22:26",
+      "tool": "run_command",
+      "action": "Execute Connected Android Instrumentation Tests on Samsung Galaxy A54",
+      "target": ":androidApp:connectedDebugAndroidTest",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-48",
+      "timestamp": "2026-10-27 05:21:38",
+      "tool": "run_command",
+      "action": "Install Release APK onto Samsung Galaxy A54",
+      "target": "adb -s RRCW305L2BW install -r androidApp/build/outputs/apk/release/androidApp-release.apk",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-47",
+      "timestamp": "2026-10-27 05:18:16",
+      "tool": "run_command",
+      "action": "Build Google Play Optimized Release APK",
+      "target": ":androidApp:assembleRelease",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-46",
+      "timestamp": "2026-10-27 05:16:34",
+      "tool": "run_command",
+      "action": "Verify Responsive Split Pane Layouts with Host Unit Tests & JaCoCo",
+      "target": ":shared:testAndroidHostTest :shared:jacocoTestCoverageVerification",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-45",
+      "timestamp": "2026-10-27 05:15:44",
+      "tool": "edit_file",
+      "action": "Add responsive landscape dual-pane layout in ExpenseScreen",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/screens/ExpenseScreen.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-44",
+      "timestamp": "2026-10-27 05:13:14",
+      "tool": "edit_file",
+      "action": "Add responsive landscape dual-pane layout in DebtScreen",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/screens/DebtScreen.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-43",
+      "timestamp": "2026-10-27 05:11:51",
+      "tool": "write_file",
+      "action": "Create ADR documentation records",
+      "target": "docs/adr/",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-42",
+      "timestamp": "2026-10-27 05:10:12",
+      "tool": "edit_file",
+      "action": "Use launch_server.vbs for zero-blocking external Kanban daemon",
+      "target": "iTalase Agentic Dashboard/scripts/update_dashboard.js",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-41",
+      "timestamp": "2026-10-27 05:02:43",
+      "tool": "run_command",
+      "action": "Verify Expanded Unit Tests & JaCoCo Coverage",
+      "target": ":shared:testAndroidHostTest :shared:jacocoTestCoverageVerification",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-40",
+      "timestamp": "2026-10-27 05:01:52",
+      "tool": "edit_file",
+      "action": "Add unit tests for winAnsiBytes, pdfNum, and jpegDimensions edge cases",
+      "target": "shared/src/commonTest/kotlin/com/anlian/italase/shared/report/SalesReportPdfTest.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-39",
+      "timestamp": "2026-10-27 05:01:18",
+      "tool": "edit_file",
+      "action": "Add unit tests for SQLite user_version and cipherVersion",
+      "target": "shared/src/commonTest/kotlin/com/anlian/italase/shared/data/local/DbEncryptionTest.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-38",
+      "timestamp": "2026-10-27 04:59:08",
+      "tool": "edit_file",
+      "action": "Use PowerShell Start-Process for persistent server daemon",
+      "target": "iTalase Agentic Dashboard/scripts/update_dashboard.js",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-37",
+      "timestamp": "2026-10-27 04:57:46",
+      "tool": "run_command",
+      "action": "Verify Memoization with Host Unit Tests",
+      "target": ":shared:testAndroidHostTest :shared:jacocoTestCoverageVerification",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-36",
+      "timestamp": "2026-10-27 04:57:32",
+      "tool": "edit_file",
+      "action": "Memoize total expense in ExpenseScreen",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/screens/ExpenseScreen.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-35",
+      "timestamp": "2026-10-27 04:57:15",
+      "tool": "edit_file",
+      "action": "Fix server auto-spawn in update_dashboard.js",
+      "target": "iTalase Agentic Dashboard/scripts/update_dashboard.js",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-34",
+      "timestamp": "2026-10-27 04:56:38",
+      "tool": "edit_file",
+      "action": "Memoize active debts and total in DebtScreen",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/screens/DebtScreen.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-33",
+      "timestamp": "2026-10-27 04:51:32",
+      "tool": "run_command",
+      "action": "Generate JaCoCo Test Coverage Report",
+      "target": ":shared:jacocoTestReport",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-32",
+      "timestamp": "2026-10-27 04:47:39",
+      "tool": "run_command",
+      "action": "Verify Host Unit Tests & JaCoCo Coverage",
+      "target": ":shared:testAndroidHostTest :shared:jacocoTestCoverageVerification",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-31",
+      "timestamp": "2026-10-27 04:30:48",
+      "tool": "edit_file",
+      "action": "Transform Dashboard into Dark Warung Liquid Glass & Glassmorphism",
+      "target": "iTalase Agentic Dashboard/index.html",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-30",
+      "timestamp": "2026-10-27 04:03:21",
+      "tool": "write_file",
+      "action": "Synchronize App.jsx with authentic Warung Liquid Glass tokens",
+      "target": "iTalase Agentic Dashboard/src/App.jsx",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-29",
+      "timestamp": "2026-10-27 03:50:51",
+      "tool": "edit_file",
+      "action": "Codify Mandatory Proactive 4-Pillar Daily Recommendations in Sidecar & Agent Protocol",
+      "target": "sidecar.json, AGENTS.md, GEMINI.md",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-28",
+      "timestamp": "2026-10-27 03:46:57",
+      "tool": "edit_file",
+      "action": "Overhaul Kanban UX (Recommendations on left of Backlog) & Redesign to Warung Liquid Glass",
+      "target": "index.html & App.jsx & audit_state.js",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-27",
+      "timestamp": "2026-10-27 03:37:02",
+      "tool": "edit_file",
+      "action": "Fix Kanban Task Modal Full-Screen Blur Portal",
+      "target": "index.html & App.jsx",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-26",
+      "timestamp": "2026-10-27 03:30:52",
+      "tool": "edit_file",
+      "action": "Configure AAB ABI split in build.gradle.kts",
+      "target": "androidApp/build.gradle.kts",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-25",
+      "timestamp": "2026-10-27 03:30:34",
+      "tool": "run_command",
+      "action": "Execute Connected Instrumentation Tests on Samsung Galaxy A54 5G",
+      "target": "./gradlew :androidApp:connectedDebugAndroidTest",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-24",
+      "timestamp": "2026-10-27 03:25:15",
+      "tool": "run_command",
+      "action": "Build Google Play App Bundle (AAB)",
+      "target": ":androidApp:bundleRelease",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-23",
+      "timestamp": "2026-10-27 03:24:20",
+      "tool": "edit_file",
+      "action": "Configure AAB ABI/Density/Language split in androidApp/build.gradle.kts",
+      "target": "androidApp/build.gradle.kts",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-22",
+      "timestamp": "2026-10-27 03:15:29",
+      "tool": "run_command",
+      "action": "Execute Host Unit Tests & JaCoCo Verification",
+      "target": ":shared:testAndroidHostTest :shared:jacocoTestCoverageVerification",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
     {
       "id": "PERM-21",
       "timestamp": "2026-10-27 02:49:28",
@@ -259,6 +520,69 @@ window.AUDIT_STATE = {
   "kanban": {
     "backlog": [
       {
+        "id": "#AUD-02",
+        "key": "CARD-02",
+        "title": "iOS Cinterop & Memory Safety Audit",
+        "category": "arch",
+        "categoryLabel": "iOS (Quarantined)",
+        "snippet": "[DEFERRED: Memerlukan perangkat MacBook/macOS] Inspeksi penggunaan usePinned pada NSData bridge dan sanitasi siklus hidup UIActivityViewController.",
+        "tag": "iOS Quarantine",
+        "risk": "MacBook Needed"
+      }
+    ],
+    "inProgress": [],
+    "verified": [
+      {
+        "id": "#AUD-15",
+        "key": "CARD-89",
+        "title": "Responsive Split Pane Layout in Debt & Expense Screens",
+        "category": "ui",
+        "categoryLabel": "UI",
+        "snippet": "Adaptasi layout lanskap/tablet (width >= 540dp) pada Layar Utang & Pengeluaran dengan dual-pane split selaras standar Cashier & Dashboard.",
+        "tag": "Warung UX",
+        "risk": "Low Risk"
+      },
+      {
+        "id": "#AUD-17",
+        "key": "CARD-71",
+        "title": "Sync ADR Documentation for SQLCipher & AAB ABI Split",
+        "category": "arch",
+        "categoryLabel": "ARCH",
+        "snippet": "Pencatatan resmi ADR-005 (SQLCipher 256-bit AES-GCM dengan Android Keystore) dan ADR-006 (Google Play App Bundle ABI Split) dalam direktori docs/adr.",
+        "tag": "Architecture ADR",
+        "risk": "Documentation"
+      },
+      {
+        "id": "#AUD-18",
+        "key": "CARD-73",
+        "title": "Unit Test Expansion for DbEncryption & PdfWriter JPEG Parser",
+        "category": "test",
+        "categoryLabel": "TEST",
+        "snippet": "Ekspansi unit test host untuk SQLiteConnection user_version, copyUserVersionTo, cipherVersion, serta validasi JPEG SOF marker parser pada PdfWriter guna menaikkan cakupan JaCoCo.",
+        "tag": "Coverage Gate",
+        "risk": "Low Risk"
+      },
+      {
+        "id": "#AUD-16",
+        "key": "CARD-68",
+        "title": "Memoization of Collection Operations in Debt & Expense Screens",
+        "category": "perf",
+        "categoryLabel": "PERF",
+        "snippet": "Bungkus filter status utang aktif dan komputasi sumOf remaining/amount dengan remember() untuk memangkas alokasi list berulang di setiap frame gulir.",
+        "tag": "Recomposition Skip",
+        "risk": "Zero Allocs"
+      },
+      {
+        "id": "#AUD-13",
+        "key": "CARD-13",
+        "title": "Room Schema v5 Automated Migration Testing",
+        "category": "test",
+        "categoryLabel": "Testing",
+        "snippet": "Implementasi MigrationTestHelper untuk validasi otomatis migrasi Room dari v1 ke v4 dan indeks baru v5 tanpa regresi data riil warung.",
+        "tag": "Migration Test",
+        "risk": "Low Risk"
+      },
+      {
         "id": "#AUD-12",
         "key": "CARD-12",
         "title": "Google Play App Bundle (AAB) ABI Split",
@@ -269,16 +593,6 @@ window.AUDIT_STATE = {
         "risk": "AAB Target"
       },
       {
-        "id": "#AUD-02",
-        "key": "CARD-02",
-        "title": "iOS Cinterop & Memory Safety Audit",
-        "category": "arch",
-        "categoryLabel": "KMP Common",
-        "snippet": "Inspeksi penggunaan usePinned pada NSData bridge dan sanitasi siklus hidup UIActivityViewController.",
-        "tag": "Active Audit",
-        "risk": "Common KMP"
-      },
-      {
         "id": "#AUD-03",
         "key": "CARD-03",
         "title": "Stale Asset Purge Verification",
@@ -287,10 +601,7 @@ window.AUDIT_STATE = {
         "snippet": "Konfirmasi penghapusan berkas italase_logo.png 119 KB yang tertinggal di direktori build sementara.",
         "tag": "In Progress",
         "risk": "-119 KB"
-      }
-    ],
-    "inProgress": [],
-    "verified": [
+      },
       {
         "id": "#AUD-11",
         "key": "CARD-11",
@@ -382,9 +693,27 @@ window.AUDIT_STATE = {
         "risk": "DashboardScreen"
       }
     ],
-    "recommendations": []
+    "recommendations": [
+      {
+        "id": "#AUD-14",
+        "key": "CARD-14",
+        "title": "Baseline Profiles for Cold App Launch Optimization",
+        "category": "perf",
+        "categoryLabel": "Performance",
+        "snippet": "Generate Android Baseline Profile untuk mempercepat startup layar Kasir & Dashboard hingga 30% pada perangkat Android warung berspesifikasi rendah.",
+        "tag": "Startup Perf",
+        "risk": "DEX Precompile"
+      }
+    ]
   },
   "activityLogs": [
+    {
+      "timestamp": "03:32:00",
+      "type": "DEVICE_TEST",
+      "title": "AAB ABI Split & Hardware Device Tests Verified",
+      "detail": "Bundle AAB release berhasil dirilis dengan ABI split, dan 5 tes instrumentasi fisik pada Samsung Galaxy A54 5G lulus 100%.",
+      "status": "SUCCESS"
+    },
     {
       "timestamp": "03:14:37",
       "type": "DEVICE_TEST",

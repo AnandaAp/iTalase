@@ -2,6 +2,8 @@ package com.anlian.italase.shared.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.anlian.italase.shared.ui.components.GlassDialog
@@ -138,8 +140,10 @@ fun DebtContent(
     onAdd: () -> Unit = {},
     onPay: (Long) -> Unit = {},
 ) {
-    val active = debts.filter { it.status != DebtStatus.LUNAS }
-    Box(Modifier.fillMaxSize()) {
+    val active = remember(debts) { debts.filter { it.status != DebtStatus.LUNAS } }
+    val totalRemaining = remember(active) { active.sumOf { it.remaining } }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val isLandscape = maxWidth > maxHeight && maxWidth >= 540.dp
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
         val appeared = rememberAppear()
@@ -147,99 +151,136 @@ fun DebtContent(
             eyebrow = stringResource(Res.string.debt_running, active.size),
             title = stringResource(Res.string.title_debts),
         )
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .nestedScrollConnection(scrollBehavior, listState),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-            // Kartu total: primitif kaca yang sama dengan layar lain. Warna
-            // hijau tetap — yang berubah cuma bahannya (sheen, shadow, tanpa
-            // BorderStroke). alpha 0.92: hampir pekat supaya angka tetap
-            // terbaca, tapi blob latar masih samar menembus.
-            GlassCard(
-                modifier = Modifier.fillMaxWidth().enter(appeared, 0),
-                tint = MaterialTheme.colorScheme.primary,
-                alpha = 0.95f,
+        if (isLandscape) {
+            // Tata letak Landscape POS: Split screen Master-Detail
+            // Kiri: Ringkasan Total Utang & Status, Kanan: Daftar Buku Utang
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        stringResource(Res.string.debt_total),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        formatRupiah(active.sumOf { it.remaining }),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
+                Column(
+                    Modifier
+                        .weight(0.38f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth().enter(appeared, 0),
+                        tint = MaterialTheme.colorScheme.primary,
+                        alpha = 0.95f,
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                stringResource(Res.string.debt_total),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                formatRupiah(totalRemaining),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            StatusChip(
+                                text = stringResource(Res.string.debt_running, active.size),
+                                good = active.isEmpty(),
+                            )
+                        }
+                    }
+                    if (message.isNotBlank()) {
+                        Text(
+                            message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+
+                Column(
+                    Modifier
+                        .weight(0.62f)
+                        .fillMaxHeight()
+                        .nestedScrollConnection(scrollBehavior, listState),
+                ) {
+                    Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+                    if (debts.isEmpty()) {
+                        EmptyState(
+                            stringResource(Res.string.debt_empty_t),
+                            stringResource(Res.string.debt_empty_h),
+                        )
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxSize().enter(appeared, 1),
+                            contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                        ) {
+                            items(debts, key = { it.id }) { d ->
+                                DebtItemCard(d = d, onPay = onPay)
+                            }
+                        }
+                    }
                 }
             }
-            if (message.isNotBlank()) {
-                Text(
-                    message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            if (debts.isEmpty()) {
-                EmptyState(
-                    stringResource(Res.string.debt_empty_t),
-                    stringResource(Res.string.debt_empty_h),
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f).enter(appeared, 1),
-                    contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+        } else {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+                    .nestedScrollConnection(scrollBehavior, listState),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+                // Kartu total: primitif kaca yang sama dengan layar lain. Warna
+                // hijau tetap — yang berubah cuma bahannya (sheen, shadow, tanpa
+                // BorderStroke). alpha 0.92: hampir pekat supaya angka tetap
+                // terbaca, tapi blob latar masih samar menembus.
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth().enter(appeared, 0),
+                    tint = MaterialTheme.colorScheme.primary,
+                    alpha = 0.95f,
                 ) {
-                    items(debts, key = { it.id }) { d ->
-                        val lunas = d.status == DebtStatus.LUNAS
-                        val progress = if (d.totalAmount > 0) d.paidAmount.toFloat() / d.totalAmount.toFloat() else 1f
-                        GlassCard(shape = RoundedCornerShape(20.dp)) {
-                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(d.customerName, fontWeight = FontWeight.Bold)
-                                    StatusChip(
-                                        if (lunas) stringResource(Res.string.status_paid)
-                                        else stringResource(Res.string.debt_remaining, formatRupiah(d.remaining)),
-                                        good = lunas,
-                                    )
-                                }
-                                LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-                                Text(
-                                    stringResource(
-                                        Res.string.debt_progress,
-                                        formatRupiah(d.paidAmount),
-                                        formatRupiah(d.totalAmount),
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                val noteText = if (d.note.isNotBlank()) d.note
-                                else stringResource(Res.string.debt_from_cashier, d.saleId ?: 0)
-                                Text(
-                                    noteText,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                if (!lunas) {
-                                    GlassButton(
-                                        text = stringResource(Res.string.debt_pay_action),
-                                        onClick = { onPay(d.id) },
-                                        height = 40.dp,
-                                    )
-                                }
-                            }
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            stringResource(Res.string.debt_total),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            formatRupiah(totalRemaining),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                }
+                if (message.isNotBlank()) {
+                    Text(
+                        message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (debts.isEmpty()) {
+                    EmptyState(
+                        stringResource(Res.string.debt_empty_t),
+                        stringResource(Res.string.debt_empty_h),
+                    )
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f).enter(appeared, 1),
+                        contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                    ) {
+                        items(debts, key = { it.id }) { d ->
+                            DebtItemCard(d = d, onPay = onPay)
                         }
                     }
                 }
@@ -252,6 +293,55 @@ fun DebtContent(
             onClick = onAdd,
             modifier = Modifier.align(Alignment.BottomEnd).aboveTabBar().enter(appeared, 2),
         )
+    }
+}
+
+@Composable
+private fun DebtItemCard(
+    d: DebtEntity,
+    onPay: (Long) -> Unit,
+) {
+    val lunas = d.status == DebtStatus.LUNAS
+    val progress = if (d.totalAmount > 0) d.paidAmount.toFloat() / d.totalAmount.toFloat() else 1f
+    GlassCard(shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(d.customerName, fontWeight = FontWeight.Bold)
+                StatusChip(
+                    if (lunas) stringResource(Res.string.status_paid)
+                    else stringResource(Res.string.debt_remaining, formatRupiah(d.remaining)),
+                    good = lunas,
+                )
+            }
+            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+            Text(
+                stringResource(
+                    Res.string.debt_progress,
+                    formatRupiah(d.paidAmount),
+                    formatRupiah(d.totalAmount),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val noteText = if (d.note.isNotBlank()) d.note
+            else stringResource(Res.string.debt_from_cashier, d.saleId ?: 0)
+            Text(
+                noteText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!lunas) {
+                GlassButton(
+                    text = stringResource(Res.string.debt_pay_action),
+                    onClick = { onPay(d.id) },
+                    height = 40.dp,
+                )
+            }
+        }
     }
 }
 

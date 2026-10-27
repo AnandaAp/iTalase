@@ -186,5 +186,55 @@ class SalesReportPdfTest {
     fun nonJpegBytesAreRejectedInsteadOfProducingABrokenPage() {
         assertEquals(null, jpegDimensions(byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47)))
         assertEquals(null, jpegDimensions(ByteArray(0)))
+        assertEquals(null, jpegDimensions(byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0x00, 0x00)))
+    }
+
+    @Test
+    fun jpegDimensionsEdgeCases() {
+        // Zero dimensions
+        val zeroDimsJpeg = byteArrayOf(
+            0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xC0.toByte(), 0x00, 0x11, 0x08,
+            0x00, 0x00, 0x00, 0x00, 0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01,
+            0xFF.toByte(), 0xD9.toByte()
+        )
+        assertEquals(null, jpegDimensions(zeroDimsJpeg))
+
+        // Non-frame marker 0xC4 (DHT) before SOF0
+        val dhtBeforeSof = byteArrayOf(
+            0xFF.toByte(), 0xD8.toByte(),
+            0xFF.toByte(), 0xC4.toByte(), 0x00, 0x03, 0x00, // DHT length 3
+            0xFF.toByte(), 0xC0.toByte(), 0x00, 0x11, 0x08,
+            0x00, 0x20, 0x00, 0x40, 0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01,
+            0xFF.toByte(), 0xD9.toByte()
+        )
+        assertEquals(64 to 32, jpegDimensions(dhtBeforeSof))
+    }
+
+    @Test
+    fun winAnsiBytesEncodingAndFallback() {
+        val input = "Hello • – — … ‘ ’ “ ” Cafe\u00E9 \uD83D\uDE00"
+        val bytes = winAnsiBytes(input)
+        val string = bytes.map { it.toInt() and 0xFF }
+
+        // '•' -> 0x95
+        assertTrue(string.contains(0x95))
+        // '–' -> 0x96
+        assertTrue(string.contains(0x96))
+        // '—' -> 0x97
+        assertTrue(string.contains(0x97))
+        // '…' -> 0x85
+        assertTrue(string.contains(0x85))
+        // 'é' -> 0xE9
+        assertTrue(string.contains(0xE9))
+        // emoji -> '?' -> 0x3F
+        assertTrue(string.contains(0x3F))
+    }
+
+    @Test
+    fun pdfNumFormatting() {
+        assertEquals("10", pdfNum(10.0f))
+        assertEquals("12.34", pdfNum(12.34f))
+        assertEquals("0.50", pdfNum(0.50f))
+        assertEquals("0.05", pdfNum(0.05f))
     }
 }

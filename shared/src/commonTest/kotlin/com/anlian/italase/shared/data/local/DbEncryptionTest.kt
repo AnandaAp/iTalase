@@ -1,5 +1,7 @@
 package com.anlian.italase.shared.data.local
 
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.SQLiteStatement
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -91,6 +93,86 @@ class DbEncryptionTest {
         val header = PLAIN_HEADER.copyOf()
         header[3] = 'X'.code.toByte()
         assertFalse(isPlainSqliteHeader(header))
+    }
+
+    @Test
+    fun readUserVersionReturnsZeroWhenStepReturnsFalse() {
+        val conn = FakeSQLiteConnection { FakeSQLiteStatement(stepResult = false) }
+        assertEquals(0, conn.readUserVersion())
+        assertEquals(listOf("PRAGMA user_version"), conn.executedStatements)
+    }
+
+    @Test
+    fun readUserVersionReturnsVersionWhenStepReturnsTrue() {
+        val conn = FakeSQLiteConnection { FakeSQLiteStatement(stepResult = true, longResult = 5L) }
+        assertEquals(5, conn.readUserVersion())
+        assertEquals(listOf("PRAGMA user_version"), conn.executedStatements)
+    }
+
+    @Test
+    fun copyUserVersionToExecutesPragmaOnAttachedSchema() {
+        val conn = FakeSQLiteConnection { sql ->
+            if (sql == "PRAGMA user_version") {
+                FakeSQLiteStatement(stepResult = true, longResult = 4L)
+            } else {
+                FakeSQLiteStatement(stepResult = false)
+            }
+        }
+        conn.copyUserVersionTo("backup_db")
+        assertEquals(2, conn.executedStatements.size)
+        assertEquals("PRAGMA user_version", conn.executedStatements[0])
+        assertEquals("PRAGMA backup_db.user_version = 4", conn.executedStatements[1])
+    }
+
+    @Test
+    fun cipherVersionReturnsEmptyWhenStepReturnsFalse() {
+        val conn = FakeSQLiteConnection { FakeSQLiteStatement(stepResult = false) }
+        assertEquals("", conn.cipherVersion())
+        assertEquals(listOf("PRAGMA cipher_version"), conn.executedStatements)
+    }
+
+    @Test
+    fun cipherVersionReturnsVersionStringWhenSupported() {
+        val conn = FakeSQLiteConnection { FakeSQLiteStatement(stepResult = true, textResult = "4.6.0 community") }
+        assertEquals("4.6.0 community", conn.cipherVersion())
+        assertEquals(listOf("PRAGMA cipher_version"), conn.executedStatements)
+    }
+
+    private class FakeSQLiteStatement(
+        private val stepResult: Boolean = false,
+        private val longResult: Long = 0L,
+        private val textResult: String = ""
+    ) : SQLiteStatement {
+        override fun step(): Boolean = stepResult
+        override fun reset() {}
+        override fun clearBindings() {}
+        override fun close() {}
+        override fun bindBlob(index: Int, value: ByteArray) {}
+        override fun bindDouble(index: Int, value: Double) {}
+        override fun bindLong(index: Int, value: Long) {}
+        override fun bindNull(index: Int) {}
+        override fun bindText(index: Int, value: String) {}
+        override fun getBlob(index: Int): ByteArray = ByteArray(0)
+        override fun getDouble(index: Int): Double = 0.0
+        override fun getLong(index: Int): Long = longResult
+        override fun getText(index: Int): String = textResult
+        override fun isNull(index: Int): Boolean = false
+        override fun getColumnCount(): Int = 1
+        override fun getColumnName(index: Int): String = "col"
+        override fun getColumnType(index: Int): Int = 1
+    }
+
+    private class FakeSQLiteConnection(
+        private val statementFactory: (String) -> SQLiteStatement
+    ) : SQLiteConnection {
+        val executedStatements = mutableListOf<String>()
+
+        override fun prepare(sql: String): SQLiteStatement {
+            executedStatements.add(sql)
+            return statementFactory(sql)
+        }
+
+        override fun close() {}
     }
 
     private companion object {
