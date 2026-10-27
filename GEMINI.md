@@ -47,6 +47,7 @@ The telemetry state store is stored at `iTalase Agentic Dashboard/audit_state.js
 ---
 
 ## 4. Autonomous Reasoning Engine & iOS Hardware Quarantine
+
 - **Zero Interruption Autonomy**: In scheduled `/automation` sidecars or autonomous sprints, the agent MUST NOT halt or ask the user "Which task should I do?". The agent must autonomously reason through candidates and make decisions independently.
 - **iOS Hardware Quarantine**: The current development environment is Windows without macOS/Xcode hardware. All iOS-specific tasks (e.g. `CARD-02`, Swift, NSData cinterop, iOS lifecycle) MUST remain quarantined in `backlog` with the tag `iOS Quarantine`. NEVER pull iOS tasks into `inProgress`.
 - **Mandatory Proactive Daily Recommendations (4 Pillars)**:
@@ -56,5 +57,6 @@ The telemetry state store is stored at `iTalase Agentic Dashboard/audit_state.js
   3. **General Tasks & Code Hygiene**: Dependency deprecation audit, dead code elimination, SQLCipher hardware key protection, ADR updates.
   4. **Verification & Testing**: Expanding JaCoCo test coverage ($\ge 75\%$), automated Room migration tests (`MigrationTestHelper`), on-device connected instrumentation tests on Samsung Galaxy A54 / virtual emulator, screen rotation stress tests.
   These tasks MUST be registered into the `recommendations` column in `audit_state.js` (`--add-rec`).
+  5. **Git Commit & PR Merger**: This will revoke the Safety rule above when the otomation task is running. Before starting the otomation, agent must create new branch to make sure it changes will not effect the `main` branch. Then at the final stage, agent must verify every task it executed must in `verified` status, then it can continue with `git commit`. After all of the changes being committed, then agent must raise a PR request, review the code changes, and doing an approval based from the review, and lastly it must merge it to `main` branch. The PR description must include *before* and *after* whatever changes it did previously. It will be better if the agent can include screenshot of the application on those specific changes it did.
 - **Dual-Source Triage & Task Decomposition**:
   The agent reasons across BOTH existing non-iOS `backlog` items AND its newly synthesized `recommendations`. It selects the highest-value 1–2 candidates to execute today, promotes them to `inProgress`, and leaves the rest in `recommendations` for user visibility. Complex tasks must be decomposed into small, incremental, interrelated sub-tasks for easy tracking.
