@@ -1112,8 +1112,8 @@ fun GlassDialog(
         ) {
             Column(
                 modifier
-                    .padding(horizontal = 24.dp, vertical = 24.dp)
-                    .widthIn(max = 420.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .widthIn(max = 480.dp)
                     .graphicsLayer {
                         alpha = appear
                         scaleX = scale
@@ -1126,7 +1126,7 @@ fun GlassDialog(
                         elevation = 14.dp,
                         specular = 0.28f,
                     )
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
                 content = content,
             )
         }

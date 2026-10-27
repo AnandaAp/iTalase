@@ -3,6 +3,7 @@ package com.anlian.italase.shared.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -149,100 +150,210 @@ fun DashboardContent(
         eyebrow = stringResource(Res.string.dash_hello_sub),
         title = stringResource(Res.string.dash_hello),
     )
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            // Urutan penting: nestedScroll WAJIB di luar (sebelum) verticalScroll.
-            // Modifier paling awal = paling luar; event scroll naik dari child ke
-            // parent, jadi connection harus membungkus scrollable-nya agar
-            // contentOffset di top bar benar-benar ter-update.
-            .nestedScrollConnection(scrollBehavior, null)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Spacer(Modifier.height(overlayTop + 4.dp))
-        if (error.isNotEmpty()) {
-            Enter(appeared, 1) {
-                Text(
-                    error,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        }
-        Enter(appeared, 1) { OmzetHero(summary) }
-        Enter(appeared, 2) { QuickActions(onQuickAction) }
-        Enter(appeared, 3) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassStat(
-                    label = stringResource(Res.string.dash_stat_net),
-                    value = formatRupiah(summary.bersih),
-                    modifier = Modifier.weight(1f),
-                )
-                GlassStat(
-                    label = stringResource(Res.string.title_expenses),
-                    value = formatRupiah(summary.expense),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-        Enter(appeared, 4) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassStat(
-                    label = stringResource(Res.string.dash_stat_debt),
-                    value = formatRupiah(piutang),
-                    modifier = Modifier.weight(1f),
-                    sub = stringResource(Res.string.dash_debt_running, activeDebtCount),
-                )
-                GlassStat(
-                    label = stringResource(Res.string.dash_stat_gross),
-                    value = formatRupiah(summary.profit),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
 
-        Enter(appeared, 5) {
-            SectionHeader(
-                stringResource(Res.string.dash_top),
-                stringResource(Res.string.dash_top_count, top.size),
-            )
-        }
-        Enter(appeared, 6) {
-            if (top.isEmpty()) {
-                GlassEmptyState(
-                    stringResource(Res.string.dash_top_empty_t),
-                    stringResource(Res.string.dash_top_empty_h),
-                )
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    top.forEachIndexed { i, r -> TopItem(rank = i + 1, row = r) }
-                }
-            }
-        }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val isLandscape = maxWidth > maxHeight && maxWidth >= 540.dp
 
-        Enter(appeared, 7) {
-            SectionHeader(
-                stringResource(Res.string.dash_low),
-                stringResource(Res.string.dash_low_count, lowStock.size),
-            )
-        }
-        Enter(appeared, 8) {
-            if (lowStock.isEmpty()) {
-                GlassEmptyState(
-                    stringResource(Res.string.dash_low_empty_t),
-                    stringResource(Res.string.dash_low_empty_h),
-                )
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    lowStock.take(10).forEach { p -> LowStockItem(p) }
+        if (isLandscape) {
+            // Tata letak Landscape: Dua Kolom Sejajar (Hero + KPIs di kiri, Top + Low Stock di kanan)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScrollConnection(scrollBehavior, null)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Spacer(Modifier.height(overlayTop + 4.dp))
+                if (error.isNotEmpty()) {
+                    Enter(appeared, 1) {
+                        Text(
+                            error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    // Sisi Kiri: Hero Omzet + Aksi Cepat + 4 Glass Stat
+                    Column(
+                        Modifier.weight(1.05f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Enter(appeared, 1) { OmzetHero(summary) }
+                        Enter(appeared, 2) { QuickActions(onQuickAction) }
+                        Enter(appeared, 3) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                GlassStat(
+                                    label = stringResource(Res.string.dash_stat_net),
+                                    value = formatRupiah(summary.bersih),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                GlassStat(
+                                    label = stringResource(Res.string.title_expenses),
+                                    value = formatRupiah(summary.expense),
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        Enter(appeared, 4) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                GlassStat(
+                                    label = stringResource(Res.string.dash_stat_debt),
+                                    value = formatRupiah(piutang),
+                                    modifier = Modifier.weight(1f),
+                                    sub = stringResource(Res.string.dash_debt_running, activeDebtCount),
+                                )
+                                GlassStat(
+                                    label = stringResource(Res.string.dash_stat_gross),
+                                    value = formatRupiah(summary.profit),
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    }
+
+                    // Sisi Kanan: Produk Terlaris + Peringatan Stok Rendah
+                    Column(
+                        Modifier.weight(0.95f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Enter(appeared, 5) {
+                            SectionHeader(
+                                stringResource(Res.string.dash_top),
+                                stringResource(Res.string.dash_top_count, top.size),
+                            )
+                        }
+                        Enter(appeared, 6) {
+                            if (top.isEmpty()) {
+                                GlassEmptyState(
+                                    stringResource(Res.string.dash_top_empty_t),
+                                    stringResource(Res.string.dash_top_empty_h),
+                                )
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    top.forEachIndexed { i, r -> TopItem(rank = i + 1, row = r) }
+                                }
+                            }
+                        }
+
+                        Enter(appeared, 7) {
+                            SectionHeader(
+                                stringResource(Res.string.dash_low),
+                                stringResource(Res.string.dash_low_count, lowStock.size),
+                            )
+                        }
+                        Enter(appeared, 8) {
+                            if (lowStock.isEmpty()) {
+                                GlassEmptyState(
+                                    stringResource(Res.string.dash_low_empty_t),
+                                    stringResource(Res.string.dash_low_empty_h),
+                                )
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    lowStock.take(10).forEach { p -> LowStockItem(p) }
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(overlayBottom))
+            }
+        } else {
+            // Tata letak Portrait: Original
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScrollConnection(scrollBehavior, null)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Spacer(Modifier.height(overlayTop + 4.dp))
+                if (error.isNotEmpty()) {
+                    Enter(appeared, 1) {
+                        Text(
+                            error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+                Enter(appeared, 1) { OmzetHero(summary) }
+                Enter(appeared, 2) { QuickActions(onQuickAction) }
+                Enter(appeared, 3) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GlassStat(
+                            label = stringResource(Res.string.dash_stat_net),
+                            value = formatRupiah(summary.bersih),
+                            modifier = Modifier.weight(1f),
+                        )
+                        GlassStat(
+                            label = stringResource(Res.string.title_expenses),
+                            value = formatRupiah(summary.expense),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                Enter(appeared, 4) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GlassStat(
+                            label = stringResource(Res.string.dash_stat_debt),
+                            value = formatRupiah(piutang),
+                            modifier = Modifier.weight(1f),
+                            sub = stringResource(Res.string.dash_debt_running, activeDebtCount),
+                        )
+                        GlassStat(
+                            label = stringResource(Res.string.dash_stat_gross),
+                            value = formatRupiah(summary.profit),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+
+                Enter(appeared, 5) {
+                    SectionHeader(
+                        stringResource(Res.string.dash_top),
+                        stringResource(Res.string.dash_top_count, top.size),
+                    )
+                }
+                Enter(appeared, 6) {
+                    if (top.isEmpty()) {
+                        GlassEmptyState(
+                            stringResource(Res.string.dash_top_empty_t),
+                            stringResource(Res.string.dash_top_empty_h),
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            top.forEachIndexed { i, r -> TopItem(rank = i + 1, row = r) }
+                        }
+                    }
+                }
+
+                Enter(appeared, 7) {
+                    SectionHeader(
+                        stringResource(Res.string.dash_low),
+                        stringResource(Res.string.dash_low_count, lowStock.size),
+                    )
+                }
+                Enter(appeared, 8) {
+                    if (lowStock.isEmpty()) {
+                        GlassEmptyState(
+                            stringResource(Res.string.dash_low_empty_t),
+                            stringResource(Res.string.dash_low_empty_h),
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            lowStock.take(10).forEach { p -> LowStockItem(p) }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(overlayBottom))
             }
         }
-        // Ruang gulir ekstra: tarik baris terakhir melewati bar kaca yang
-        // mengambang, supaya tidak tertutup permanen di bawahnya.
-        Spacer(Modifier.height(overlayBottom))
     }
 }
 

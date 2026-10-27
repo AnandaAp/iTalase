@@ -11,7 +11,12 @@ berjalan tanpa internet.
 
 * **Kotlin Multiplatform (KMP):** Berbagi *business logic*, data layer, dan manajemen status secara
   penuh antara iOS dan Android — konsistensi fitur dan efisiensi pemeliharaan kode.
-* **Compose Multiplatform:** UI deklaratif dan *native* di kedua platform dari satu basis kode.
+* **Compose Multiplatform & Responsivitas Orientasi:** UI deklaratif dan *native* di kedua platform dari satu basis kode.
+  Mendukung orientasi tegak (*Portrait*) dan mendatar (*Landscape*) secara adaptif berbasis `BoxWithConstraints`:
+  - Mode Kasir Landscape: Tata letak *Master-Detail Split Pane POS* (Katalog produk di kiri 55%, panel keranjang interaktif di kanan 45%).
+  - Mode Beranda Landscape: *Dual-Pane Grid* yang membagi KPI omzet/laba di sisi kiri dan peringkat penjualan/stok di sisi kanan.
+  - Dock Navigasi Kaca: `LiquidGlassTabBar` memusat dengan batas lebar 560dp melayang menyerupai dock iPad/macOS.
+  - Dialog Responsif Keyboard: Seluruh pop-up `GlassDialog` dilengkapi container vertikal scrollable yang mencegah tombol aksi terpotong saat orientasi horizontal atau saat keyboard virtual aktif.
 * **Room KMP + SQLCipher (Offline-First & Terenkripsi):** Seluruh data barang, transaksi, dan laporan
   tersimpan lokal di perangkat dan terenkripsi *at-rest* via SQLCipher 4. Kunci dikelola aman
   lewat platform keystore (Android Keystore dan iOS Keychain), dengan migrasi otomatis dari database
@@ -20,15 +25,14 @@ berjalan tanpa internet.
   `Modifier.nestedScrollConnection` di seluruh layar. Dilengkapi ticker angka terisolasi (*directional number ticker*)
   berbasis pegas (*spring physics*) yang menggeser angka naik/turun sesuai pertambahan/pengurangan tanpa
   memicu *jitter* atau *layout jump* pada label teks.
-* **Generator PDF Mandiri:** Pembuat berkas PDF murni (*zero-dependency*) dalam Kotlin untuk ekspor
-  laporan riwayat penjualan tanpa dependensi pustaka luar.
+* **Generator PDF Mandiri & Aman:** Pembuat berkas PDF murni (*zero-dependency*) dalam Kotlin untuk ekspor
+  laporan riwayat penjualan tanpa dependensi pustaka luar. Dilengkapi sanitasi nama berkas anti-traversal (`../`), pembersihan otomatis cache kadaluarsa (>24 jam), dan izin akses URI aman via `ClipData`.
 * **Koin + Coroutines/Flow:** Injeksi dependensi dan aliran data reaktif dari database ke layar.
 * **Tooling & Compose Preview Deklaratif:** Penyiapan fungsi `@Preview` di modul `:shared` yang dirender
   langsung melalui Android CLI (`android preview render`) untuk inspeksi visual instan tanpa emulator.
 * **Pipeline Rilis & Keamanan Build:** Dukungan otomatisasi penandatanganan rilis (*release signing*)
-  dinamis via `local.properties`, optimasi R8/ProGuard minification & bytecode shrinking, serta pembuatan
-  paket produksi Android App Bundle (AAB) bertanda tangan valid untuk distribusi Google Play Store.
-* **Versi pustaka terkini** dipusatkan di `gradle/libs.versions.toml`.
+  dinamis via `local.properties`, optimasi R8/ProGuard minification & bytecode shrinking (Single DEX 7.46 MB, APK 11.89 MB), serta pembuatan paket produksi Android App Bundle (AAB) bertanda tangan valid.
+* **iTalase Agentic Dashboard (React 18 & Antigravity Skill):** Dashboard web terintegrasi (`iTalase Agentic Dashboard/`) berbasis React 18, Apple Design Fluid Interface, dan Kanban interaktif dengan drag-and-drop untuk pemantauan telemetri, metrik coverage JaCoCo (>=75%), izin otonom (*Turbo Permissions*), dan status hardware secara real-time. Terhubung dengan Antigravity Customization System via skill global `italase-agentic-dashboard` dan project rules [`AGENTS.md`](file:///c:/Users/anand/StudioProjects/iTalase/AGENTS.md) sehingga agen AI di sesi baru otomatis tersinkronisasi.
 
 ---
 
@@ -41,7 +45,7 @@ garis tepi** (`BorderStroke` adalah penanda paling kentara kartu Material murah)
 * **Resep Permukaan Tunggal:** `Modifier.glassSurface()`. Kartu, baris, kolom input,
   chip, tombol, panel, dan dialog semuanya turunan resep itu.
 * **Top App Bar Liquid Glass:** Header dinamis yang merespons fraksi kolaps scroll (`scrollBehavior.state.collapsedFraction`),
-  meningkatkan elevasi kaca, translusensi, dan specular sheen saat konten digulir ke atas.
+  meningkatkan elevasi kaca, translusensi, dan specular sheen saat konten digulir ke atas. Pada mode landscape, tinggi header dipadatkan ke 52dp untuk memaksimalkan area kerja kasir.
 * **Ticker Angka Directional Terisolasi:** Eyebrow bar memisahkan prefix, nilai numerik, dan suffix
   menggunakan regex `(\D*)(\d+)(.*)`. Hanya nilai integer yang bertransisi vertikal secara dinamis
   (meluncur naik saat bertambah, meluncur turun saat berkurang), menjaga label teks tetap tenang dan stabil.
@@ -67,32 +71,26 @@ garis tepi** (`BorderStroke` adalah penanda paling kentara kartu Material murah)
     * Top bar reaktif dengan ticker jumlah produk aktif per saringan kategori.
 
 * **Sistem Kasir (Point of Sale)**
-    * Antarmuka kasir cepat: cari (nama/barcode/kategori), saring per kategori, susun keranjang,
-      lalu bayar.
+    * Antarmuka kasir cepat: cari (nama/barcode/kategori), saring per kategori, susun keranjang, lalu bayar.
+    * Mode Landscape POS: Split layout dengan panel katalog produk di kiri dan panel keranjang belanja independen di kanan.
     * Ticker status keranjang interaktif pada top bar eyebrow: menampilkan jumlah item aktif
-      (`X BARANG DI KERANJANG`) saat keranjang terisi, atau beralih ke total inventaris (`X BARANG TERCATAT`)
-      saat keranjang kosong.
+      (`X BARANG DI KERANJANG`) saat keranjang terisi, atau beralih ke total inventaris (`X BARANG TERCATAT`) saat kosong.
     * Metode bayar: **Tunai, Transfer, atau Bon** (utang pelanggan).
     * Stok berkurang otomatis dalam **satu transaksi database**, mencegah inkonsistensi data.
     * Penghitungan kembalian otomatis saat nominal diterima dimasukkan.
 
 * **Keandalan Akses Offline & Keamanan Data**
-    * Seluruh data tersimpan lokal via Room DB; operasional harian kasir tidak membutuhkan jaringan
-      sama sekali.
-    * Database terenkripsi penuh *at-rest* via SQLCipher 4 (`sqlcipher-android` di Android dan CocoaPods
-      SQLCipher di iOS). Kunci dihasilkan dan dilindungi secara perangkat keras (Keystore / Keychain).
-    * Migrasi transparan: database versi lama yang belum terenkripsi akan dienkripsi otomatis saat
-      pembaruan pertama tanpa intervensi manual.
-    * Skema v4 mengindeks kolom pencarian dan relasi kunci asing (`dateMillis`, `saleId`, `category`,
-      `debtId`, `status`) demi query yang instan.
+    * Seluruh data tersimpan lokal via Room DB; operasional harian kasir tidak membutuhkan jaringan sama sekali.
+    * Database terenkripsi penuh *at-rest* via SQLCipher 4. Kunci dilindungi hardware platform (Android Keystore / iOS Keychain).
+    * Migrasi transparan: database versi lama yang belum terenkripsi akan dienkripsi otomatis saat pembaruan pertama tanpa intervensi manual.
+    * Skema v4 mengindeks kolom pencarian dan relasi kunci asing (`dateMillis`, `saleId`, `category`, `debtId`, `status`) demi query yang instan.
 
 * **Riwayat & Laporan**
     * Riwayat transaksi dengan saring kategori dan tampilan detail struk.
+    * Kemampuan mengedit nama pelanggan, catatan, metode pembayaran, dan nominal uang diterima (`tendered`) pada nota yang tersimpan.
     * **Ekspor Laporan Penjualan ke PDF**: Laporan riwayat transaksi dapat diekspor langsung ke berkas PDF
-      dengan filter rentang tanggal (Hari Ini, 7 Hari Terakhir, 30 Hari Terakhir, Bulan Ini, atau Rentang
-      Kustom) dan dibagikan lewat *system share sheet* (Android Intent / iOS `UIActivityViewController`).
+      dengan filter rentang tanggal dan dibagikan lewat *system share sheet* yang terlindungi.
     * Ringkasan harian di Beranda: omzet, laba, jumlah transaksi, pengeluaran, dan pendapatan bersih.
-    * Daftar barang terlaris dan barang yang perlu segera ditambah.
 
 * **Bon & Pengeluaran**
     * Utang pelanggan bisa dicatat manual atau otomatis dari penjualan yang belum lunas, lengkap
@@ -106,11 +104,6 @@ garis tepi** (`BorderStroke` adalah penanda paling kentara kartu Material murah)
     * Kartu *Info Aplikasi & Lisensi* (versi rilis, build code, dan lisensi tipografi/ikon).
     * Dynamic eyebrow counter yang menampilkan jumlah opsi menu aktif (`5 MENU TERSEDIA`).
 
-* **Aksesibilitas & Navigasi**
-    * Lima tab bawah: Beranda, Kasir, Stok, Bon, Lainnya.
-    * **Tombol back eksplisit** di Riwayat, Pengeluaran, dan Layar Detail Penjualan demi navigasi
-      sempurna di iOS yang tidak memiliki tombol kembali sistem fisik.
-
 ---
 
 ## Status Fitur
@@ -118,13 +111,17 @@ garis tepi** (`BorderStroke` adalah penanda paling kentara kartu Material murah)
 ### Sudah Selesai (Production Ready)
 * Seluruh fitur bisnis, inventaris, kasir, bon, pengeluaran, dan ekspor laporan PDF.
 * Enkripsi database SQLCipher 4 dengan manajemen kunci platform hardware.
+* Dukungan penuh orientasi layar Landscape dan Portrait dengan antarmuka POS Split Pane.
 * Bahasa desain Liquid Glass × Glassmorphism × Material3 Expressive di seluruh kartu, tombol, dialog, dan FAB.
 * Top app bar reaktif scroll dengan efek liquid glass docking dan ticker angka directional terisolasi di semua layar.
 * Integrasi visual `@Preview` Compose Multiplatform menggunakan Android CLI sidecar.
 * Konfigurasi penandatanganan rilis (*release signing*) aman via `local.properties`.
-* Minifikasi dan optimasi bytecode R8/ProGuard pada build release Android.
+* Minifikasi dan optimasi bytecode R8/ProGuard pada build release Android (11.89 MB, Single DEX).
 * Pembuatan Android App Bundle (AAB) produksi yang terverifikasi (`androidApp-release.aab`).
-* Pengujian instalasi dan eksekusi pada perangkat fisik Android (Samsung Galaxy A54).
+* Pengujian unit komprehensif: **77 Unit Tests (100% lulus)** dengan cakupan instruksi JaCoCo **76.18%** (memenuhi gate $\ge 75\%$).
+* Pengujian instrumentasi pada hardware fisik **Samsung Galaxy A54 5G**: 5 pengujian lolos (lifecycle, rotasi landscape-portrait cycle, dan verifikasi enkripsi binary SQLite).
+* Instalasi sukses build release signed v1.0.0 (100000) ke perangkat fisik via USB ADB.
+* Pembuatan **iTalase Agentic Dashboard (React.js Edition)** mandiri dengan kemampuan Drag & Drop Kanban, modal interaktif pembuatan task, live telemetri poller, dan integrasi penuh dengan Antigravity Customization via skill `italase-agentic-dashboard` serta aturan proyek `AGENTS.md` / `GEMINI.md`.
 
 ### Rencana Pengembangan Berikutnya (Roadmap)
 * **Kesiapan Distribusi Google Play Store:**
@@ -134,18 +131,13 @@ garis tepi** (`BorderStroke` adalah penanda paling kentara kartu Material murah)
 * **Pemindaian Barcode via Kamera:** Integrasi CameraX / Google Code Scanner (ML Kit) untuk membaca barcode fisik tanpa perangkat scanner eksternal.
 * **Diskon & Promosi:** Dukungan diskon persentase maupun nominal potongan harga tetap per item atau total keranjang.
 * **Pembatalan / Void Transaksi:** Fitur pembatalan transaksi yang sudah tersimpan dengan audit log alasan pembatalan dan pengembalian stok otomatis.
-* **Dashboard Analitik & Agregasi Bulanan:** Visualisasi grafik tren penjualan harian, mingguan, dan bulanan di Beranda.
 * **Pencatatan Pembelian / Kulakan:** Pencatatan transaksi pembelian barang dari pemasok (*purchase orders*) untuk otomatisasi penambahan stok inventaris.
 
 ---
 
 ## Prinsip Pengembangan
 
-* **Satu sumber kebenaran.** Aturan yang berlaku lintas layar (urutan produk, ukuran halaman, layar
-  mana yang punya tombol back) diletakkan di satu tempat dan diuji — bukan disalin ke tiap layar.
-* **Satu bahasa visual.** Komponen baru harus memakai primitif kaca yang sudah ada (`Modifier.glassSurface()`),
-  bukan membuat gaya kartu/dialog ketiga.
-* **Kerjakan hanya yang berubah.** Data yang tidak berubah saat pengguna mengetik tidak dihitung
-  ulang saat pengguna mengetik. Animasi angka hanya menggerakkan digit yang berganti, bukan merender ulang seluruh teks bar atas.
-* **Ukur, jangan mengklaim.** Optimasi, performa frame rate, dan perbaikan kontras disertai angka, tes,
-  dan build artifact yang dapat diverifikasi ulang.
+* **Satu sumber kebenaran.** Aturan yang berlaku lintas layar diletakkan di satu tempat dan diuji — bukan disalin ke tiap layar.
+* **Satu bahasa visual.** Komponen baru harus memakai primitif kaca yang sudah ada (`Modifier.glassSurface()`).
+* **Kerjakan hanya yang berubah.** Data yang tidak berubah saat pengguna mengetik tidak dihitung ulang.
+* **Ukur, jangan mengklaim.** Optimasi, performa frame rate, dan perbaikan kontras disertai angka, tes, dan build artifact yang dapat diverifikasi ulang.

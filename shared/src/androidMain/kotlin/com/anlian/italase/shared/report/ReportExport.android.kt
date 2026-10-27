@@ -27,13 +27,22 @@ actual suspend fun savePdf(suggestedName: String, bytes: ByteArray): Boolean {
     val context: Context = androidAppContextOrNull()
         ?: return false
     val dir: File = File(context.cacheDir, "reports").apply { mkdirs() }
-    val file: File = File(dir, suggestedName).apply { writeBytes(bytes) }
+    // Bersihkan berkas laporan sementara lama (> 24 jam) agar penyimpanan cache tidak menumpuk
+    dir.listFiles()?.forEach { oldFile ->
+        if (System.currentTimeMillis() - oldFile.lastModified() > 24 * 60 * 60 * 1000L) {
+            oldFile.delete()
+        }
+    }
+    // Sanitasi nama berkas untuk mencegah path traversal (mis. '../')
+    val safeName = File(suggestedName).name.ifBlank { "laporan.pdf" }
+    val file: File = File(dir, safeName).apply { writeBytes(bytes) }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "application/pdf"
         putExtra(Intent.EXTRA_STREAM, uri)
-        putExtra(Intent.EXTRA_SUBJECT, suggestedName)
+        putExtra(Intent.EXTRA_SUBJECT, safeName)
+        clipData = android.content.ClipData.newRawUri("report", uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     // Context aplikasi tidak boleh startActivity; butuh Activity yang sedang terlihat.

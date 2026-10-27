@@ -23,3 +23,5 @@ gradle/gradle-daemon-jvm.properties
 androidApp/release/
 *.aab
 *.apk
+dist/
+

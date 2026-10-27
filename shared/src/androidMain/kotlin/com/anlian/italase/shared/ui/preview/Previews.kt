@@ -236,3 +236,58 @@ fun MorePreview() {
         MoreScreen()
     }
 }
+
+/**
+ * Pratinjau Kasir dalam orientasi landscape (840 x 390 dp).
+ */
+@Preview(name = "Cashier Landscape", widthDp = 840, heightDp = 390, showBackground = true)
+@Composable
+fun CashierLandscapePreview() {
+    val products = sampleProducts()
+    PreviewWrapper {
+        CashierContent(
+            query = "",
+            onQuery = {},
+            categories = listOf("Makanan", "Minuman", "Sembako"),
+            activeCategory = null,
+            onCategory = {},
+            list = products,
+            cart = mapOf(1L to 2, 3L to 1),
+            lines = listOf(
+                CartLine(products[0], 2),
+                CartLine(products[2], 1),
+            ),
+            total = 28000,
+            message = "",
+        )
+    }
+}
+
+/**
+ * Pratinjau Dashboard dalam orientasi landscape (840 x 390 dp).
+ */
+@Preview(name = "Dashboard Landscape", widthDp = 840, heightDp = 390, showBackground = true)
+@Composable
+fun DashboardLandscapePreview() {
+    PreviewWrapper {
+        DashboardContent(
+            summary = sampleSummary(),
+            top = sampleTop().toPersistentList(),
+            piutang = 48000,
+            lowStock = sampleProducts().filter { it.stock <= 3 }.toPersistentList(),
+            activeDebtCount = 1,
+            error = "",
+        )
+    }
+}
+
+/**
+ * Pratinjau Dialog Pembayaran dalam orientasi landscape (840 x 390 dp).
+ */
+@Preview(name = "PayDialog Landscape", widthDp = 840, heightDp = 390, showBackground = true)
+@Composable
+fun PayDialogLandscapePreview() {
+    PreviewWrapper {
+        PayDialog(total = 45500, onDismiss = {}, onConfirm = { _, _, _ -> })
+    }
+}

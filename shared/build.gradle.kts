@@ -71,7 +71,6 @@ kotlin {
 
             implementation(bom)
             implementation(libs.bundles.android.compose)
-            api(libs.bundles.ktor.shared.android)
             api(libs.bundles.android.essentials)
             implementation(libs.sqlcipher.android)
         }
@@ -104,7 +103,6 @@ kotlin {
             // dan database tetap polos. Android memakai SQLCipher
             // (`sqlcipher-android`), iOS memakai SQLCipher via CocoaPods.
             api(libs.napier)
-            api(libs.bundles.ktor.core)
             api(libs.kotlinx.collections.immutable)
             // Tanggal/waktu lintas platform: satu implementasi commonMain, jadi
             // tidak ada lagi expect/actual Time per platform.

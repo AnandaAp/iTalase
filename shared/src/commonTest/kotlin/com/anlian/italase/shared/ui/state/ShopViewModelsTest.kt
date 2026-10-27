@@ -324,4 +324,31 @@ class ShopViewModelsTest {
         vm.clearExportMessage()
         assertNull(vm.exportMessage.value)
     }
+
+    @Test
+    fun testCashierViewModelCheckoutBon() = runTest {
+        val (db, repo) = createEnv()
+        val p = ProductEntity(id = 1L, name = "Beras 5kg", buyPrice = 50000, sellPrice = 68000, stock = 5)
+        db.pDao.upsert(p)
+
+        val vm = CashierViewModel(repo)
+        backgroundScope.launch { vm.products.collect() }
+        vm.products.first { it.isNotEmpty() }
+        advanceUntilIdle()
+
+        vm.add(p)
+        assertEquals(68000L, vm.cartTotal())
+
+        // Checkout with BON
+        vm.checkout(paid = 0, method = PayMethod.BON, customer = "Pak RT")
+        advanceUntilIdle()
+
+        val msg = vm.message.first { it != null }
+        assertTrue(msg is UiMessage.TxnSaved)
+        assertTrue(vm.cart.value.isEmpty())
+
+        // Verify debt created in repository
+        val debts = repo.observeActiveDebts().first()
+        assertTrue(debts.any { it.customerName == "Pak RT" && it.remaining == 68000L })
+    }
 }

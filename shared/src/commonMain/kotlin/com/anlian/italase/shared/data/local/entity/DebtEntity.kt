@@ -25,6 +25,7 @@ object DebtStatus {
     indices = [
         Index("status"),
         Index("dateMillis"),
+        Index("saleId"),
     ],
 )
 data class DebtEntity(

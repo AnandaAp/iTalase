@@ -1,0 +1,77 @@
+---
+name: italase-agentic-dashboard
+description: Connects AI agents to the iTalase React Agentic Dashboard and Kanban telemetry system. Automatically activates when working on the iTalase POS & Accounting codebase (com.anlian.italase) to track tasks in real time, record autonomous tool permissions, and update project KPIs.
+---
+
+# iTalase Agentic Dashboard & Telemetry Connector Skill
+
+This skill governs the integration between Antigravity AI Agents and the **iTalase React Agentic Dashboard**. It ensures that any agent operating on the iTalase repository synchronizes its workflow state, moves Kanban cards in real-time, records autonomous execution permissions, and updates engineering metrics.
+
+---
+
+## 🎯 Activation Conditions
+
+Activate and execute this skill whenever:
+1. Working inside the `iTalase` repository (`c:\Users\anand\StudioProjects\iTalase`).
+2. Planning, starting, executing, or verifying any feature, bugfix, or refactoring in iTalase.
+3. User asks about progress, Kanban status, test coverage, or dashboard telemetry.
+
+---
+
+## 🏛️ System Architecture
+
+- **Dashboard UI**: Modern **React 18** Single-Page Application with Apple Design Fluid Interface at [`iTalase Agentic Dashboard/index.html`](file:///c:/Users/anand/StudioProjects/iTalase/iTalase%20Agentic%20Dashboard/index.html).
+- **Reactive State Store**: [`iTalase Agentic Dashboard/audit_state.js`](file:///c:/Users/anand/StudioProjects/iTalase/iTalase%20Agentic%20Dashboard/audit_state.js) (loaded via zero-CORS dynamic script polling every 2.5 seconds).
+- **CLI Helper Tool**: [`iTalase Agentic Dashboard/scripts/update_dashboard.js`](file:///c:/Users/anand/StudioProjects/iTalase/iTalase%20Agentic%20Dashboard/scripts/update_dashboard.js).
+
+---
+
+## 🔄 Mandatory Agent Lifecycle Protocol
+
+Whenever an AI agent is working on a task in iTalase, the agent MUST follow this 4-phase protocol:
+
+### Phase 1: Task Inspection & Ingestion (Sprint Start)
+Before touching any Kotlin, Compose, or Gradle code, check current dashboard status:
+```powershell
+node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --status
+```
+Update the current active task and transition the relevant Kanban card to `inProgress`:
+```powershell
+# Set the active task banner
+node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --set-task "<Brief Task Name>" --progress 10
+
+# Move card from backlog to inProgress
+node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --move "<CARD_KEY_OR_ID>" --to inProgress
+```
+*(The React Dashboard will instantly animate the card sliding into the In Progress column with glowing feedback).*
+
+### Phase 2: Autonomous Tool Permission Logging
+Under Turbo Mode or autonomous operation, record high-impact tool executions (`run_command`, `write_file`, `edit_file`) into the telemetry state:
+```powershell
+node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --log-perm "<tool_name>" "<action_description>" "<target_path_or_command>"
+```
+
+### Phase 3: Verification & KPI Update
+After completing the code implementation:
+1. Run test suite and verify JaCoCo coverage remains $\ge 75\%$:
+   ```powershell
+   ./gradlew :shared:testAndroidHostTest :shared:jacocoTestCoverageVerification
+   ```
+2. Update coverage metric in dashboard:
+   ```powershell
+   node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --test-coverage 76.18
+   ```
+
+### Phase 4: Task Closure (Done & Verified)
+Move the card to `verified` (Completed) and mark the active task at 100%:
+```powershell
+node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --move "<CARD_KEY_OR_ID>" --to verified
+node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --set-task "<Brief Task Name>" --progress 100
+```
+
+---
+
+## 🛡️ Critical Safety Constraints
+- **NEVER RUN `git commit` OR `git push`** without explicit user permission.
+- Always maintain minimum **75% JaCoCo test coverage**.
+- Preserve the *Warung Liquid Glass* and *Apple Design* visual standards.

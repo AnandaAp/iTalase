@@ -22,6 +22,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -51,6 +53,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -328,7 +331,8 @@ fun AppNavHost(
     // Tiap destinasi punya scroll behavior sendiri (lihat ScreenScope), jadi
     // tidak ada lagi behavior bersama yang perlu di-reset saat navigasi.
 
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val isLandscape = maxWidth > maxHeight
         Scaffold(
             // Backdrop blur: Modifier.blur memburam SELURUH subtree Scaffold, yaitu
             // konten app di belakang dialog. Dialog-nya sendiri adalah jendela
@@ -364,16 +368,13 @@ fun AppNavHost(
             // Only the bottom bar reserves layout space; top offset is handled per-screen
             // as scrollable content padding so lists slide underneath it.
             Box(Modifier.fillMaxSize()) {
-                val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TOP_BAR_CONTENT_HEIGHT
-                // Footprint tab bar yang mengambang: margin bawah 12dp + tinggi bar 64dp,
-                // di atas system nav bar.
+                val topBarContentHeight = if (isLandscape) 52.dp else TOP_BAR_CONTENT_HEIGHT
+                val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + topBarContentHeight
                 val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                val bottomBarFootprint = navInset + 12.dp + 64.dp
-                // Jeda 24dp di atas tepi atas panel — bukan 8dp. Ini jarak antara
-                // KONTEN dan tab bar: cukup lega supaya item terakhir tiap list
-                // tidak menempel ke panel, dan tidak tertutup kalau panel
-                // menebar bayangan.
-                val overlayBottom = bottomBarFootprint + 24.dp
+                val barHeight = if (isLandscape) 48.dp else 64.dp
+                val barMargin = if (isLandscape) 6.dp else 12.dp
+                val bottomBarFootprint = navInset + barMargin + barHeight
+                val overlayBottom = bottomBarFootprint + (if (isLandscape) 12.dp else 24.dp)
                 // Behavior scroll diberikan per-destinasi lewat ScreenScope, bukan di sini.
                 CompositionLocalProvider(
                     LocalTopOverlayPadding provides overlayTop,
@@ -391,19 +392,24 @@ fun AppNavHost(
                                 // Naik tiap kali Beranda menjadi tab aktif, jadi omzet/piutang
                                 // selalu segar setelah cashier atau bon berubah di tab lain.
                                 LaunchedEffect(Unit) { homeVisit++ }
-                                val summary by vm.summary.collectAsState()
-                                val top by vm.top.collectAsState()
-                                val piutang by vm.piutang.collectAsState()
-                                val products by vm.products.collectAsState()
-                                val debts by vm.activeDebts.collectAsState()
-                                val error by vm.error.collectAsState()
+                                val summary by vm.summary.collectAsStateWithLifecycle()
+                                val top by vm.top.collectAsStateWithLifecycle()
+                                val piutang by vm.piutang.collectAsStateWithLifecycle()
+                                val products by vm.products.collectAsStateWithLifecycle()
+                                val debts by vm.activeDebts.collectAsStateWithLifecycle()
+                                val error by vm.error.collectAsStateWithLifecycle()
+
+                                val persistentTop = remember(top) { top.toPersistentList() }
+                                val lowStock = remember(products) {
+                                    products.filter { it.stock <= it.minStock || it.stock <= StockRules.LOW_STOCK_FALLBACK }
+                                        .toPersistentList()
+                                }
 
                                 DashboardScreen(
                                     summary = summary,
-                                    top = top.toPersistentList(),
+                                    top = persistentTop,
                                     piutang = piutang,
-                                    lowStock = products.filter { it.stock <= it.minStock || it.stock <= StockRules.LOW_STOCK_FALLBACK }
-                                        .toPersistentList(),
+                                    lowStock = lowStock,
                                     activeDebtCount = debts.size,
                                     error = error?.text().orEmpty(),
                                     onRefresh = vm::refresh,
@@ -628,6 +634,7 @@ fun AppNavHost(
                                 scrollOffset = frostOffset,
                                 showBack = Routes.hasBackButton(current),
                                 onBack = { navController.popBackStack() },
+                                isLandscape = isLandscape,
                             )
                         }
             }
@@ -638,7 +645,10 @@ fun AppNavHost(
         LiquidGlassTabBar(
             current = current,
             onSelect = goToTab,
-            modifier = Modifier.align(Alignment.BottomCenter),
+            isLandscape = isLandscape,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .widthIn(max = 560.dp),
         )
     }  // Box(Modifier.fillMaxSize())
     ExitOnBackFromTab(
@@ -683,10 +693,11 @@ private fun LiquidGlassTabBar(
     current: String?,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
+    isLandscape: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val isDark = scheme.surface.luminance() < 0.5f
-    val shape = RoundedCornerShape(26.dp)
+    val shape = RoundedCornerShape(if (isLandscape) 20.dp else 26.dp)
 
     // Ruang untuk gesture bar sistem supaya pulau tidak menempel paling bawah.
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -740,7 +751,7 @@ private fun LiquidGlassTabBar(
             .padding(
                 start = 16.dp,
                 end = 16.dp,
-                bottom = bottomInset + 12.dp,
+                bottom = bottomInset + (if (isLandscape) 6.dp else 12.dp),
             ),
     ) {
         // Panel kaca memakai resep yang SAMA dengan ExitConfirmDialog dan
@@ -757,7 +768,7 @@ private fun LiquidGlassTabBar(
                     elevation = 26.dp,
                     specular = 0.55f,
                 )
-                .padding(horizontal = 6.dp, vertical = 8.dp),
+                .padding(horizontal = 6.dp, vertical = if (isLandscape) 4.dp else 8.dp),
         ) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -862,6 +873,7 @@ private fun PremiumTopBar(
     scrollOffset: Float,
     showBack: Boolean = false,
     onBack: () -> Unit = {},
+    isLandscape: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val surface = scheme.surface
@@ -935,8 +947,8 @@ private fun PremiumTopBar(
                 .padding(
                     start = 16.dp,
                     end = 20.dp,
-                    top = 10.dp,
-                    bottom = 14.dp,
+                    top = if (isLandscape) 4.dp else 10.dp,
+                    bottom = if (isLandscape) 6.dp else 14.dp,
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {

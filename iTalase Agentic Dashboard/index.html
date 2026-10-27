@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>iTalase Agentic Dashboard — React.js Telemetry & Kanban</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            warung: {
+              emerald: '#10B981',
+              mint: '#34D399',
+              darkMint: '#059669',
+              deepGreen: '#064E3B',
+              bgLight: '#F7F6F2',
+              bgDark: '#0D1110',
+              glassDark: 'rgba(22, 27, 24, 0.78)',
+              glassHover: 'rgba(28, 35, 31, 0.9)',
+              rimDark: 'rgba(255, 255, 255, 0.12)',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Offline-First Local React & Babel with CDN Fallbacks -->
+  <script src="vendor/react.min.js"></script>
+  <script>window.React || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"><\\/script>')</script>
+
+  <script src="vendor/react-dom.min.js"></script>
+  <script>window.ReactDOM || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"><\\/script>')</script>
+
+  <script src="vendor/babel.min.js"></script>
+  <script>window.Babel || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"><\\/script>')</script>
+
+  <style>
+    :root {
+      --spring-ease: cubic-bezier(0.16, 1, 0.3, 1);
+      --apple-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    body {
+      background-color: #0D1110;
+      color: #E2E8F0;
+      font-family: 'Outfit', sans-serif;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Liquid Glass & Specular Rim */
+    .glass-card {
+      background: rgba(22, 27, 24, 0.78);
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+      transition: transform 0.35s var(--spring-ease), box-shadow 0.35s var(--spring-ease), border-color 0.35s var(--spring-ease);
+    }
+    .glass-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 40px -12px rgba(16, 185, 129, 0.18), inset 0 1px 2px 0 rgba(255, 255, 255, 0.25);
+      border-color: rgba(52, 211, 153, 0.3);
+    }
+    .glass-card:active {
+      transform: scale(0.985);
+      transition: transform 0.1s ease-out;
+    }
+    /* Kanban Drag & Drop Styles */
+    .kanban-col {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 320px auto 650px;
+      min-height: 480px;
+    }
+    .kanban-card {
+      transition: transform 0.25s var(--spring-ease), box-shadow 0.25s var(--spring-ease);
+      cursor: grab;
+    }
+    .kanban-card:active {
+      cursor: grabbing;
+    }
+    .kanban-card.dragging {
+      opacity: 0.45;
+      transform: scale(0.97);
+    }
+    .drop-active {
+      border-color: rgba(52, 211, 153, 0.8) !important;
+      background: rgba(16, 185, 129, 0.08) !important;
+      box-shadow: inset 0 0 20px rgba(52, 211, 153, 0.2);
+    }
+    /* Apple Spring Motion & Card Fluid Entrance */
+    @keyframes cardSpringSlide {
+      0% {
+        opacity: 0;
+        transform: translateY(-24px) scale(0.92);
+      }
+      60% {
+        transform: translateY(4px) scale(1.02);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    @keyframes cardGlowPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8), inset 0 0 15px rgba(52, 211, 153, 0.4);
+        border-color: rgba(52, 211, 153, 1);
+      }
+      50% {
+        box-shadow: 0 0 28px 6px rgba(16, 185, 129, 0.45), inset 0 0 25px rgba(52, 211, 153, 0.6);
+        border-color: rgba(52, 211, 153, 1);
+      }
+      100% {
+        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+    }
+    .card-spring-in {
+      animation: cardSpringSlide 0.5s var(--spring-ease), cardGlowPulse 4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    @keyframes fadeInSlide {
+      from { opacity: 0; transform: translateY(5px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-fadeIn {
+      animation: fadeInSlide 0.22s var(--spring-ease) forwards;
+    }
+    .time-tooltip-arrow {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px;
+      border-style: solid;
+      border-color: rgba(22, 27, 24, 0.95) transparent transparent transparent;
+    }
+    /* Ambient Glow Blobs */
+    .ambient-blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(140px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.16;
+      animation: floatSlow 20s infinite alternate ease-in-out;
+    }
+    @keyframes floatSlow {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(50px, 40px) scale(1.15); }
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(52, 211, 153, 0.4); }
+  </style>
+</head>
+<body class="min-h-screen relative selection:bg-emerald-500 selection:text-white">
+  <div class="ambient-blob w-[540px] h-[540px] bg-emerald-600 top-[-100px] left-[-100px]"></div>
+  <div class="ambient-blob w-[480px] h-[480px] bg-teal-500 bottom-[60px] right-[-80px]"></div>
+
+  <div id="root"></div>
+
+  <!-- Load Initial State with Cache Buster -->
+  <script src="audit_state.js?v=init"></script>
+
+  <!-- React 18 Application Script -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+    const CATEGORY_COLORS = {
+      arch: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+      security: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+      size: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+      perf: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+      test: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+    };
+
+    const COL_ORDER = ['backlog', 'inProgress', 'verified', 'recommendations'];
+
+    // Aggressively purge any zombie localStorage or sessionStorage from past sessions
+    try {
+      const keysToPurge = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.includes('ITALASE') || k.includes('KANBAN') || k.includes('STATE'))) keysToPurge.push(k);
+      }
+      keysToPurge.forEach(k => localStorage.removeItem(k));
+    } catch(e) {}
+
+    // Dynamic endpoint helper: uses relative paths for VS Code DevTunnels/port-forwarding and localhost
+    const getApiUrl = (endpoint) => {
+      if (typeof window !== 'undefined' && window.location.protocol.startsWith('http')) {
+        return endpoint;
+      }
+      return 'http://localhost:3300' + endpoint;
+    };
+
+    // Helper to format timestamps accurately in WIB & Relative time with hover breakdown
+    function formatTimeInfo(timestampStr) {
+      if (!timestampStr) return { displayTime: '-', localFull: '-', utc: '-', relative: '-' };
+      
+      let dateObj = null;
+      const str = String(timestampStr).trim();
+
+      if (str.includes('T')) {
+        dateObj = new Date(str);
+      } else if (str.includes('-')) {
+        // "2026-10-27 02:26:56" -> parse as UTC since ISO/Node servers generate UTC
+        dateObj = new Date(str.replace(' ', 'T') + 'Z');
+      } else if (str.includes(':')) {
+        // "02:26:56"
+        const today = new Date().toISOString().split('T')[0];
+        dateObj = new Date(`${today}T${str}Z`);
+      }
+
+      if (!dateObj || isNaN(dateObj.getTime())) {
+        return { displayTime: str, localFull: str, utc: str, relative: 'Terekam' };
+      }
+
+      // Format WIB (Asia/Jakarta)
+      const wibTime = new Intl.DateTimeFormat('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(dateObj);
+
+      const wibFull = new Intl.DateTimeFormat('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(dateObj) + ' WIB';
+
+      const utcStr = dateObj.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+
+      // Relative Time Calculation
+      const diffSec = Math.max(0, Math.floor((Date.now() - dateObj.getTime()) / 1000));
+      let relative = '';
+      if (diffSec < 45) {
+        relative = 'Baru saja';
+      } else if (diffSec < 3600) {
+        relative = `${Math.floor(diffSec / 60)} mnt lalu`;
+      } else if (diffSec < 86400) {
+        relative = `${Math.floor(diffSec / 3600)} jam lalu`;
+      } else {
+        relative = `${Math.floor(diffSec / 86400)} hari lalu`;
+      }
+
+      return {
+        displayTime: wibTime,
+        localFull: wibFull,
+        utc: utcStr,
+        relative: relative
+      };
+    }
+
+    // Interactive Portal-Based Tooltip for Timestamps (Immune to table overflow-x clipping and window edge cutoff)
+    function TimeHoverCell({ timestamp, label = "Timestamp Eksekusi Tool" }) {
+      const [isOpen, setIsOpen] = useState(false);
+      const [coords, setCoords] = useState({ x: 0, y: 0, placement: 'bottom', triggerCenterX: 0 });
+      const triggerRef = useRef(null);
+      const info = useMemo(() => formatTimeInfo(timestamp), [timestamp]);
+
+      const updatePosition = useCallback(() => {
+        if (!triggerRef.current) return;
+        const rect = triggerRef.current.getBoundingClientRect();
+        const tooltipWidth = 320;
+        const tooltipHeight = 175;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        // Clamp horizontal coordinate safely within viewport [16, viewportWidth - 336]
+        let x = rect.left;
+        if (x + tooltipWidth > viewportWidth - 16) {
+          x = viewportWidth - tooltipWidth - 16;
+        }
+        if (x < 16) {
+          x = 16;
+        }
+
+        // Determine vertical placement: prefer below, flip above if near bottom of viewport
+        let y = rect.bottom + 8;
+        let placement = 'bottom';
+        if (rect.bottom + tooltipHeight + 16 > viewportHeight && rect.top - tooltipHeight - 16 > 0) {
+          y = rect.top - tooltipHeight - 8;
+          placement = 'top';
+        }
+
+        setCoords({
+          x,
+          y,
+          placement,
+          triggerCenterX: rect.left + rect.width / 2
+        });
+      }, []);
+
+      const handleMouseEnter = () => {
+        updatePosition();
+        setIsOpen(true);
+      };
+
+      const handleMouseLeave = () => {
+        setIsOpen(false);
+      };
+
+      const arrowLeft = Math.max(16, Math.min(296, (coords.triggerCenterX || coords.x + 36) - coords.x));
+
+      return (
+        <div 
+          ref={triggerRef}
+          className="relative inline-block"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/40 transition cursor-help group">
+            <svg className="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-[11px] font-mono text-slate-300 group-hover:text-emerald-300 font-medium">
+              {info.displayTime}
+            </span>
+            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/10 text-slate-400 group-hover:text-emerald-200">
+              {info.relative}
+            </span>
+          </div>
+
+          {/* Portal Tooltip: rendered directly into document.body so it NEVER gets clipped by table overflow or window edges */}
+          {isOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+            <div 
+              style={{
+                position: 'fixed',
+                top: `${coords.y}px`,
+                left: `${coords.x}px`,
+                width: '320px',
+                zIndex: 999999,
+                pointerEvents: 'none'
+              }}
+              className="p-4 rounded-2xl glass-card border border-emerald-500/50 shadow-2xl shadow-black/95 text-left animate-fadeIn"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="text-xs font-bold text-white font-sans">{label}</span>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30 font-semibold">
+                  WIB (UTC+7)
+                </span>
+              </div>
+
+              <div className="space-y-2 text-[11px] font-mono">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Waktu Lokal (WIB):</span>
+                  <span className="font-bold text-emerald-300">{info.localFull}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Waktu Server (UTC):</span>
+                  <span className="text-slate-200">{info.utc}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Status Waktu:</span>
+                  <span className="text-amber-300 font-semibold">{info.relative}</span>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-2.5 border-t border-white/10 text-[10px] text-slate-400 leading-relaxed font-sans">
+                💡 <strong className="text-emerald-400">Bukan Limit Window:</strong> Jam di atas adalah waktu saat AI Agent mengeksekusi aksi/perintah (diurutkan kronologis dari terbaru ke terlama). Nilai waktu menyusut ke bawah karena tabel diurutkan dari aktivitas paling akhir.
+              </div>
+
+              {/* Dynamic Diamond Arrow */}
+              {coords.placement === 'bottom' ? (
+                <div 
+                  style={{ left: `${arrowLeft}px` }}
+                  className="absolute -top-1.5 w-3 h-3 bg-[#161B18] border-t border-l border-emerald-500/50 rotate-45"
+                ></div>
+              ) : (
+                <div 
+                  style={{ left: `${arrowLeft}px` }}
+                  className="absolute -bottom-1.5 w-3 h-3 bg-[#161B18] border-b border-r border-emerald-500/50 rotate-45"
+                ></div>
+              )}
+            </div>,
+            document.body
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [state, setState] = useState(window.AUDIT_STATE || null);
+      const [isLiveSync, setIsLiveSync] = useState(true);
+      const [serverOnline, setServerOnline] = useState(typeof window !== 'undefined' && window.location.protocol.startsWith('http'));
+      const [lastSyncTime, setLastSyncTime] = useState(new Date());
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedCategory, setSelectedCategory] = useState('ALL');
+      const [selectedTask, setSelectedTask] = useState(null);
+      const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+      const [toolFilter, setToolFilter] = useState('ALL');
+      const [draggedCardKey, setDraggedCardKey] = useState(null);
+      const [dropTargetCol, setDropTargetCol] = useState(null);
+      const [statusNotice, setStatusNotice] = useState('');
+      const [recentlyMoved, setRecentlyMoved] = useState({});
+
+      const cardPositionsRef = useRef({});
+
+      // Flash Status Notice helper
+      const flashNotice = useCallback((msg) => {
+        setStatusNotice(msg);
+        setTimeout(() => setStatusNotice(''), 4500);
+      }, []);
+
+      // Helper to cleanly apply fresh state, detect movement deltas, and trigger smooth animations
+      const applyFreshState = useCallback((freshData) => {
+        if (!freshData || !freshData.kanban) return;
+        window.AUDIT_STATE = freshData;
+
+        // Detect Card Movement Across Columns
+        const newPositions = {};
+        const newlyMoved = {};
+        COL_ORDER.forEach(col => {
+          (freshData.kanban[col] || []).forEach(card => {
+            const key = card.key || card.id;
+            newPositions[key] = col;
+            const oldCol = cardPositionsRef.current[key];
+            if (oldCol && oldCol !== col) {
+              newlyMoved[key] = {
+                card,
+                fromCol: oldCol,
+                toCol: col,
+                timestamp: Date.now()
+              };
+            }
+          });
+        });
+        cardPositionsRef.current = newPositions;
+
+        if (Object.keys(newlyMoved).length > 0) {
+          setRecentlyMoved(prev => ({ ...prev, ...newlyMoved }));
+          const first = Object.values(newlyMoved)[0];
+          const colTitles = {
+            backlog: 'Backlog',
+            inProgress: 'In Progress',
+            verified: 'Verified & Tested',
+            recommendations: 'Recommendations'
+          };
+          flashNotice(`🚀 "${first.card.title}" otomatis berpindah ke ${colTitles[first.toCol] || first.toCol}!`);
+
+          // Remove animated highlight class after 4.5 seconds
+          setTimeout(() => {
+            setRecentlyMoved(prev => {
+              const next = { ...prev };
+              Object.keys(newlyMoved).forEach(k => delete next[k]);
+              return next;
+            });
+          }, 4500);
+        }
+
+        setState({
+          ...freshData,
+          kanban: {
+            backlog: [...(freshData.kanban.backlog || [])],
+            inProgress: [...(freshData.kanban.inProgress || [])],
+            verified: [...(freshData.kanban.verified || [])],
+            recommendations: [...(freshData.kanban.recommendations || [])],
+          },
+          currentTask: { ...(freshData.currentTask || {}) },
+          kpis: { ...(freshData.kpis || {}) },
+          agenticPermissions: [...(freshData.agenticPermissions || [])],
+          activityLogs: [...(freshData.activityLogs || [])]
+        });
+        setLastSyncTime(new Date());
+      }, [flashNotice]);
+
+      // Dual-Mode Sync: Tries /api/state JSON first, falls back to dynamic script tag
+      const syncFreshState = useCallback(async () => {
+        // Mode 1: HTTP API Fetch (Bypasses all script caching & DevTunnel proxy issues)
+        if (typeof window !== 'undefined' && window.location.protocol.startsWith('http')) {
+          try {
+            const res = await fetch(getApiUrl('/api/state?t=' + Date.now()), {
+              method: 'GET',
+              cache: 'no-store',
+              headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+            });
+            if (res.ok) {
+              const fresh = await res.json();
+              applyFreshState(fresh);
+              setServerOnline(true);
+              return;
+            }
+          } catch (e) {}
+        }
+
+        // Mode 2: Dynamic Script Tag Fallback (for file:// protocol or legacy server instances)
+        try {
+          const oldScript = document.getElementById('dynamicStatePoller');
+          if (oldScript) oldScript.remove();
+
+          const script = document.createElement('script');
+          script.id = 'dynamicStatePoller';
+          script.src = 'audit_state.js?t=' + Date.now();
+          script.onload = () => {
+            if (window.AUDIT_STATE) {
+              applyFreshState(window.AUDIT_STATE);
+            }
+          };
+          document.body.appendChild(script);
+        } catch (e) {
+          console.error('[iTalase Sync Error]', e);
+        }
+      }, [applyFreshState]);
+
+      // Real-time Server-Sent Events (SSE) Stream: 0ms Latency Instant Updates
+      useEffect(() => {
+        if (!isLiveSync || typeof window === 'undefined' || !window.location.protocol.startsWith('http')) return;
+        let es = null;
+        try {
+          es = new EventSource(getApiUrl('/api/events'));
+          es.onmessage = (event) => {
+            try {
+              const fresh = JSON.parse(event.data);
+              applyFreshState(fresh);
+              setServerOnline(true);
+            } catch (e) {}
+          };
+          es.onerror = () => {
+            // Silently reconnects
+          };
+        } catch (e) {}
+
+        return () => {
+          if (es) es.close();
+        };
+      }, [isLiveSync, applyFreshState]);
+
+      // Immediate Sync on Mount
+      useEffect(() => {
+        syncFreshState();
+      }, [syncFreshState]);
+
+      // Reactive Poller: Loads latest state from disk every 1.5s as robust backup
+      useEffect(() => {
+        if (!isLiveSync) return;
+        const interval = setInterval(() => {
+          syncFreshState();
+        }, 1500);
+
+        return () => clearInterval(interval);
+      }, [isLiveSync, syncFreshState]);
+
+      // Persist State to Disk (via Server API)
+      const persistState = useCallback(async (updatedState) => {
+        setState(updatedState);
+        window.AUDIT_STATE = updatedState;
+
+        // Post directly to bridge server so audit_state.js on disk is updated in real time!
+        try {
+          const res = await fetch(getApiUrl('/api/save-state'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedState)
+          });
+          if (res.ok) {
+            flashNotice('✓ Saved directly to disk (audit_state.js)!');
+            setServerOnline(true);
+            return;
+          }
+        } catch (e) {
+          setServerOnline(false);
+        }
+
+        flashNotice('✓ State updated in memory');
+      }, []);
+
+      // Move Card in State
+      const moveCardInState = (cardKey, targetColKey) => {
+        if (!state || !state.kanban) return;
+        const newKanban = { ...state.kanban };
+        let foundCard = null;
+
+        // Find and remove card from current column
+        for (const col of Object.keys(newKanban)) {
+          const list = [...(newKanban[col] || [])];
+          const idx = list.findIndex(c => c.key === cardKey || c.id === cardKey);
+          if (idx !== -1) {
+            foundCard = list.splice(idx, 1)[0];
+            newKanban[col] = list;
+            break;
+          }
+        }
+
+        if (foundCard) {
+          if (!newKanban[targetColKey]) newKanban[targetColKey] = [];
+          newKanban[targetColKey] = [foundCard, ...newKanban[targetColKey]];
+
+          const updatedState = {
+            ...state,
+            kanban: newKanban,
+            projectInfo: {
+              ...state.projectInfo,
+              lastUpdated: new Date().toISOString().replace('T', ' ').substring(0, 19)
+            }
+          };
+
+          persistState(updatedState);
+        }
+      };
+
+      // Reset to Disk State
+      const handleResetToDisk = async () => {
+        try {
+          const keysToPurge = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && (k.includes('ITALASE') || k.includes('KANBAN') || k.includes('STATE'))) keysToPurge.push(k);
+          }
+          keysToPurge.forEach(k => localStorage.removeItem(k));
+        } catch (e) {}
+        await syncFreshState();
+        flashNotice('↺ Synchronized with disk state (audit_state.js)!');
+      };
+
+      // Drag and Drop Handlers
+      const handleDragStart = (e, key) => {
+        setDraggedCardKey(key);
+        e.dataTransfer.setData('text/plain', key);
+        e.dataTransfer.effectAllowed = 'move';
+      };
+
+      const handleDragOver = (e, colKey) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dropTargetCol !== colKey) setDropTargetCol(colKey);
+      };
+
+      const handleDrop = (e, targetColKey) => {
+        e.preventDefault();
+        setDropTargetCol(null);
+        const cardKey = e.dataTransfer.getData('text/plain') || draggedCardKey;
+        if (!cardKey || !state || !state.kanban) return;
+
+        moveCardInState(cardKey, targetColKey);
+        setDraggedCardKey(null);
+      };
+
+      // Add New Task
+      const handleCreateTask = (newTask) => {
+        if (!state || !state.kanban) return;
+        const targetCol = newTask.column || 'backlog';
+        const newKanban = {
+          ...state.kanban,
+          [targetCol]: [newTask, ...(state.kanban[targetCol] || [])]
+        };
+        const updatedState = { ...state, kanban: newKanban };
+        persistState(updatedState);
+        setIsNewTaskOpen(false);
+      };
+
+      // Filtered Kanban Cards
+      const filteredKanban = useMemo(() => {
+        if (!state || !state.kanban) return { backlog: [], inProgress: [], verified: [], recommendations: [] };
+
+        const filterFn = (card) => {
+          const matchesSearch = searchQuery.trim() === '' || 
+            card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            card.snippet.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            card.id.toLowerCase().includes(searchQuery.toLowerCase());
+
+          const matchesCat = selectedCategory === 'ALL' || card.category === selectedCategory.toLowerCase();
+          return matchesSearch && matchesCat;
+        };
+
+        return {
+          backlog: (state.kanban.backlog || []).filter(filterFn),
+          inProgress: (state.kanban.inProgress || []).filter(filterFn),
+          verified: (state.kanban.verified || []).filter(filterFn),
+          recommendations: (state.kanban.recommendations || []).filter(filterFn),
+        };
+      }, [state, searchQuery, selectedCategory]);
+
+      // Filtered Permissions
+      const filteredPermissions = useMemo(() => {
+        if (!state || !state.agenticPermissions) return [];
+        return state.agenticPermissions.filter(p => {
+          if (toolFilter === 'ALL') return true;
+          return p.tool.toLowerCase().includes(toolFilter.toLowerCase());
+        });
+      }, [state, toolFilter]);
+
+      if (!state) {
+        return (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center space-y-4">
+              <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-slate-400 font-mono text-sm">Loading React Agentic Dashboard...</p>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          {/* Header & Telemetry Bar */}
+          <header className="glass-card p-6 rounded-3xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-black text-2xl">
+                iT
+              </div>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-2xl font-bold tracking-tight text-white">iTalase Agentic Dashboard</h1>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-xs border border-emerald-500/30">React 19</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono text-xs border border-blue-500/30">Interactive</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Kotlin Multiplatform POS & Accounting • Two-Way Persistence • Apple Fluid Motion
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons & Status Indicators */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Server Connection Badge */}
+              <div 
+                className={`flex items-center gap-2 px-3 py-2 rounded-2xl border text-xs font-mono transition ${
+                  serverOnline 
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
+                    : 'bg-white/5 border-white/10 text-slate-400'
+                }`}
+                title={serverOnline ? "Bridge server running on localhost:3300. Drag & Drop writes directly to audit_state.js on disk!" : "Standalone mode: edits are persisted safely in browser localStorage. Run 'node server.js' to auto-save to disk."}
+              >
+                <span className={`w-2 h-2 rounded-full ${serverOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></span>
+                <span>{serverOnline ? 'Disk Server (Auto-save)' : 'Browser Storage'}</span>
+              </div>
+
+              {/* Sync Toggle */}
+              <button
+                onClick={() => setIsLiveSync(!isLiveSync)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border text-xs font-mono transition ${
+                  isLiveSync 
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20' 
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${isLiveSync ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                {isLiveSync ? `Live (${lastSyncTime.toLocaleTimeString()})` : 'Sync Paused'}
+              </button>
+
+              {/* Add Task Button */}
+              <button
+                onClick={() => setIsNewTaskOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition shadow-lg shadow-emerald-600/30"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Task
+              </button>
+
+              {/* Reset to Disk Button */}
+              <button
+                onClick={handleResetToDisk}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-mono transition"
+                title="Discard browser localStorage overrides and reload disk state"
+              >
+                ↺ Reset
+              </button>
+            </div>
+          </header>
+
+          {/* Status Toast Notice */}
+          {statusNotice && (
+            <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl shadow-emerald-600/40 text-xs font-bold font-mono animate-bounce flex items-center gap-2">
+              <span>{statusNotice}</span>
+            </div>
+          )}
+
+          {/* Active Task Banner */}
+          <div className="glass-card p-5 rounded-3xl border-l-4 border-l-emerald-500 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                  Current Autonomous Sprint
+                </span>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+                  <span>Started:</span>
+                  <TimeHoverCell timestamp={state.currentTask.startedAt} label="Waktu Mulai Sprint" align="left" />
+                </div>
+              </div>
+              <h2 className="text-base font-bold text-white">{state.currentTask.name}</h2>
+              <p className="text-xs text-slate-400 max-w-2xl">{state.currentTask.description}</p>
+            </div>
+
+            <div className="flex items-center gap-4 shrink-0">
+              <div className="w-36 text-right">
+                <div className="text-xs font-mono font-bold text-emerald-400">{state.currentTask.progressPercent}%</div>
+                <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-1">
+                  <div 
+                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700"
+                    style={{ width: `${state.currentTask.progressPercent}%` }}
+                  ></div>
+                </div>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-medium border border-emerald-500/30">
+                {state.currentTask.status}
+              </span>
+            </div>
+          </div>
+
+          {/* KPI Metrics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="glass-card p-5 rounded-3xl space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Release APK Size</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono text-[11px] font-semibold">
+                  {state.kpis.apkSize.delta}
+                </span>
+              </div>
+              <div className="text-3xl font-extrabold text-white tracking-tight">{state.kpis.apkSize.current}</div>
+              <p className="text-[11px] text-slate-400">Previous: {state.kpis.apkSize.previous}</p>
+            </div>
+
+            <div className="glass-card p-5 rounded-3xl space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Single DEX Bytecode</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono text-[11px] font-semibold">
+                  {state.kpis.dexBytecode.delta}
+                </span>
+              </div>
+              <div className="text-3xl font-extrabold text-white tracking-tight">{state.kpis.dexBytecode.current}</div>
+              <p className="text-[11px] text-slate-400">Eliminated multidex overhead</p>
+            </div>
+
+            <div className="glass-card p-5 rounded-3xl space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>JaCoCo Instruction Coverage</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono text-[11px] font-semibold">
+                  ≥ 75% Gate
+                </span>
+              </div>
+              <div className="text-3xl font-extrabold text-emerald-400 tracking-tight">{state.kpis.testCoverage.instruction}</div>
+              <p className="text-[11px] text-slate-400">{state.kpis.testCoverage.passedTests}</p>
+            </div>
+
+            <div className="glass-card p-5 rounded-3xl space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Database Security</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono text-[11px] font-semibold">
+                  Verified
+                </span>
+              </div>
+              <div className="text-3xl font-extrabold text-white tracking-tight">{state.kpis.securityRating.score}</div>
+              <p className="text-[11px] text-slate-400">{state.kpis.securityRating.encryption}</p>
+            </div>
+          </div>
+
+          {/* Interactive Filters & Search */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 glass-card p-4 rounded-3xl">
+            <div className="relative flex-1 max-w-md">
+              <input
+                type="text"
+                placeholder="Search tasks, IDs, or keywords..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Category Pills */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {['ALL', 'ARCH', 'SECURITY', 'PERF', 'SIZE'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono transition ${
+                    selectedCategory === cat
+                      ? 'bg-emerald-500 text-white font-bold shadow-md shadow-emerald-500/30'
+                      : 'bg-white/5 hover:bg-white/10 text-slate-400'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Interactive Kanban Board */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                Agentic Workflow Kanban
+                <span className="text-xs font-normal text-slate-400">
+                  (Drag & Drop cards or use arrows ← → to move across columns)
+                </span>
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {COL_ORDER.map((colKey) => {
+                const titles = {
+                  backlog: 'Backlog',
+                  inProgress: 'In Progress',
+                  verified: 'Verified & Tested',
+                  recommendations: 'Recommendations'
+                };
+                const colors = {
+                  backlog: 'border-slate-500/30',
+                  inProgress: 'border-amber-500/40',
+                  verified: 'border-emerald-500/40',
+                  recommendations: 'border-teal-500/40'
+                };
+                return (
+                  <KanbanColumn
+                    key={colKey}
+                    title={titles[colKey]}
+                    count={filteredKanban[colKey].length}
+                    cards={filteredKanban[colKey]}
+                    columnKey={colKey}
+                    recentlyMoved={recentlyMoved}
+                    dropActive={dropTargetCol === colKey}
+                    onDragOver={(e) => handleDragOver(e, colKey)}
+                    onDrop={(e) => handleDrop(e, colKey)}
+                    onDragStart={handleDragStart}
+                    onCardClick={setSelectedTask}
+                    onQuickMove={moveCardInState}
+                    color={colors[colKey]}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Autonomous Permissions Audit Table */}
+          <div className="glass-card p-6 rounded-3xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  Autonomous Agentic Permissions & Tool Log
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-mono">
+                    {state.agenticPermissions.length} Logged
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-400">All tools executed under Turbo Mode are verified and tracked</p>
+              </div>
+
+              {/* Tool Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Filter Tool:</span>
+                <select
+                  value={toolFilter}
+                  onChange={(e) => setToolFilter(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="ALL">All Tools</option>
+                  <option value="run_command">run_command</option>
+                  <option value="write_file">write_file</option>
+                  <option value="edit_file">edit_file</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-white/10 text-slate-400 text-[11px]">
+                    <th className="py-2.5 px-3 font-semibold">ID</th>
+                    <th className="py-2.5 px-3 font-semibold">
+                      <div className="flex items-center gap-1.5" title="Jam saat perintah dieksekusi oleh AI Agent (hover baris untuk rincian WIB & UTC)">
+                        <span>Time (WIB)</span>
+                        <span className="text-[10px] text-slate-500 cursor-help">ℹ️</span>
+                      </div>
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold">Tool</th>
+                    <th className="py-2.5 px-3 font-semibold">Action & Context</th>
+                    <th className="py-2.5 px-3 font-semibold">Target Path</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filteredPermissions.slice(0, 10).map((perm, idx) => (
+                    <tr key={perm.id + idx} className="hover:bg-white/[0.02] transition">
+                      <td className="py-2 px-3 text-emerald-400 font-bold">{perm.id}</td>
+                      <td className="py-2 px-3">
+                        <TimeHoverCell timestamp={perm.timestamp} label="Log Eksekusi Otonom" align="left" />
+                      </td>
+                      <td className="py-2 px-3">
+                        <span className="px-2 py-0.5 rounded bg-white/10 text-slate-300 text-[10px]">
+                          {perm.tool}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-white font-sans font-medium">{perm.action}</td>
+                      <td className="py-2 px-3 text-slate-400 truncate max-w-xs" title={perm.target}>{perm.target}</td>
+                      <td className="py-2 px-3 text-right">
+                        <span className="text-emerald-400 font-semibold">{perm.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Activity Stream Feed */}
+          <div className="glass-card p-6 rounded-3xl space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              Chronological Engineering Stream
+              <span className="text-xs text-slate-400 font-normal">({state.activityLogs.length} Events)</span>
+            </h3>
+
+            <div className="space-y-2.5">
+              {state.activityLogs.map((log, index) => (
+                <div key={index} className="flex items-start gap-3 p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-emerald-500/30 transition">
+                  <div className="shrink-0">
+                    <TimeHoverCell timestamp={log.timestamp} label="Rekam Jejak Engineering" align="left" />
+                  </div>
+                  <div className="space-y-0.5 flex-1">
+                    <div className="text-xs font-bold text-white">{log.title}</div>
+                    <div className="text-[11px] text-slate-400">{log.detail}</div>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-400 shrink-0 font-semibold px-2 py-0.5 rounded bg-emerald-500/10">
+                    {log.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Detail Task Modal */}
+          {selectedTask && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+              <div className="glass-card p-6 rounded-3xl max-w-lg w-full space-y-4 border border-emerald-500/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                    {selectedTask.id} • {selectedTask.categoryLabel || selectedTask.category}
+                  </span>
+                  <button 
+                    onClick={() => setSelectedTask(null)}
+                    className="text-slate-400 hover:text-white text-lg font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <h3 className="text-lg font-bold text-white">{selectedTask.title}</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">{selectedTask.snippet}</p>
+
+                <div className="p-3 rounded-2xl bg-white/5 space-y-1 text-xs font-mono text-slate-400">
+                  <div>Tag: <span className="text-white">{selectedTask.tag || '-'}</span></div>
+                  <div>Risk: <span className="text-white">{selectedTask.risk || 'Low Risk'}</span></div>
+                  <div>Key: <span className="text-white">{selectedTask.key}</span></div>
+                </div>
+
+                <div className="pt-2 border-t border-white/10 space-y-2">
+                  <div className="text-xs text-slate-400 font-semibold">Move Card To Column:</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {COL_ORDER.map(col => (
+                      <button
+                        key={col}
+                        onClick={() => {
+                          moveCardInState(selectedTask.key, col);
+                          setSelectedTask(null);
+                        }}
+                        className="px-2 py-1.5 rounded-xl bg-white/10 hover:bg-emerald-500 hover:text-white text-[11px] font-mono font-bold transition text-center"
+                      >
+                        {col === 'inProgress' ? 'In Progress' : col.charAt(0).toUpperCase() + col.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* New Task Creator Modal */}
+          {isNewTaskOpen && (
+            <NewTaskModal 
+              onClose={() => setIsNewTaskOpen(false)}
+              onSubmit={handleCreateTask}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // Kanban Column Component
+    function KanbanColumn({ title, count, cards, columnKey, recentlyMoved, dropActive, onDragOver, onDrop, onDragStart, onCardClick, onQuickMove, color }) {
+      const colIdx = COL_ORDER.indexOf(columnKey);
+      const prevCol = colIdx > 0 ? COL_ORDER[colIdx - 1] : null;
+      const nextCol = colIdx < COL_ORDER.length - 1 ? COL_ORDER[colIdx + 1] : null;
+
+      return (
+        <div 
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          className={`glass-card p-4 rounded-3xl space-y-3.5 border ${color} kanban-col transition-colors ${
+            dropActive ? 'drop-active' : ''
+          }`}
+        >
+          <div className="flex items-center justify-between px-1">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">{title}</h4>
+            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/10 text-white font-semibold">
+              {count}
+            </span>
+          </div>
+
+          <div className="space-y-3 min-h-[360px]">
+            {cards.length === 0 ? (
+              <div className="border border-dashed border-white/10 rounded-2xl p-6 text-center text-xs text-slate-500 font-mono">
+                No cards here. Drag a card here.
+              </div>
+            ) : (
+              cards.map((card) => {
+                const cardKey = card.key || card.id;
+                const isMoved = Boolean(recentlyMoved && recentlyMoved[cardKey]);
+
+                return (
+                  <div
+                    key={cardKey}
+                    draggable
+                    onDragStart={(e) => onDragStart(e, cardKey)}
+                    onClick={() => onCardClick(card)}
+                    className={`kanban-card p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-emerald-500/40 space-y-2.5 relative transition-all ${
+                      isMoved ? 'card-spring-in' : ''
+                    }`}
+                  >
+                    {/* Live Movement Badge */}
+                    {isMoved && (
+                      <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/30">
+                        <span className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-emerald-300">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                          ✨ Otomatis Berpindah
+                        </span>
+                        <span className="text-[9px] font-mono text-emerald-400/80">
+                          dari {recentlyMoved[cardKey].fromCol}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-[10px] font-mono">
+                      <span className="text-emerald-400 font-bold">{card.id}</span>
+                      <span className={`px-2 py-0.5 rounded-full border text-[9px] ${
+                        CATEGORY_COLORS[card.category] || 'bg-white/5 text-slate-300 border-white/10'
+                      }`}>
+                        {card.categoryLabel || card.category}
+                      </span>
+                    </div>
+
+                    <h5 className="text-xs font-bold text-white leading-snug">{card.title}</h5>
+                    <p className="text-[11px] text-slate-400 line-clamp-2">{card.snippet}</p>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                      <span className="text-[10px] text-slate-500 font-mono">{card.risk || card.tag}</span>
+                      
+                      {/* Directional Move Buttons */}
+                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        {prevCol && (
+                          <button
+                            onClick={() => onQuickMove(cardKey, prevCol)}
+                            className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-emerald-500 hover:text-white text-slate-300 text-xs font-bold transition"
+                            title={`Move back to ${prevCol}`}
+                          >
+                            ←
+                          </button>
+                        )}
+                        {nextCol && (
+                          <button
+                            onClick={() => onQuickMove(cardKey, nextCol)}
+                            className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-emerald-500 hover:text-white text-slate-300 text-xs font-bold transition"
+                            title={`Advance to ${nextCol}`}
+                          >
+                            →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Modal to Create New Task
+    function NewTaskModal({ onClose, onSubmit }) {
+      const [title, setTitle] = useState('');
+      const [snippet, setSnippet] = useState('');
+      const [category, setCategory] = useState('arch');
+      const [column, setColumn] = useState('backlog');
+      const [tag, setTag] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!title.trim()) return;
+
+        const newId = `#AUD-${Math.floor(10 + Math.random() * 90)}`;
+        const newKey = `CARD-${Math.floor(100 + Math.random() * 900)}`;
+
+        onSubmit({
+          id: newId,
+          key: newKey,
+          title: title.trim(),
+          snippet: snippet.trim() || 'No description provided.',
+          category: category,
+          categoryLabel: category.toUpperCase(),
+          column: column,
+          tag: tag.trim() || 'User Task',
+          risk: 'Normal'
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <form onSubmit={handleSubmit} className="glass-card p-6 rounded-3xl max-w-md w-full space-y-4 border border-emerald-500/30">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-white">Create New Task</h3>
+              <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1">Task Title</label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Implement Room Index on saleId"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Description / Snippet</label>
+                <textarea
+                  rows="3"
+                  value={snippet}
+                  onChange={(e) => setSnippet(e.target.value)}
+                  placeholder="Details of the task..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="arch">Architecture</option>
+                    <option value="security">Security</option>
+                    <option value="perf">Performance</option>
+                    <option value="size">App Size</option>
+                    <option value="test">Testing</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">Initial Column</label>
+                  <select
+                    value={column}
+                    onChange={(e) => setColumn(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="backlog">Backlog</option>
+                    <option value="inProgress">In Progress</option>
+                    <option value="verified">Verified</option>
+                    <option value="recommendations">Recommendations</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Badge Tag</label>
+                <input
+                  type="text"
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  placeholder="e.g. Room v5, KMP"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-mono transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/30"
+              >
+                Create Task
+              </button>
+            </div>
+          </form>
+        </div>
+      );
+    }
+
+    // Mount React App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

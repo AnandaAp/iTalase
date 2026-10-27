@@ -35,7 +35,7 @@ import kotlinx.coroutines.IO
         DebtPaymentEntity::class,
         ExpenseEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @ConstructedBy(ITalaseDatabaseConstructor::class)
@@ -87,6 +87,9 @@ val MIGRATION_2_3 = object : Migration(DB_VERSION_2, DB_VERSION_3) {
 /** Versi skema 4: indeks pada kolom filter dan foreign key. */
 private const val DB_VERSION_4 = 4
 
+/** Versi skema 5: indeks pada debts.saleId untuk percepatan kueri getBySaleId. */
+private const val DB_VERSION_5 = 5
+
 /** Migrasi 3→4: membuat indeks pada dateMillis, saleId, category, status, debtId. */
 val MIGRATION_3_4 = object : Migration(DB_VERSION_3, DB_VERSION_4) {
     override fun migrate(connection: SQLiteConnection) {
@@ -97,6 +100,13 @@ val MIGRATION_3_4 = object : Migration(DB_VERSION_3, DB_VERSION_4) {
         connection.execSQL("CREATE INDEX IF NOT EXISTS index_debts_dateMillis ON ${Tables.DEBTS}(dateMillis)")
         connection.execSQL("CREATE INDEX IF NOT EXISTS index_debt_payments_debtId ON ${Tables.DEBT_PAYMENTS}(debtId)")
         connection.execSQL("CREATE INDEX IF NOT EXISTS index_expenses_dateMillis ON ${Tables.EXPENSES}(dateMillis)")
+    }
+}
+
+/** Migrasi 4→5: membuat indeks pada debts.saleId. */
+val MIGRATION_4_5 = object : Migration(DB_VERSION_4, DB_VERSION_5) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_debts_saleId ON ${Tables.DEBTS}(saleId)")
     }
 }
 
@@ -122,7 +132,7 @@ fun getRoomDatabase(
     return builder
         .setDriver(driver)
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
         .build()
 }
 
