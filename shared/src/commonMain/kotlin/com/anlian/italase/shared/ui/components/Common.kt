@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -324,12 +325,14 @@ fun Modifier.enter(visible: Boolean, index: Int): Modifier {
 fun ShimmerCrossfade(
     loading: Boolean,
     modifier: Modifier = Modifier,
+    contentAlignment: Alignment = Alignment.TopStart,
     shimmer: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
     AnimatedContent(
         targetState = loading,
         modifier = modifier,
+        contentAlignment = contentAlignment,
         transitionSpec = {
             if (!targetState) {
                 // Loading selesai -> Konten muncul: Fade in + gentle glide ke atas dengan pegas Apple
@@ -1396,28 +1399,50 @@ fun GlassDialog(
 
 /** Empty state bergaya glass. Varian aditif — [EmptyState] lama tidak diubah. */
 @Composable
-fun GlassEmptyState(text: String, hint: String = "") {
+fun GlassEmptyState(
+    text: String,
+    hint: String = "",
+    modifier: Modifier = Modifier,
+) {
     val scheme = MaterialTheme.colorScheme
-    GlassCard(shape = RoundedCornerShape(20.dp)) {
-        Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(44.dp).clip(CircleShape).background(scheme.secondaryContainer),
-                contentAlignment = Alignment.Center,
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight(Alignment.Top),
+        contentAlignment = Alignment.TopStart,
+    ) {
+        GlassCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(20.dp),
+        ) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    AppIcon.WARNING.painter(),
-                    contentDescription = null,
-                    tint = scheme.onSecondaryContainer,
-                )
-            }
-            Column(Modifier.padding(start = 14.dp)) {
-                Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                if (hint.isNotBlank()) {
-                    Text(
-                        hint,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant,
+                Box(
+                    Modifier.size(44.dp).clip(CircleShape).background(scheme.secondaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        AppIcon.WARNING.painter(),
+                        contentDescription = null,
+                        tint = scheme.onSecondaryContainer,
                     )
+                }
+                Column(Modifier.padding(start = 14.dp)) {
+                    Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    if (hint.isNotBlank()) {
+                        Text(
+                            hint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = scheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
