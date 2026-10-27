@@ -198,8 +198,39 @@ class ShopViewModelsTest {
         advanceUntilIdle()
 
         assertNull(vm.error.value)
+        assertEquals(false, vm.isLoading.value)
         assertEquals(0L, vm.summary.value.omzet)
         assertEquals(0L, vm.piutang.value)
+    }
+
+    @Test
+    fun testViewModelsLoadingStates() = runTest {
+        val (_, repo) = createEnv()
+        val prodVm = ProductViewModel(repo)
+        val cashVm = CashierViewModel(repo)
+        val debtVm = DebtViewModel(repo)
+        val histVm = HistoryViewModel(repo)
+        val expVm = ExpenseViewModel(repo)
+
+        backgroundScope.launch { prodVm.isLoading.collect() }
+        backgroundScope.launch { cashVm.isLoading.collect() }
+        backgroundScope.launch { debtVm.isLoading.collect() }
+        backgroundScope.launch { histVm.isLoading.collect() }
+        backgroundScope.launch { expVm.isLoading.collect() }
+
+        backgroundScope.launch { prodVm.products.collect() }
+        backgroundScope.launch { cashVm.products.collect() }
+        backgroundScope.launch { debtVm.debts.collect() }
+        backgroundScope.launch { histVm.sales.collect() }
+        backgroundScope.launch { expVm.items.collect() }
+
+        advanceUntilIdle()
+
+        assertEquals(false, prodVm.isLoading.value)
+        assertEquals(false, cashVm.isLoading.value)
+        assertEquals(false, debtVm.isLoading.value)
+        assertEquals(false, histVm.isLoading.value)
+        assertEquals(false, expVm.isLoading.value)
     }
 
     // =========================================================================

@@ -46,6 +46,8 @@ import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
 import com.anlian.italase.shared.ui.components.GlassCard
+import com.anlian.italase.shared.ui.components.GlassShimmerCard
+import com.anlian.italase.shared.ui.components.ShimmerCrossfade
 import com.anlian.italase.shared.ui.components.GlassChip
 import com.anlian.italase.shared.ui.components.glassSurface
 import com.anlian.italase.shared.ui.components.PrimaryFab
@@ -117,7 +119,7 @@ fun SaleDetailScreen(
         // FAB di sini milik composable ini; list-nya ada di SaleDetailContent
         // yang punya flag sendiri. Masing-masing scope komposisi, jadi tidak bisa
         // berbagi `remember`.
-        val appeared = rememberAppear()
+        val appeared = rememberAppear(detail != null)
         Column(
             Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -133,14 +135,22 @@ fun SaleDetailScreen(
                     modifier = Modifier.padding(start = 4.dp),
                 )
             }
-            if (detail == null) {
-                EmptyState(
-                    stringResource(Res.string.detail_loading),
-                    stringResource(Res.string.detail_not_found),
-                )
-            } else {
-                SaleDetailContent(detail = detail, message = message)
-            }
+            ShimmerCrossfade(
+                loading = detail == null,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                shimmer = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GlassShimmerCard(height = 110.dp)
+                        GlassShimmerCard(height = 160.dp)
+                        GlassShimmerCard(height = 80.dp)
+                    }
+                },
+                content = {
+                    if (detail != null) {
+                        SaleDetailContent(detail = detail, message = message)
+                    }
+                }
+            )
         }
         if (detail != null) {
             PrimaryFab(

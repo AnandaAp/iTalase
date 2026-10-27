@@ -37,7 +37,13 @@ import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.Enter
 import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.GlassEmptyState
+import com.anlian.italase.shared.ui.components.GlassShimmerBox
+import com.anlian.italase.shared.ui.components.GlassShimmerCard
+import com.anlian.italase.shared.ui.components.GlassShimmerPill
+import com.anlian.italase.shared.ui.components.GlassShimmerRow
+import com.anlian.italase.shared.ui.components.GlassShimmerStat
 import com.anlian.italase.shared.ui.components.SectionHeader
+import com.anlian.italase.shared.ui.components.ShimmerCrossfade
 import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
@@ -92,6 +98,7 @@ fun DashboardScreen(
     lowStock: ImmutableList<ProductEntity>,
     activeDebtCount: Int,
     error: String,
+    isLoading: Boolean = false,
     onRefresh: () -> Unit = {},
     onQuickAction: (String) -> Unit = {},
     /**
@@ -110,6 +117,7 @@ fun DashboardScreen(
         lowStock = lowStock,
         activeDebtCount = activeDebtCount,
         error = error,
+        isLoading = isLoading,
         onQuickAction = onQuickAction,
     )
 }
@@ -135,15 +143,14 @@ fun DashboardContent(
     lowStock: ImmutableList<ProductEntity>,
     activeDebtCount: Int,
     error: String,
+    isLoading: Boolean = false,
     onQuickAction: (String) -> Unit = {},
 ) {
     val overlayTop = LocalTopOverlayPadding.current
     val overlayBottom = LocalBottomOverlayPadding.current
 
-    // Entry sekali saja per komposisi. Destination di-restore saat pindah tab,
-    // jadi `remember` bertahan → animasi tidak diputar ulang tiap balik ke
-    // Beranda (yang terasa lambat dan mengganggu).
-    val appeared = rememberAppear()
+    // Entry sekali saja per komposisi saat data siap.
+    val appeared = rememberAppear(!isLoading)
 
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     TopBarInfoEffect(
@@ -154,7 +161,25 @@ fun DashboardContent(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight && maxWidth >= 540.dp
 
-        if (isLandscape) {
+        ShimmerCrossfade(
+            loading = isLoading,
+            modifier = Modifier.fillMaxSize(),
+            shimmer = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScrollConnection(scrollBehavior, null)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Spacer(Modifier.height(overlayTop + 4.dp))
+                    DashboardShimmer(isLandscape = isLandscape)
+                    Spacer(Modifier.height(overlayBottom))
+                }
+            },
+            content = {
+                if (isLandscape) {
             // Tata letak Landscape: Dua Kolom Sejajar (Hero + KPIs di kiri, Top + Low Stock di kanan)
             Column(
                 modifier = Modifier
@@ -355,6 +380,8 @@ fun DashboardContent(
             }
         }
     }
+)
+}
 }
 
 // ── Hero: omzet hari ini ───────────────────────────────────────────────
@@ -598,6 +625,87 @@ private fun LowStockItem(productEntity: ProductEntity) {
                 fontWeight = FontWeight.Bold,
                 color = scheme.error,
             )
+        }
+    }
+}
+
+/**
+ * Skeleton loader shimmering Liquid Glass untuk Beranda saat data agregasi sedang dimuat dari DB.
+ * Mendukung tata letak Portrait maupun Landscape split pane.
+ */
+@Composable
+fun DashboardShimmer(
+    isLandscape: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (isLandscape) {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // Sisi Kiri: Hero Shimmer + Quick Actions + 4 Stat Shimmer
+            Column(
+                Modifier.weight(1.05f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                GlassShimmerCard(height = 148.dp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    repeat(4) {
+                        GlassShimmerPill(modifier = Modifier.weight(1f), height = 44.dp)
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GlassShimmerStat(modifier = Modifier.weight(1f))
+                    GlassShimmerStat(modifier = Modifier.weight(1f))
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GlassShimmerStat(modifier = Modifier.weight(1f))
+                    GlassShimmerStat(modifier = Modifier.weight(1f))
+                }
+            }
+            // Sisi Kanan: Top Products + Low Stock Shimmer
+            Column(
+                Modifier.weight(0.95f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                GlassShimmerBox(Modifier.fillMaxWidth(0.4f).height(20.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    repeat(3) { GlassShimmerRow(height = 64.dp) }
+                }
+                Spacer(Modifier.height(8.dp))
+                GlassShimmerBox(Modifier.fillMaxWidth(0.4f).height(20.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    repeat(2) { GlassShimmerRow(height = 64.dp) }
+                }
+            }
+        }
+    } else {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            GlassShimmerCard(height = 148.dp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(4) {
+                    GlassShimmerPill(modifier = Modifier.weight(1f), height = 44.dp)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GlassShimmerStat(modifier = Modifier.weight(1f))
+                GlassShimmerStat(modifier = Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GlassShimmerStat(modifier = Modifier.weight(1f))
+                GlassShimmerStat(modifier = Modifier.weight(1f))
+            }
+            GlassShimmerBox(Modifier.fillMaxWidth(0.35f).height(20.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(3) { GlassShimmerRow(height = 64.dp) }
+            }
+            GlassShimmerBox(Modifier.fillMaxWidth(0.35f).height(20.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(2) { GlassShimmerRow(height = 64.dp) }
+            }
         }
     }
 }

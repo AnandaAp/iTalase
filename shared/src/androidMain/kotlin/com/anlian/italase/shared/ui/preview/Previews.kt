@@ -291,3 +291,64 @@ fun PayDialogLandscapePreview() {
         PayDialog(total = 45500, onDismiss = {}, onConfirm = { _, _, _ -> })
     }
 }
+
+/**
+ * Pratinjau Dashboard saat memuat data DB (Shimmering Liquid Glass).
+ */
+@Preview(name = "Dashboard Shimmer Portrait", showBackground = true)
+@Composable
+fun DashboardShimmerPreview() {
+    PreviewWrapper {
+        DashboardContent(
+            summary = DaySummary(),
+            top = persistentListOf(),
+            piutang = 0,
+            lowStock = persistentListOf(),
+            activeDebtCount = 0,
+            error = "",
+            isLoading = true,
+        )
+    }
+}
+
+/**
+ * Pratinjau Dashboard Landscape saat memuat data DB (Shimmering Liquid Glass).
+ */
+@Preview(name = "Dashboard Shimmer Landscape", widthDp = 840, heightDp = 390, showBackground = true)
+@Composable
+fun DashboardShimmerLandscapePreview() {
+    PreviewWrapper {
+        DashboardContent(
+            summary = DaySummary(),
+            top = persistentListOf(),
+            piutang = 0,
+            lowStock = persistentListOf(),
+            activeDebtCount = 0,
+            error = "",
+            isLoading = true,
+        )
+    }
+}
+
+/**
+ * Pratinjau Kasir saat memuat data awal DB (Shimmering Liquid Glass).
+ */
+@Preview(name = "Cashier Shimmer Portrait", showBackground = true)
+@Composable
+fun CashierShimmerPreview() {
+    PreviewWrapper {
+        CashierContent(
+            query = "",
+            onQuery = {},
+            categories = listOf("Makanan", "Minuman", "Sembako"),
+            activeCategory = null,
+            onCategory = {},
+            list = emptyList(),
+            cart = emptyMap(),
+            lines = emptyList(),
+            total = 0,
+            message = "",
+            isLoading = true,
+        )
+    }
+}

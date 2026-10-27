@@ -34,6 +34,11 @@ import com.anlian.italase.shared.util.hasMorePages
 import com.anlian.italase.shared.util.localDateOf
 import com.anlian.italase.shared.util.minusDays
 import com.anlian.italase.shared.util.nowMillis
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -112,25 +117,41 @@ class DashboardViewModel(private val repo: ShopRepository) : ViewModel() {
     val piutang: MutableStateFlow<Long> = MutableStateFlow(0)
 
     /**
+     * Menandakan apakah data ringkasan dashboard sedang dimuat dari database.
+     * Mengatur kapan skeleton shimmer ditampilkan di layar Beranda.
+     */
+    val isLoading: MutableStateFlow<Boolean> = MutableStateFlow(true)
+
+    /**
      * Jalan kegagalan agregasi sampai ke layar; aliran reaktif di atas tidak melewatinya.
      */
     val error: MutableStateFlow<UiMessage?> = MutableStateFlow(null)
 
+    private var refreshJob: Job? = null
+
     /**
-     * Hitung ulang semua agregat dashboard.
-     *
-     * Aman dipanggil berulang; kegagalan tidak dilempar, hanya mengisi [error] — dashboard yang
-     * stale lebih baik daripada layar yang mati.
+     * Hitung ulang semua agregat dashboard secara sekuensial pada thread IO.
+     * Menggunakan satu koneksi database yang sama untuk mencegah beban PBKDF2 di SQLCipher.
+     * Aman dipanggil berulang; panggilan yang tumpang tindih otomatis diabaikan.
      */
     fun refresh() {
-        viewModelScope.launch {
+        if (refreshJob?.isActive == true) return
+        refreshJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                summary.value = repo.daySummary(nowMillis())
-                top.value = repo.topProducts(nowMillis())
-                piutang.value = repo.totalPiutang()
+                isLoading.value = true
+                val now = nowMillis()
+                val s = repo.daySummary(now)
+                val t = repo.topProducts(now)
+                val p = repo.totalPiutang()
+
+                summary.value = s
+                top.value = t
+                piutang.value = p
                 error.value = null
             } catch (t: Throwable) {
                 error.value = UiMessage.SummaryFailed
+            } finally {
+                isLoading.value = false
             }
         }
     }
@@ -150,6 +171,13 @@ class ProductViewModel(private val repo: ShopRepository) : ViewModel() {
      */
     val products: StateFlow<List<ProductEntity>> =
         repo.observeProducts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+
+    /**
+     * Menandakan apakah katalog produk sedang dimuat awal dari SQLite.
+     */
+    val isLoading: StateFlow<Boolean> = repo.isProductsLoaded
+        .map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), !repo.isProductsLoaded.value)
 
     /**
      * Pesan hasil tulis (simpan/hapus) yang menunggu ditampilkan lalu [clearMessage].
@@ -288,6 +316,13 @@ class CashierViewModel(private val repo: ShopRepository) : ViewModel() {
      */
     val products: StateFlow<List<ProductEntity>> =
         repo.observeProducts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+
+    /**
+     * Menandakan apakah katalog kasir sedang dimuat awal dari SQLite.
+     */
+    val isLoading: StateFlow<Boolean> = repo.isProductsLoaded
+        .map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), !repo.isProductsLoaded.value)
 
     /**
      * Isi keranjang: id produk → jumlah. Produk yang sudah hilang dari tabel dibuang saat
@@ -478,6 +513,15 @@ class HistoryViewModel(private val repo: ShopRepository) : ViewModel() {
     val rangeFrom: MutableStateFlow<LocalDate?> = MutableStateFlow(null)
     val rangeTo: MutableStateFlow<LocalDate?> = MutableStateFlow(null)
 
+    private val _isInitialLoaded = MutableStateFlow(false)
+
+    /**
+     * Menandakan apakah daftar riwayat sedang dimuat awal dari SQLite.
+     */
+    val isLoading: StateFlow<Boolean> = _isInitialLoaded
+        .map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), true)
+
     /**
      * Baris yang dirender sejauh ini; jumlahnya mengikuti limit yang sedang diminta.
      *
@@ -490,6 +534,7 @@ class HistoryViewModel(private val repo: ShopRepository) : ViewModel() {
                 val (start, end) = dayRangeMillis(f.from, f.to)
                 repo.observeSalesInRange(start, end, f.category, f.limit)
             }
+            .onEach { _isInitialLoaded.value = true }
             .stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS),
@@ -731,11 +776,22 @@ class HistoryViewModel(private val repo: ShopRepository) : ViewModel() {
  */
 @Singleton
 class DebtViewModel(private val repo: ShopRepository) : ViewModel() {
+    private val _isDebtsLoaded = MutableStateFlow(false)
+
+    /**
+     * Menandakan apakah daftar bon piutang sedang dimuat awal dari SQLite.
+     */
+    val isLoading: StateFlow<Boolean> = _isDebtsLoaded
+        .map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), true)
+
     /**
      * Semua bon, lunas maupun belum; pemisahan tampilan dilakukan di layar.
      */
     val debts: StateFlow<List<DebtEntity>> =
-        repo.observeDebts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
+        repo.observeDebts()
+            .onEach { _isDebtsLoaded.value = true }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
 
     /**
      * Hasil simpan atau pelunasan terakhir, untuk snackbar.
@@ -811,11 +867,21 @@ class ExpenseViewModel(private val repo: ShopRepository) : ViewModel() {
      */
     private val loading: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
+    private val _isExpensesLoaded = MutableStateFlow(false)
+
+    /**
+     * Menandakan apakah daftar pengeluaran sedang dimuat awal dari SQLite.
+     */
+    val isLoading: StateFlow<Boolean> = _isExpensesLoaded
+        .map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), true)
+
     /**
      * Baris pengeluaran yang dirender; jumlahnya mengikuti limit yang diminta.
      */
     val items: StateFlow<List<ExpenseEntity>> = limit
         .flatMapLatest { repo.observeExpenses(it) }
+        .onEach { _isExpensesLoaded.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
 
     /**

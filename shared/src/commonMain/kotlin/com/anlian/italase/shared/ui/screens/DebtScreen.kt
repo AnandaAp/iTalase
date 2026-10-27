@@ -40,6 +40,9 @@ import com.anlian.italase.shared.data.local.entity.DebtStatus
 import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
+import com.anlian.italase.shared.ui.components.GlassEmptyState
+import com.anlian.italase.shared.ui.components.GlassShimmerCard
+import com.anlian.italase.shared.ui.components.ShimmerCrossfade
 import com.anlian.italase.shared.ui.components.GlassButton
 import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.PrimaryFab
@@ -94,6 +97,7 @@ fun DebtScreen(
     message: String,
     showAddDialog: Boolean,
     payId: Long?,
+    isLoading: Boolean = false,
     onAdd: () -> Unit = {},
     onPay: (Long) -> Unit = {},
     onDismissAdd: () -> Unit = {},
@@ -104,6 +108,7 @@ fun DebtScreen(
     DebtContent(
         debts = debts,
         message = message,
+        isLoading = isLoading,
         onAdd = onAdd,
         onPay = onPay,
     )
@@ -137,6 +142,7 @@ fun DebtScreen(
 fun DebtContent(
     debts: List<DebtEntity>,
     message: String,
+    isLoading: Boolean = false,
     onAdd: () -> Unit = {},
     onPay: (Long) -> Unit = {},
 ) {
@@ -146,7 +152,7 @@ fun DebtContent(
         val isLandscape = maxWidth > maxHeight && maxWidth >= 540.dp
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
-        val appeared = rememberAppear()
+        val appeared = rememberAppear(!isLoading)
         TopBarInfoEffect(
             eyebrow = stringResource(Res.string.debt_running, active.size),
             title = stringResource(Res.string.title_debts),
@@ -167,31 +173,40 @@ fun DebtContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-                    GlassCard(
-                        modifier = Modifier.fillMaxWidth().enter(appeared, 0),
-                        tint = MaterialTheme.colorScheme.primary,
-                        alpha = 0.95f,
-                    ) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                stringResource(Res.string.debt_total),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Text(
-                                formatRupiah(totalRemaining),
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            StatusChip(
-                                text = stringResource(Res.string.debt_running, active.size),
-                                good = active.isEmpty(),
-                            )
+                    ShimmerCrossfade(
+                        loading = isLoading,
+                        modifier = Modifier.fillMaxWidth(),
+                        shimmer = {
+                            GlassShimmerCard(height = 110.dp)
+                        },
+                        content = {
+                            GlassCard(
+                                modifier = Modifier.fillMaxWidth().enter(appeared, 0),
+                                tint = MaterialTheme.colorScheme.primary,
+                                alpha = 0.95f,
+                            ) {
+                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        stringResource(Res.string.debt_total),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        formatRupiah(totalRemaining),
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    StatusChip(
+                                        text = stringResource(Res.string.debt_running, active.size),
+                                        good = active.isEmpty(),
+                                    )
+                                }
+                            }
                         }
-                    }
+                    )
                     if (message.isNotBlank()) {
                         Text(
                             message,
@@ -208,23 +223,37 @@ fun DebtContent(
                         .nestedScrollConnection(scrollBehavior, listState),
                 ) {
                     Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-                    if (debts.isEmpty()) {
-                        EmptyState(
-                            stringResource(Res.string.debt_empty_t),
-                            stringResource(Res.string.debt_empty_h),
-                        )
-                    } else {
-                        LazyColumn(
-                            state = listState,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize().enter(appeared, 1),
-                            contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
-                        ) {
-                            items(debts, key = { it.id }) { d ->
-                                DebtItemCard(d = d, onPay = onPay)
+                    ShimmerCrossfade(
+                        loading = isLoading,
+                        modifier = Modifier.fillMaxSize(),
+                        shimmer = {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                repeat(4) { GlassShimmerCard(height = 96.dp) }
+                            }
+                        },
+                        content = {
+                            if (debts.isEmpty()) {
+                                GlassEmptyState(
+                                    stringResource(Res.string.debt_empty_t),
+                                    stringResource(Res.string.debt_empty_h),
+                                )
+                            } else {
+                                LazyColumn(
+                                    state = listState,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                                ) {
+                                    items(debts, key = { it.id }) { d ->
+                                        DebtItemCard(d = d, onPay = onPay)
+                                    }
+                                }
                             }
                         }
-                    }
+                    )
                 }
             }
         } else {
@@ -236,30 +265,35 @@ fun DebtContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-                // Kartu total: primitif kaca yang sama dengan layar lain. Warna
-                // hijau tetap — yang berubah cuma bahannya (sheen, shadow, tanpa
-                // BorderStroke). alpha 0.92: hampir pekat supaya angka tetap
-                // terbaca, tapi blob latar masih samar menembus.
-                GlassCard(
-                    modifier = Modifier.fillMaxWidth().enter(appeared, 0),
-                    tint = MaterialTheme.colorScheme.primary,
-                    alpha = 0.95f,
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            stringResource(Res.string.debt_total),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            formatRupiah(totalRemaining),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
+                ShimmerCrossfade(
+                    loading = isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    shimmer = {
+                        GlassShimmerCard(height = 110.dp)
+                    },
+                    content = {
+                        GlassCard(
+                            modifier = Modifier.fillMaxWidth().enter(appeared, 0),
+                            tint = MaterialTheme.colorScheme.primary,
+                            alpha = 0.95f,
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(
+                                    stringResource(Res.string.debt_total),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    formatRupiah(totalRemaining),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            }
+                        }
                     }
-                }
+                )
                 if (message.isNotBlank()) {
                     Text(
                         message,
@@ -267,23 +301,37 @@ fun DebtContent(
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                if (debts.isEmpty()) {
-                    EmptyState(
-                        stringResource(Res.string.debt_empty_t),
-                        stringResource(Res.string.debt_empty_h),
-                    )
-                } else {
-                    LazyColumn(
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f).enter(appeared, 1),
-                        contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
-                    ) {
-                        items(debts, key = { it.id }) { d ->
-                            DebtItemCard(d = d, onPay = onPay)
+                ShimmerCrossfade(
+                    loading = isLoading,
+                    modifier = Modifier.weight(1f),
+                    shimmer = {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            repeat(4) { GlassShimmerCard(height = 96.dp) }
+                        }
+                    },
+                    content = {
+                        if (debts.isEmpty()) {
+                            GlassEmptyState(
+                                stringResource(Res.string.debt_empty_t),
+                                stringResource(Res.string.debt_empty_h),
+                            )
+                        } else {
+                            LazyColumn(
+                                state = listState,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                            ) {
+                                items(debts, key = { it.id }) { d ->
+                                    DebtItemCard(d = d, onPay = onPay)
+                                }
+                            }
                         }
                     }
-                }
+                )
             }
         }
         PrimaryFab(

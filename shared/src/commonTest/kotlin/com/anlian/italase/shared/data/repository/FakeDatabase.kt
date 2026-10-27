@@ -189,6 +189,14 @@ class InMemorySaleDao : SaleDao {
     override suspend fun countRange(from: Long, to: Long) = listRange(from, to).size
     override suspend fun sumOmzet(from: Long, to: Long) = listRange(from, to).sumOf { it.total }
     override suspend fun sumProfit(from: Long, to: Long) = listRange(from, to).sumOf { it.profit }
+    override suspend fun dayAggregate(from: Long, to: Long): com.anlian.italase.shared.data.local.dao.DayAggregateRow {
+        val list = listRange(from, to)
+        return com.anlian.italase.shared.data.local.dao.DayAggregateRow(
+            omzet = list.sumOf { it.total },
+            profit = list.sumOf { it.profit },
+            trxCount = list.size,
+        )
+    }
     override suspend fun getSale(id: Long) = sales.value.find { it.id == id }
 
     override suspend fun insertSale(sale: SaleEntity): Long {

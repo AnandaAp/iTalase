@@ -39,13 +39,10 @@ node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --ensure-services
 # 2. Check current telemetry & kanban status
 node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --status
 ```
-Update the current active task and transition the relevant Kanban card to `inProgress`:
+Update the current active task and automatically synchronize the Kanban card into `inProgress`:
 ```powershell
-# Set the active task banner
-node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --set-task "<Brief Task Name>" --progress 10
-
-# Move card from backlog to inProgress
-node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --move "<CARD_KEY_OR_ID>" --to inProgress
+# Set the active task banner (automatically finds or creates card in inProgress)
+node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --set-task "<Brief Task Name>" --progress 10 --desc "<Brief description>"
 ```
 *(The React Dashboard will instantly animate the card sliding into the In Progress column with glowing feedback).*
 
@@ -67,9 +64,8 @@ After completing the code implementation:
    ```
 
 ### Phase 4: Task Closure (Done & Verified)
-Move the card to `verified` (Completed) and mark the active task at 100%:
+Mark the active task completed and automatically transition the card to `verified`:
 ```powershell
-node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --move "<CARD_KEY_OR_ID>" --to verified
 node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --set-task "<Brief Task Name>" --progress 100
 ```
 

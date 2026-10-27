@@ -23,9 +23,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import org.koin.core.annotation.Singleton
 
@@ -84,7 +88,11 @@ class ShopRepository(
     // mengurangi stok). Dengan ini: 1 query, 1 daftar, 3 pelanggan. Ini juga
     // yang bikin jumlah baris tidak lagi mengalikan biaya perubahan stok.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val _isProductsLoaded = MutableStateFlow(false)
+    val isProductsLoaded: StateFlow<Boolean> = _isProductsLoaded.asStateFlow()
+
     private val productsCache: StateFlow<List<ProductEntity>> = db.productDao().observeAll()
+        .onEach { _isProductsLoaded.value = true }
         .stateIn(scope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MILLIS), emptyList())
 
     // ---- Produk ----
@@ -328,15 +336,19 @@ class ShopRepository(
     suspend fun saleItems(saleId: Long): List<SaleItemEntity> = db.saleDao().itemsOf(saleId)
 
     /** Ringkasan satu hari untuk beranda: omzet, profit, jumlah struk, dan
-     *  pengeluaran, semuanya dihitung dari batas hari lokal. */
-    suspend fun daySummary(millis: Long): DaySummary {
+     *  pengeluaran, dihitung efisien dan sekuensial pada satu koneksi database IO. */
+    suspend fun daySummary(millis: Long): DaySummary = withContext(Dispatchers.IO) {
         val from: Long = startOfLocalDayMillis(millis)
         val to: Long = endOfLocalDayMillis(millis)
-        val omzet: Long = db.saleDao().sumOmzet(from, to)
-        val profit: Long = db.saleDao().sumProfit(from, to)
-        val count: Int = db.saleDao().countRange(from, to)
-        val expense: Long = db.expenseDao().sumRange(from, to)
-        return DaySummary(omzet = omzet, profit = profit, trxCount = count, expense = expense, bersih = profit - expense)
+        val agg = db.saleDao().dayAggregate(from, to)
+        val expense = db.expenseDao().sumRange(from, to)
+        DaySummary(
+            omzet = agg.omzet,
+            profit = agg.profit,
+            trxCount = agg.trxCount,
+            expense = expense,
+            bersih = agg.profit - expense,
+        )
     }
 
     /** Barang terlaris pada hari `millis`; agregasinya dikerjakan di SQL. */

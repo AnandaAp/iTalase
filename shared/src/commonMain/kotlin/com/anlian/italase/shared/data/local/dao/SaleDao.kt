@@ -52,6 +52,13 @@ interface SaleDao {
     @Query("SELECT * FROM ${Tables.SALES} WHERE dateMillis BETWEEN :from AND :to ORDER BY dateMillis DESC")
     suspend fun listRange(from: Long, to: Long): List<SaleEntity>
 
+    /**
+     * Agregat satu rentang tanggal sekaligus (omzet, profit, jumlah struk) dalam satu kali query tabel.
+     * Menggabungkan sumOmzet, sumProfit, dan countRange menjadi satu query efisien.
+     */
+    @Query("SELECT IFNULL(SUM(total),0) AS omzet, IFNULL(SUM(profit),0) AS profit, COUNT(*) AS trxCount FROM ${Tables.SALES} WHERE dateMillis BETWEEN :from AND :to")
+    suspend fun dayAggregate(from: Long, to: Long): DayAggregateRow
+
     /** Jumlah struk dalam rentang. */
     @Query("SELECT COUNT(*) FROM ${Tables.SALES} WHERE dateMillis BETWEEN :from AND :to")
     suspend fun countRange(from: Long, to: Long): Int
@@ -132,3 +139,13 @@ data class TopRow(
     /** Total nilai penjualan (jumlah subtotal) dalam rentang. */
     val s: Long,
 )
+
+/**
+ * Agregat ringkasan penjualan harian (omzet, profit, trxCount) dari [SaleDao.dayAggregate].
+ */
+data class DayAggregateRow(
+    val omzet: Long = 0,
+    val profit: Long = 0,
+    val trxCount: Int = 0,
+)
+

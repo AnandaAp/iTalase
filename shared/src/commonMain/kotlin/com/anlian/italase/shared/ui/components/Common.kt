@@ -1,9 +1,21 @@
 package com.anlian.italase.shared.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -242,15 +254,20 @@ fun LazyListState.OnBottomReached(
 //  atau node ber-`align` akan kehilangan parent data-nya kalau dibungkus Box.
 
 /**
- * Flag "layar sudah tampil". Satu per layar.
- * `remember` di dalam destinasi bertahan saat tab berpindah, jadi animasinya
- * main sekali per komposisi, bukan setiap kembali ke tab.
+ * Flag "layar/konten sudah tampil".
+ *
+ * Mendukung parameter [active]:
+ * - Bila bernilai false (misal saat data masih loading di skeleton shimmer), `appeared` tetap false.
+ * - Saat [active] berubah ke true (data selesai dimuat), animasi masuk cascade [Enter] / [Modifier.enter]
+ *   diputar secara halus dan serempak dengan transisi keluar shimmer.
  */
 @Stable
 @Composable
-fun rememberAppear(): Boolean {
+fun rememberAppear(active: Boolean = true): Boolean {
     var appeared by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { appeared = true }
+    LaunchedEffect(active) {
+        if (active) appeared = true
+    }
     return appeared
 }
 
@@ -258,7 +275,7 @@ fun rememberAppear(): Boolean {
  * Animasi masuk sebagai pembungkus. Jangan pakai untuk anak ber-weight/align —
  * di situ pakai [Modifier.enter] langsung, kalau tidak parent data-nya hilang.
  *
- * @param index urutan blok dalam layar (0,1,2…) untuk delay bertahap 70ms.
+ * @param index urutan blok dalam layar (0,1,2…) untuk delay bertahap.
  */
 @Composable
 fun Enter(
@@ -273,15 +290,17 @@ fun Enter(
  * Animasi masuk sebagai modifier — untuk node yang tidak boleh dibungkus:
  * anak `weight(1f)` di Column/Row, atau node ber-`align` di Box.
  *
- * @param index urutan blok dalam layar (0,1,2…) untuk delay bertahap 70ms.
+ * Menghadirkan transisi fisik Apple/Liquid Glass: fade + slight upward glide (16dp) + subtle scale settle (0.985f -> 1.0f).
+ *
+ * @param index urutan blok dalam layar (0,1,2…) untuk delay bertahap 45ms.
  */
 @Composable
 fun Modifier.enter(visible: Boolean, index: Int): Modifier {
     val progress by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = tween(
-            durationMillis = 420,
-            delayMillis = index * 70,
+            durationMillis = 380,
+            delayMillis = (index * 45).coerceAtMost(220),
             // Decelerate: cepat di awal, melambat halus di akhir.
             easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f),
         ),
@@ -289,7 +308,55 @@ fun Modifier.enter(visible: Boolean, index: Int): Modifier {
     )
     return this.graphicsLayer {
         alpha = progress
-        translationY = (1f - progress) * 28.dp.toPx()
+        translationY = (1f - progress) * 16.dp.toPx()
+        scaleX = 0.985f + (progress * 0.015f)
+        scaleY = 0.985f + (progress * 0.015f)
+    }
+}
+
+/**
+ * Transisi fluida antara skeleton shimmer dan komponen UI riil bergaya Warung Liquid Glass.
+ * Menghilangkan efek "popping" mendadak dengan transisi crossfade + gentle upward spring glide.
+ *
+ * @param loading true bila data masih dimuat (tampilkan [shimmer]), false bila data siap (tampilkan [content]).
+ */
+@Composable
+fun ShimmerCrossfade(
+    loading: Boolean,
+    modifier: Modifier = Modifier,
+    shimmer: @Composable () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    AnimatedContent(
+        targetState = loading,
+        modifier = modifier,
+        transitionSpec = {
+            if (!targetState) {
+                // Loading selesai -> Konten muncul: Fade in + gentle glide ke atas dengan pegas Apple
+                val springSpec = spring<Float>(
+                    stiffness = Spring.StiffnessMediumLow,
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                )
+                val offsetSpec = spring<IntOffset>(
+                    stiffness = Spring.StiffnessMediumLow,
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                )
+                (fadeIn(animationSpec = springSpec) + slideInVertically(animationSpec = offsetSpec) { height -> (height * 0.03f).toInt().coerceAtLeast(14) })
+                    .togetherWith(
+                        fadeOut(animationSpec = tween(150, easing = LinearEasing))
+                    )
+            } else {
+                // Masuk ke loading
+                fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120))
+            }
+        },
+        label = "ShimmerCrossfade",
+    ) { isLoadingState ->
+        if (isLoadingState) {
+            shimmer()
+        } else {
+            content()
+        }
     }
 }
 
@@ -715,6 +782,200 @@ fun GlassCard(
         modifier.glassSurface(shape = shape, tint = tint, alpha = alpha, onClick = onClick),
         content = content,
     )
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  WARUNG LIQUID GLASS SHIMMER — Animasi Shimmer Kaca M3 Expressive
+// ════════════════════════════════════════════════════════════════════════
+//  Menggantikan layout flicker / blank jump saat data sedang dimuat dari DB.
+//  Prinsip Warung Liquid Glass:
+//   • Base: Permukaan translusen (surfaceContainerLow, alpha 0.55-0.72)
+//   • Specular Sweep: Sapuan specular cahaya diagonal (Color.White alpha 0.08 - 0.22)
+//   • Rim Light: Specular lip di tepi atas tanpa border stroke
+//   • Nol Live Blur per-frame overhead: Menggunakan hardware-accelerated drawBehind
+//   • Timing: 1400ms infinite cubic-bezier (0.4f, 0.0f, 0.2f, 1.0f)
+
+/**
+ * Modifier efek shimmering specular liquid glass untuk skeleton loader.
+ * Menghasilkan sapuan kilau specular di atas kaca translusen tanpa overhead per-frame blur.
+ */
+@Composable
+fun Modifier.glassShimmer(
+    shape: Shape = RoundedCornerShape(20.dp),
+    tint: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    alpha: Float = 0.72f,
+    specularAlpha: Float = 0.20f,
+): Modifier {
+    val scheme = MaterialTheme.colorScheme
+    val isDark = scheme.surface.luminance() < 0.5f
+    val baseSpecular = if (isDark) specularAlpha else specularAlpha * 1.6f
+
+    val transition = rememberInfiniteTransition(label = "glassShimmerTransition")
+    val translateAnim by transition.animateFloat(
+        initialValue = -0.5f,
+        targetValue = 1.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f)),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "glassShimmerTranslate",
+    )
+
+    return this
+        .clip(shape)
+        .drawBehind {
+            // 1. Base glass tint
+            drawRect(tint, alpha = alpha)
+
+            // 2. Specular sweep (cahaya kilau menyapu diagonal)
+            val width = size.width
+            val height = size.height
+            val currentOffset = translateAnim * (width + height)
+
+            val shimmerBrush = Brush.linearGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    Color.White.copy(alpha = baseSpecular * 0.25f),
+                    Color.White.copy(alpha = baseSpecular),
+                    Color.White.copy(alpha = baseSpecular * 0.25f),
+                    Color.Transparent,
+                ),
+                start = Offset(x = currentOffset - width * 0.4f, y = 0f),
+                end = Offset(x = currentOffset + width * 0.4f, y = height),
+            )
+            drawRect(shimmerBrush)
+
+            // 3. Specular rim lip di tepi atas (khas Liquid Glass)
+            val rimBrush = Brush.verticalGradient(
+                0f to Color.White.copy(alpha = if (isDark) 0.12f else 0.22f),
+                0.3f to Color.Transparent,
+            )
+            drawRect(rimBrush)
+        }
+}
+
+/** Kotak dasar skeleton shimmering bergaya liquid glass. */
+@Composable
+fun GlassShimmerBox(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(12.dp),
+    tint: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    alpha: Float = 0.72f,
+) {
+    Box(modifier.glassShimmer(shape = shape, tint = tint, alpha = alpha))
+}
+
+/** Kartu skeleton shimmering bergaya liquid glass. */
+@Composable
+fun GlassShimmerCard(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(24.dp),
+    height: Dp = 100.dp,
+    tint: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    alpha: Float = 0.72f,
+    content: (@Composable BoxScope.() -> Unit)? = null,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .glassShimmer(shape = shape, tint = tint, alpha = alpha),
+        content = content ?: {},
+    )
+}
+
+/** Baris skeleton shimmering bergaya liquid glass (pengganti sementara GlassRow). */
+@Composable
+fun GlassShimmerRow(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(20.dp),
+    height: Dp = 68.dp,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val placeholderColor = scheme.onSurface.copy(alpha = 0.08f)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .glassShimmer(shape = shape, tint = scheme.surfaceContainerLow, alpha = 0.72f)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Leading icon circle skeleton
+        Box(
+            Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(placeholderColor),
+        )
+        Spacer(Modifier.width(12.dp))
+        // Title & subtitle text skeleton
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(placeholderColor),
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth(0.35f)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(placeholderColor),
+            )
+        }
+    }
+}
+
+/** Chip atau Pill skeleton shimmering bergaya liquid glass. */
+@Composable
+fun GlassShimmerPill(
+    modifier: Modifier = Modifier,
+    width: Dp = 84.dp,
+    height: Dp = 32.dp,
+) {
+    Box(
+        modifier = modifier
+            .size(width = width, height = height)
+            .glassShimmer(shape = CircleShape, alpha = 0.65f),
+    )
+}
+
+/** Kartu indikator KPI / Stat skeleton shimmering pada Dashboard. */
+@Composable
+fun GlassShimmerStat(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(20.dp),
+    height: Dp = 84.dp,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val placeholderColor = scheme.onSurface.copy(alpha = 0.08f)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .glassShimmer(shape = shape, alpha = 0.72f)
+            .padding(14.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                Modifier
+                    .fillMaxWidth(0.5f)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(placeholderColor),
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth(0.75f)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(placeholderColor),
+            )
+        }
+    }
 }
 
 /**

@@ -68,7 +68,12 @@ fun getDatabaseBuilder(
  */
 internal fun createSqlCipherDriver(passphrase: String): SQLCipherDriver {
     loadSqlCipherNativeLibrary()
-    return SQLCipherDriver(passphrase.toByteArray(Charsets.UTF_8), null, null)
+    val rawKey = if (passphrase.startsWith("x'") && passphrase.endsWith("'")) {
+        passphrase
+    } else {
+        "x'$passphrase'"
+    }
+    return SQLCipherDriver(rawKey.toByteArray(Charsets.UTF_8), null, null)
 }
 
 /**
@@ -169,7 +174,12 @@ internal fun migratePlainDatabaseIfNeeded(dbFile: File, passphrase: String): Boo
         // - `sqlcipher_export` lewat `rawExecSQL`: `execSQL` menolak SELECT,
         //   dan `rawQuery` membuka cursor yang bisa melepas koneksi ke pool
         //   sehingga database `enc` yang ter-attach hilang lagi.
-        source.execSQL("ATTACH DATABASE '${encryptedFile.absolutePath}' AS enc KEY '$passphrase'")
+        val rawKey = if (passphrase.startsWith("x'") && passphrase.endsWith("'")) {
+            passphrase
+        } else {
+            "x'$passphrase'"
+        }
+        source.execSQL("ATTACH DATABASE '${encryptedFile.absolutePath}' AS enc KEY \"$rawKey\"")
         source.rawExecSQL("SELECT sqlcipher_export('enc')")
         // sqlcipher_export tidak menyalin user_version; Room butuh nilainya
         // supaya tidak menganggap skema perlu dimigrasi dari nol.
@@ -197,6 +207,85 @@ internal fun migratePlainDatabaseIfNeeded(dbFile: File, passphrase: String): Boo
         return false
     } finally {
         source?.close()
+    }
+}
+
+/**
+ * Migrasikan database SQLCipher yang sebelumnya memakai PBKDF2 passphrase
+ * menjadi raw hex key (PRAGMA rekey = "x'...'").
+ *
+ * Mengabaikan KDF (256.000 iterasi PBKDF2) mempercepat pembukaan setiap koneksi
+ * dari ~570ms menjadi ~0.001ms, menghilangkan multi-second delay saat aplikasi
+ * dimuat.
+ */
+internal fun migrateToRawKeyIfNeeded(
+    dbFile: File,
+    passphrase: String,
+    rawKeyBlob: String,
+): Boolean {
+    if (!dbFile.exists() || dbFile.length() == 0L) return false
+    val header = ByteArray(16)
+    dbFile.inputStream().use { stream ->
+        if (stream.read(header) < header.size) return false
+    }
+    if (isPlainSqliteHeader(header)) return false
+
+    loadSqlCipherNativeLibrary()
+
+    val rawKey = if (rawKeyBlob.startsWith("x'") && rawKeyBlob.endsWith("'")) {
+        rawKeyBlob
+    } else {
+        "x'$rawKeyBlob'"
+    }
+    val rawKeyBytes = rawKey.toByteArray(Charsets.UTF_8)
+
+    // 1. Cek apakah database sudah bisa dibuka langsung dengan raw key.
+    var testDb: SQLiteDatabase? = null
+    try {
+        testDb = SQLiteDatabase.openDatabase(
+            dbFile.absolutePath,
+            rawKeyBytes,
+            null,
+            SQLiteDatabase.OPEN_READONLY,
+            null,
+            null,
+        )
+        val cursor = testDb.rawQuery("SELECT count(*) FROM sqlite_master", null)
+        cursor.close()
+        testDb.close()
+        testDb = null
+        return false // Sudah berformat raw key!
+    } catch (e: Throwable) {
+        Log.i(TAG, "Database belum raw key; mencoba rekey dari passphrase PBKDF2...")
+    } finally {
+        testDb?.close()
+    }
+
+    // 2. Buka dengan passphrase PBKDF2 lama lalu re-key ke raw hex key.
+    val passBytes = passphrase.toByteArray(Charsets.UTF_8)
+    var oldDb: SQLiteDatabase? = null
+    try {
+        oldDb = SQLiteDatabase.openDatabase(
+            dbFile.absolutePath,
+            passBytes,
+            null,
+            SQLiteDatabase.OPEN_READWRITE,
+            null,
+            null,
+        )
+        val cursor = oldDb.rawQuery("SELECT count(*) FROM sqlite_master", null)
+        cursor.close()
+        Log.i(TAG, "Terbuka dengan passphrase PBKDF2; melakukan rekey ke raw key...")
+        oldDb.changePassword(rawKeyBytes)
+        Log.i(TAG, "Rekey ke raw key berhasil.")
+        oldDb.close()
+        oldDb = null
+        return true
+    } catch (t: Throwable) {
+        Log.e(TAG, "Rekey database ke raw key gagal", t)
+        return false
+    } finally {
+        oldDb?.close()
     }
 }
 

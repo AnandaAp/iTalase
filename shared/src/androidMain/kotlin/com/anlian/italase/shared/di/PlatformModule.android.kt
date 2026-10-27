@@ -7,7 +7,9 @@ import com.anlian.italase.shared.data.local.getDatabaseBuilder
 import com.anlian.italase.shared.data.local.getRoomDatabase
 import com.anlian.italase.shared.data.local.loadOrCreateKey
 import com.anlian.italase.shared.data.local.migratePlainDatabaseIfNeeded
+import com.anlian.italase.shared.data.local.migrateToRawKeyIfNeeded
 import com.anlian.italase.shared.data.local.toKeyPassphrase
+import com.anlian.italase.shared.data.local.toRawKeyBlob
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Singleton
 import org.koin.core.component.KoinComponent
@@ -35,12 +37,16 @@ actual class PlatformModule: KoinComponent {
     @Singleton
     fun provideDb(): ITalaseDatabase {
         val context = AndroidAppContext.ctx
-        val passphrase: String = loadOrCreateKey().toKeyPassphrase()
+        val keyBytes = loadOrCreateKey()
+        val passphrase: String = keyBytes.toKeyPassphrase()
+        val rawKeyBlob: String = keyBytes.toRawKeyBlob()
+        val dbFile = context.getDatabasePath(DbFiles.NAME)
         val builder = getDatabaseBuilder(context)
-        // Database versi lama masih polos SQLite. Migrasi dijalankan SEBELUM
-        // Room membuka database, supaya Room bertemu skema yang sudah terenkripsi
-        // dan versi skemanya sudah benar.
-        migratePlainDatabaseIfNeeded(context.getDatabasePath(DbFiles.NAME), passphrase)
-        return getRoomDatabase(builder, createEncryptedDriver(passphrase))
+        // Database versi lama masih polos SQLite atau memakai PBKDF2 passphrase.
+        // Migrasi dijalankan SEBELUM Room membuka database, sehingga Room bertemu
+        // database terenkripsi raw key yang terbuka seketika tanpa overhead PBKDF2.
+        migratePlainDatabaseIfNeeded(dbFile, rawKeyBlob)
+        migrateToRawKeyIfNeeded(dbFile, passphrase, rawKeyBlob)
+        return getRoomDatabase(builder, createEncryptedDriver(rawKeyBlob))
     }
 }

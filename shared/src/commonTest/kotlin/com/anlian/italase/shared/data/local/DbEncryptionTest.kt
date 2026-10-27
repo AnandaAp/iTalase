@@ -50,7 +50,7 @@ class DbEncryptionTest {
     @Test
     fun perintahPragmaKeyMenggunakanNilaiPersis() {
         val passphrase = "00".repeat(32)
-        assertEquals("PRAGMA key = '$passphrase'", sqlCipherKeyPragma(passphrase))
+        assertEquals("PRAGMA key = \"x'$passphrase'\"", sqlCipherKeyPragma(passphrase))
     }
 
     @Test
@@ -63,7 +63,7 @@ class DbEncryptionTest {
         assertEquals(2, sql.count { it == '\'' })
         assertFalse(sql.contains("';"))
         // Isi literal persis passphrase-nya, tanpa modifikasi.
-        assertEquals(passphrase, sql.substringAfter("PRAGMA key = '").substringBeforeLast("'"))
+        assertEquals(passphrase, sql.substringAfter("PRAGMA key = \"x'").substringBeforeLast("'\""))
     }
 
     @Test

@@ -32,6 +32,9 @@ import com.anlian.italase.shared.ui.components.CategoryChips
 import com.anlian.italase.shared.ui.components.DateRangeChip
 import com.anlian.italase.shared.ui.components.DateRangePickerDialog
 import com.anlian.italase.shared.ui.components.EmptyState
+import com.anlian.italase.shared.ui.components.GlassEmptyState
+import com.anlian.italase.shared.ui.components.GlassShimmerCard
+import com.anlian.italase.shared.ui.components.ShimmerCrossfade
 import com.anlian.italase.shared.ui.components.Enter
 import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.GlassIconButton
@@ -81,6 +84,7 @@ fun HistoryScreen(
     rangeFrom: LocalDate? = null,
     rangeTo: LocalDate? = null,
     exporting: Boolean = false,
+    isLoading: Boolean = false,
     onCategory: (String?) -> Unit = {},
     onOpen: (Long) -> Unit = {},
     onLoadMore: () -> Unit = {},
@@ -96,6 +100,7 @@ fun HistoryScreen(
         rangeFrom = rangeFrom,
         rangeTo = rangeTo,
         exporting = exporting,
+        isLoading = isLoading,
         onCategory = onCategory,
         onOpen = onOpen,
         onLoadMore = onLoadMore,
@@ -137,6 +142,7 @@ fun HistoryContent(
     rangeFrom: LocalDate? = null,
     rangeTo: LocalDate? = null,
     exporting: Boolean = false,
+    isLoading: Boolean = false,
     onCategory: (String?) -> Unit = {},
     onOpen: (Long) -> Unit = {},
     onLoadMore: () -> Unit = {},
@@ -145,7 +151,7 @@ fun HistoryContent(
 ) {
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val listState = rememberLazyListState()
-    val appeared = rememberAppear()
+    val appeared = rememberAppear(!isLoading)
     var pickingRange by remember { mutableStateOf(false) }
     TopBarInfoEffect(
         eyebrow = stringResource(Res.string.hist_count, sales.size),
@@ -191,28 +197,39 @@ fun HistoryContent(
                 }
             }
         }
-        if (sales.isEmpty()) {
-            EmptyState(
-                stringResource(Res.string.hist_empty_t),
-                stringResource(Res.string.hist_empty_h),
-            )
-        } else {
-            // Pemicu muat-tambahan dipasang DI LUAR LazyColumn: isi LazyColumn
-            // bertipe LazyListScope (bukan @Composable), jadi composable seperti
-            // onBottomReached tidak bisa dipanggil di dalamnya. Ia hanya membaca
-            // listState, jadi posisinya di sini sama saja.
-            listState.OnBottomReached(
-                enabled = hasMore && !loadingMore,
-                onLoadMore = onLoadMore,
-            )
-            LazyColumn(
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f).enter(appeared, 1),
-                // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
-                contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current),
-            ) {
-                items(sales, key = { it.id }) { s ->
+        ShimmerCrossfade(
+            loading = isLoading,
+            modifier = Modifier.weight(1f),
+            shimmer = {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    repeat(5) {
+                        GlassShimmerCard(height = 92.dp, shape = RoundedCornerShape(20.dp))
+                    }
+                }
+            },
+            content = {
+                if (sales.isEmpty()) {
+                    GlassEmptyState(
+                        stringResource(Res.string.hist_empty_t),
+                        stringResource(Res.string.hist_empty_h),
+                    )
+                } else {
+                    // Pemicu muat-tambahan dipasang DI LUAR LazyColumn
+                    listState.OnBottomReached(
+                        enabled = hasMore && !loadingMore,
+                        onLoadMore = onLoadMore,
+                    )
+                    LazyColumn(
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
+                        contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current),
+                    ) {
+                        items(sales, key = { it.id }) { s ->
                     val lunas = s.status == TxnStatus.LUNAS
                     GlassCard(shape = RoundedCornerShape(20.dp), onClick = { onOpen(s.id) }) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -273,6 +290,8 @@ fun HistoryContent(
             }
         }
     }
+)
+}
 
     if (pickingRange) {
         DateRangePickerDialog(

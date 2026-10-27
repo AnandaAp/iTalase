@@ -16,17 +16,15 @@ The telemetry state store is stored at `iTalase Agentic Dashboard/audit_state.js
      Run: `node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --ensure-services`
      (Or run `npm start` in `iTalase Agentic Dashboard` in a separate external terminal. NEVER run the server as a blocking foreground command in the conversation session).
    - Check status: `node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --status`
-   - Set active task banner and move relevant Kanban card to `inProgress`:
-     `node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --set-task "<Task Name>" --progress 10`
-     `node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --move "<CARD_KEY>" --to inProgress`
+   - Set active task banner and automatically sync Kanban card to `inProgress` (`SEDANG DIKERJAKAN`):
+     `node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --set-task "<Task Name>" --progress 10 --desc "<Brief description>"`
+     *(Note: `--set-task` automatically finds an existing card or creates a new card into `inProgress` so `SEDANG DIKERJAKAN` is ALWAYS synchronized with the active sprint).*
 2. **During Autonomous Tool Executions**:
    - When running significant commands (`run_command`), creating files (`write_file`), or modifying code (`edit_file`), record the operation:
      `node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --log-perm <tool> "<action>" "<target>"`
 3. **At Task Verification & Completion**:
    - Verify JaCoCo coverage remains $\ge 75\%$: `./gradlew :shared:testAndroidHostTest :shared:jacocoTestCoverageVerification`
-   - Move card to `verified`:
-     `node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --move "<CARD_KEY>" --to verified`
-   - Set active task to completed:
+   - Mark task completed and automatically transition card to `verified` (`TERUJI & TERVERIFIKASI`):
      `node "iTalase Agentic Dashboard/scripts/update_dashboard.js" --set-task "<Task Name>" --progress 100`
 
 ---

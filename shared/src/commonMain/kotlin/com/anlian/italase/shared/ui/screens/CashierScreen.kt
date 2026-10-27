@@ -51,6 +51,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import com.anlian.italase.shared.ui.components.GlassChip
 import com.anlian.italase.shared.ui.components.GlassDialog
 import com.anlian.italase.shared.ui.components.GlassEmptyState
+import com.anlian.italase.shared.ui.components.GlassShimmerRow
+import com.anlian.italase.shared.ui.components.ShimmerCrossfade
 import com.anlian.italase.shared.ui.components.GlassIconButton
 import com.anlian.italase.shared.ui.components.GlassRow
 import com.anlian.italase.shared.ui.components.GlassTextField
@@ -124,6 +126,7 @@ fun CashierScreen(
     total: Long,
     message: String,
     showPayDialog: Boolean,
+    isLoading: Boolean = false,
     onAdd: (ProductEntity) -> Unit = {},
     onSetQty: (Long, Int) -> Unit = { _, _ -> },
     onClear: () -> Unit = {},
@@ -142,6 +145,7 @@ fun CashierScreen(
         lines = lines,
         total = total,
         message = message,
+        isLoading = isLoading,
         onAdd = onAdd,
         onSetQty = onSetQty,
         onClear = onClear,
@@ -180,6 +184,7 @@ fun CashierContent(
     lines: List<CartLine>,
     total: Long,
     message: String,
+    isLoading: Boolean = false,
     onAdd: (ProductEntity) -> Unit = {},
     onSetQty: (Long, Int) -> Unit = { _, _ -> },
     onClear: () -> Unit = {},
@@ -196,10 +201,8 @@ fun CashierContent(
     // supaya jarak aksi-vs-tab-bar identik di seluruh app.
     val checkoutSpace = bottomActionTailPadding(CHECKOUT_CARD_HEIGHT)
 
-    // Header layar hidup di top bar. Diletakkan DI LUAR Column: nilai ini tidak
-    // merender apa pun, jadi kalau jadi child Column ia tetap memakan jarak
-    // Arrangement.spacedBy di dua sisinya.
-    val appeared = rememberAppear()
+    // Header layar hidup di top bar.
+    val appeared = rememberAppear(!isLoading)
     val cartCount = lines.sumOf { it.qty }
     val cashierEyebrow = if (cartCount > 0) {
         stringResource(Res.string.cash_cart_items, cartCount)
@@ -249,33 +252,46 @@ fun CashierContent(
                         active = activeCategory,
                         onSelect = onCategory,
                     )
-                    if (list.isEmpty()) {
-                        GlassEmptyState(
-                            stringResource(Res.string.cash_empty_t),
-                            stringResource(Res.string.cash_empty_h),
-                        )
-                    } else {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier
-                                .weight(1f)
-                                .nestedScrollConnection(scrollBehavior, listState)
-                                .enter(appeared, 1),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 12.dp),
-                        ) {
-                            items(list, key = { it.id }) { p ->
-                                val qty = cart[p.id] ?: 0
-                                ProductCashierRow(
-                                    product = p,
-                                    qty = qty,
-                                    scheme = scheme,
-                                    onAdd = onAdd,
-                                    onSetQty = onSetQty,
+                    ShimmerCrossfade(
+                        loading = isLoading,
+                        modifier = Modifier.weight(1f),
+                        shimmer = {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                repeat(6) { GlassShimmerRow() }
+                            }
+                        },
+                        content = {
+                            if (list.isEmpty()) {
+                                GlassEmptyState(
+                                    stringResource(Res.string.cash_empty_t),
+                                    stringResource(Res.string.cash_empty_h),
                                 )
+                            } else {
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .nestedScrollConnection(scrollBehavior, listState),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 12.dp),
+                                ) {
+                                    items(list, key = { it.id }) { p ->
+                                        val qty = cart[p.id] ?: 0
+                                        ProductCashierRow(
+                                            product = p,
+                                            qty = qty,
+                                            scheme = scheme,
+                                            onAdd = onAdd,
+                                            onSetQty = onSetQty,
+                                        )
+                                    }
+                                }
                             }
                         }
-                    }
+                    )
                 }
 
                 // Kolom Kanan: Panel Keranjang POS
@@ -329,32 +345,46 @@ fun CashierContent(
                         active = activeCategory,
                         onSelect = onCategory,
                     )
-                    if (list.isEmpty()) {
-                        GlassEmptyState(
-                            stringResource(Res.string.cash_empty_t),
-                            stringResource(Res.string.cash_empty_h),
-                        )
-                    } else {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier
-                                .weight(1f)
-                                .nestedScrollConnection(scrollBehavior, listState).enter(appeared, 1),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = checkoutSpace,
-                        ) {
-                            items(list, key = { it.id }) { p ->
-                                val qty = cart[p.id] ?: 0
-                                ProductCashierRow(
-                                    product = p,
-                                    qty = qty,
-                                    scheme = scheme,
-                                    onAdd = onAdd,
-                                    onSetQty = onSetQty,
+                    ShimmerCrossfade(
+                        loading = isLoading,
+                        modifier = Modifier.weight(1f),
+                        shimmer = {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                repeat(6) { GlassShimmerRow() }
+                            }
+                        },
+                        content = {
+                            if (list.isEmpty()) {
+                                GlassEmptyState(
+                                    stringResource(Res.string.cash_empty_t),
+                                    stringResource(Res.string.cash_empty_h),
                                 )
+                            } else {
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .nestedScrollConnection(scrollBehavior, listState),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = checkoutSpace,
+                                ) {
+                                    items(list, key = { it.id }) { p ->
+                                        val qty = cart[p.id] ?: 0
+                                        ProductCashierRow(
+                                            product = p,
+                                            qty = qty,
+                                            scheme = scheme,
+                                            onAdd = onAdd,
+                                            onSetQty = onSetQty,
+                                        )
+                                    }
+                                }
                             }
                         }
-                    }
+                    )
                 }
 
                 // Checkout card mengambang di atas konten

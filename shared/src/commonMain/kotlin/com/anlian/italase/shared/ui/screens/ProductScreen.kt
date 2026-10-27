@@ -53,6 +53,8 @@ import com.anlian.italase.shared.ui.components.CategoryChips
 import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.GlassConfirmDialog
 import com.anlian.italase.shared.ui.components.GlassEmptyState
+import com.anlian.italase.shared.ui.components.GlassShimmerRow
+import com.anlian.italase.shared.ui.components.ShimmerCrossfade
 import com.anlian.italase.shared.ui.components.GlassTextField
 import com.anlian.italase.shared.ui.components.PrimaryFab
 import com.anlian.italase.shared.ui.components.StatusChip
@@ -119,6 +121,7 @@ fun ProductScreen(
     message: String,
     showForm: Boolean,
     edit: ProductEntity?,
+    isLoading: Boolean = false,
     onAdd: () -> Unit = {},
     onEdit: (ProductEntity) -> Unit = {},
     onDelete: (ProductEntity) -> Unit = {},
@@ -133,6 +136,7 @@ fun ProductScreen(
         activeCategory = activeCategory,
         onCategory = onCategory,
         message = message,
+        isLoading = isLoading,
         onAdd = onAdd,
         onEdit = onEdit,
         onDelete = onDelete,
@@ -168,6 +172,7 @@ fun ProductContent(
     activeCategory: String?,
     onCategory: (String?) -> Unit,
     message: String,
+    isLoading: Boolean = false,
     onAdd: () -> Unit = {},
     onEdit: (ProductEntity) -> Unit = {},
     onDelete: (ProductEntity) -> Unit = {},
@@ -177,7 +182,7 @@ fun ProductContent(
     Box(Modifier.fillMaxSize()) {
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
-        val appeared = rememberAppear()
+        val appeared = rememberAppear(!isLoading)
         TopBarInfoEffect(
             eyebrow = stringResource(Res.string.prod_count, products.size),
             title = stringResource(Res.string.title_products),
@@ -214,22 +219,34 @@ fun ProductContent(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-            if (products.isEmpty()) {
-                GlassEmptyState(
-                    stringResource(Res.string.prod_empty_t),
-                    stringResource(Res.string.prod_empty_h),
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .weight(1f)
-                        .nestedScrollConnection(scrollBehavior, listState).enter(appeared, 1),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
-                    contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
-                ) {
-                    items(products, key = { it.id }) { p ->
+            ShimmerCrossfade(
+                loading = isLoading,
+                modifier = Modifier.weight(1f),
+                shimmer = {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        repeat(6) { GlassShimmerRow() }
+                    }
+                },
+                content = {
+                    if (products.isEmpty()) {
+                        GlassEmptyState(
+                            stringResource(Res.string.prod_empty_t),
+                            stringResource(Res.string.prod_empty_h),
+                        )
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .nestedScrollConnection(scrollBehavior, listState),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            // Ruang ekor: baris terakhir bisa digulir ke atas tab bar.
+                            contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                        ) {
+                            items(products, key = { it.id }) { p ->
                         val low = p.stock <= p.minStock || p.stock <= StockRules.LOW_STOCK_FALLBACK
                         GlassCard(
                             shape = RoundedCornerShape(20.dp),
@@ -307,6 +324,8 @@ fun ProductContent(
                 }
             }
         }
+    )
+}
         PrimaryFab(
             text = stringResource(Res.string.action_add_product),
             icon = AppIcon.ADD,

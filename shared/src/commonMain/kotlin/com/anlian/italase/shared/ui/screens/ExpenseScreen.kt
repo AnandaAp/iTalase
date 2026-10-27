@@ -41,6 +41,9 @@ import com.anlian.italase.shared.data.local.entity.ExpenseEntity
 import com.anlian.italase.shared.ui.components.AnnounceGlassDialogOpen
 import com.anlian.italase.shared.ui.components.AppIcon
 import com.anlian.italase.shared.ui.components.EmptyState
+import com.anlian.italase.shared.ui.components.GlassEmptyState
+import com.anlian.italase.shared.ui.components.GlassShimmerCard
+import com.anlian.italase.shared.ui.components.ShimmerCrossfade
 import com.anlian.italase.shared.ui.components.GlassCard
 import com.anlian.italase.shared.ui.components.LoadMoreFooter
 import com.anlian.italase.shared.ui.components.StatusChip
@@ -91,6 +94,7 @@ fun ExpenseScreen(
     showAddDialog: Boolean,
     loadingMore: Boolean = false,
     hasMore: Boolean = false,
+    isLoading: Boolean = false,
     onAdd: () -> Unit = {},
     onDelete: (Long) -> Unit = {},
     onDismissAdd: () -> Unit = {},
@@ -102,6 +106,7 @@ fun ExpenseScreen(
         message = message,
         loadingMore = loadingMore,
         hasMore = hasMore,
+        isLoading = isLoading,
         onAdd = onAdd,
         onDelete = onDelete,
         onLoadMore = onLoadMore,
@@ -129,6 +134,7 @@ fun ExpenseContent(
     message: String,
     loadingMore: Boolean = false,
     hasMore: Boolean = false,
+    isLoading: Boolean = false,
     onAdd: () -> Unit = {},
     onDelete: (Long) -> Unit = {},
     onLoadMore: () -> Unit = {},
@@ -137,7 +143,7 @@ fun ExpenseContent(
         val isLandscape = maxWidth > maxHeight && maxWidth >= 540.dp
         val scrollBehavior = LocalTopAppBarScrollBehavior.current
         val listState = rememberLazyListState()
-        val appeared = rememberAppear()
+        val appeared = rememberAppear(!isLoading)
         val totalAmount = remember(items) { items.sumOf { it.amount } }
         TopBarInfoEffect(
             eyebrow = stringResource(Res.string.exp_count, items.size),
@@ -160,31 +166,40 @@ fun ExpenseContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-                    GlassCard(
-                        modifier = Modifier.fillMaxWidth().enter(appeared, 0),
-                        tint = MaterialTheme.colorScheme.secondaryContainer,
-                        alpha = 0.95f,
-                    ) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                stringResource(Res.string.exp_total),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Text(
-                                formatRupiah(totalAmount),
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            StatusChip(
-                                text = stringResource(Res.string.exp_count, items.size),
-                                good = true,
-                            )
+                    ShimmerCrossfade(
+                        loading = isLoading,
+                        modifier = Modifier.fillMaxWidth(),
+                        shimmer = {
+                            GlassShimmerCard(height = 110.dp)
+                        },
+                        content = {
+                            GlassCard(
+                                modifier = Modifier.fillMaxWidth().enter(appeared, 0),
+                                tint = MaterialTheme.colorScheme.secondaryContainer,
+                                alpha = 0.95f,
+                            ) {
+                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        stringResource(Res.string.exp_total),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        formatRupiah(totalAmount),
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    StatusChip(
+                                        text = stringResource(Res.string.exp_count, items.size),
+                                        good = true,
+                                    )
+                                }
+                            }
                         }
-                    }
+                    )
                     if (message.isNotBlank()) {
                         Text(
                             message,
@@ -201,28 +216,42 @@ fun ExpenseContent(
                         .nestedScrollConnection(scrollBehavior, listState),
                 ) {
                     Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-                    if (items.isEmpty()) {
-                        EmptyState(
-                            stringResource(Res.string.exp_empty_t),
-                            stringResource(Res.string.exp_empty_h),
-                        )
-                    } else {
-                        listState.OnBottomReached(
-                            enabled = hasMore && !loadingMore,
-                            onLoadMore = onLoadMore,
-                        )
-                        LazyColumn(
-                            state = listState,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize().enter(appeared, 1),
-                            contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
-                        ) {
-                            items(items, key = { it.id }) { e ->
-                                ExpenseItemCard(e = e, onDelete = onDelete)
+                    ShimmerCrossfade(
+                        loading = isLoading,
+                        modifier = Modifier.fillMaxSize(),
+                        shimmer = {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                repeat(4) { GlassShimmerCard(height = 76.dp) }
                             }
-                            item(key = "load-more") { LoadMoreFooter(loadingMore) }
+                        },
+                        content = {
+                            if (items.isEmpty()) {
+                                GlassEmptyState(
+                                    stringResource(Res.string.exp_empty_t),
+                                    stringResource(Res.string.exp_empty_h),
+                                )
+                            } else {
+                                listState.OnBottomReached(
+                                    enabled = hasMore && !loadingMore,
+                                    onLoadMore = onLoadMore,
+                                )
+                                LazyColumn(
+                                    state = listState,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                                ) {
+                                    items(items, key = { it.id }) { e ->
+                                        ExpenseItemCard(e = e, onDelete = onDelete)
+                                    }
+                                    item(key = "load-more") { LoadMoreFooter(loadingMore) }
+                                }
+                            }
                         }
-                    }
+                    )
                 }
             }
         } else {
@@ -234,28 +263,35 @@ fun ExpenseContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-                // Kartu total: primitif kaca yang sama dengan layar lain, warna
-                // maknanya tetap (sand) — lihat DebtScreen untuk alasannya.
-                GlassCard(
-                    modifier = Modifier.fillMaxWidth().enter(appeared, 0),
-                    tint = MaterialTheme.colorScheme.secondaryContainer,
-                    alpha = 0.95f,
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            stringResource(Res.string.exp_total),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            formatRupiah(totalAmount),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        )
+                ShimmerCrossfade(
+                    loading = isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    shimmer = {
+                        GlassShimmerCard(height = 110.dp)
+                    },
+                    content = {
+                        GlassCard(
+                            modifier = Modifier.fillMaxWidth().enter(appeared, 0),
+                            tint = MaterialTheme.colorScheme.secondaryContainer,
+                            alpha = 0.95f,
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(
+                                    stringResource(Res.string.exp_total),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    formatRupiah(totalAmount),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
                     }
-                }
+                )
                 if (message.isNotBlank()) {
                     Text(
                         message,
@@ -263,30 +299,44 @@ fun ExpenseContent(
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                if (items.isEmpty()) {
-                    EmptyState(
-                        stringResource(Res.string.exp_empty_t),
-                        stringResource(Res.string.exp_empty_h),
-                    )
-                } else {
-                    // Lihat catatan di HistoryScreen: isi LazyColumn bukan scope
-                    // @Composable, jadi pemicunya dipasang di luar.
-                    listState.OnBottomReached(
-                        enabled = hasMore && !loadingMore,
-                        onLoadMore = onLoadMore,
-                    )
-                    LazyColumn(
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f).enter(appeared, 1),
-                        contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
-                    ) {
-                        items(items, key = { it.id }) { e ->
-                            ExpenseItemCard(e = e, onDelete = onDelete)
+                ShimmerCrossfade(
+                    loading = isLoading,
+                    modifier = Modifier.weight(1f),
+                    shimmer = {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            repeat(4) { GlassShimmerCard(height = 76.dp) }
                         }
-                        item(key = "load-more") { LoadMoreFooter(loadingMore) }
+                    },
+                    content = {
+                        if (items.isEmpty()) {
+                            GlassEmptyState(
+                                stringResource(Res.string.exp_empty_t),
+                                stringResource(Res.string.exp_empty_h),
+                            )
+                        } else {
+                            // Lihat catatan di HistoryScreen: isi LazyColumn bukan scope
+                            // @Composable, jadi pemicunya dipasang di luar.
+                            listState.OnBottomReached(
+                                enabled = hasMore && !loadingMore,
+                                onLoadMore = onLoadMore,
+                            )
+                            LazyColumn(
+                                state = listState,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = bottomActionTailPadding(ACTION_FAB_HEIGHT),
+                            ) {
+                                items(items, key = { it.id }) { e ->
+                                    ExpenseItemCard(e = e, onDelete = onDelete)
+                                }
+                                item(key = "load-more") { LoadMoreFooter(loadingMore) }
+                            }
+                        }
                     }
-                }
+                )
             }
         }
         PrimaryFab(

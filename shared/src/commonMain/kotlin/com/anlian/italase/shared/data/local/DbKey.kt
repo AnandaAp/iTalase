@@ -84,5 +84,7 @@ private const val HEX_DIGITS = "0123456789abcdef"
  *
  * @param passphrase kunci 64 karakter heksadesimal, hasil [toKeyPassphrase].
  */
+fun ByteArray.toRawKeyBlob(): String = "x'${toKeyPassphrase()}'"
+
 fun sqlCipherKeyPragma(passphrase: String): String =
-    "PRAGMA key = '$passphrase'"
+    "PRAGMA key = \"x'$passphrase'\""

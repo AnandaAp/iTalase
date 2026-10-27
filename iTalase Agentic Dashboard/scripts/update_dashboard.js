@@ -1,6 +1,7 @@
 /**
  * iTalase Agentic Telemetry State Controller
  * Helper CLI utility for Antigravity AI Agents to query and update audit_state.js
+ * Automatically synchronizes active sprint tasks into the interactive Kanban Board.
  */
 
 const fs = require('fs');
@@ -74,13 +75,119 @@ function moveCard(state, cardIdOrKey, targetCol) {
   console.log(`[iTalase Kanban] Moved card "${foundCard.title}" (${cardIdOrKey}) to ${targetCol}`);
 }
 
+function getNextCardId(state) {
+  let maxNum = 0;
+  for (const col of Object.keys(state.kanban || {})) {
+    const list = state.kanban[col];
+    if (Array.isArray(list)) {
+      for (const card of list) {
+        const idMatch = (card.id || '').match(/#AUD-(\d+)/i);
+        if (idMatch) {
+          const n = parseInt(idMatch[1], 10);
+          if (n > maxNum) maxNum = n;
+        }
+        const keyMatch = (card.key || '').match(/CARD-(\d+)/i);
+        if (keyMatch) {
+          const n = parseInt(keyMatch[1], 10);
+          if (n > maxNum) maxNum = n;
+        }
+      }
+    }
+  }
+  const nextNum = maxNum + 1;
+  const pad = String(nextNum).padStart(2, '0');
+  return { id: `#AUD-${pad}`, key: `CARD-${pad}` };
+}
+
+function inferCategory(title, snippet) {
+  const text = `${title} ${snippet}`.toLowerCase();
+  if (/perf|speed|latensi|latency|optimi|fast|load|lag|cache/.test(text)) return { cat: 'perf', label: 'PERF & OPTIMIZATION' };
+  if (/ui|ux|glass|shimmer|liquid|design|screen|layout|view|compose|preview|kanban|dashboard/.test(text)) return { cat: 'ui', label: 'UI / UX' };
+  if (/security|keystore|sqlcipher|encrypt|auth|crypto|cinterop/.test(text)) return { cat: 'security', label: 'SECURITY' };
+  if (/size|apk|dex|bundle|aab|shrink|minify|r8|proguard/.test(text)) return { cat: 'size', label: 'BUILD & SIZE' };
+  if (/test|jacoco|coverage|assert|verify|instrumentation/.test(text)) return { cat: 'test', label: 'TESTING' };
+  return { cat: 'arch', label: 'ARCHITECTURE' };
+}
+
+/**
+ * Ensures that the active sprint task is 100% synchronized with the Kanban board.
+ * If progress < 100:
+ *   - Moves existing card to inProgress, or auto-creates a new card in inProgress if none exists.
+ * If progress >= 100:
+ *   - Moves the card to verified.
+ */
+function syncCurrentTaskToKanban(state, taskName, progressPercent, options = {}) {
+  if (!state.kanban) state.kanban = { backlog: [], inProgress: [], verified: [], recommendations: [] };
+  if (!state.kanban.inProgress) state.kanban.inProgress = [];
+  if (!state.kanban.verified) state.kanban.verified = [];
+
+  const targetCol = progressPercent >= 100 ? 'verified' : 'inProgress';
+  const normTaskName = (taskName || '').trim().toLowerCase();
+
+  // 1. Search if a card already matches this task name or specified cardKey
+  let foundCard = null;
+  let fromCol = null;
+
+  for (const col of ['inProgress', 'backlog', 'recommendations', 'verified']) {
+    const list = state.kanban[col] || [];
+    for (let i = 0; i < list.length; i++) {
+      const card = list[i];
+      const cardTitle = (card.title || '').trim().toLowerCase();
+      const matchesKey = options.cardKey && (card.key === options.cardKey || card.id === options.cardKey);
+      const matchesExact = cardTitle === normTaskName;
+      const matchesSub = normTaskName.length > 5 && cardTitle.includes(normTaskName);
+      const matchesRev = cardTitle.length > 5 && normTaskName.includes(cardTitle);
+
+      if (matchesKey || matchesExact || matchesSub || matchesRev) {
+        foundCard = list.splice(i, 1)[0];
+        fromCol = col;
+        break;
+      }
+    }
+    if (foundCard) break;
+  }
+
+  if (foundCard) {
+    if (options.title) foundCard.title = options.title;
+    if (options.snippet) foundCard.snippet = options.snippet;
+    if (options.category) {
+      foundCard.category = options.category;
+      foundCard.categoryLabel = options.category.toUpperCase();
+    }
+    if (options.tag) foundCard.tag = options.tag;
+    if (options.risk) foundCard.risk = options.risk;
+
+    state.kanban[targetCol].unshift(foundCard);
+    console.log(`[iTalase Kanban] Synchronized card "${foundCard.title}" (${foundCard.key}) [${fromCol} -> ${targetCol}]`);
+    return foundCard;
+  } else {
+    // 2. Automatically create new card in targetCol so Kanban board is NEVER empty or out-of-sync
+    const { id, key } = getNextCardId(state);
+    const { cat, label } = inferCategory(taskName, options.snippet || options.description || '');
+    const newCard = {
+      id,
+      key,
+      title: options.title || taskName,
+      category: options.category || cat,
+      categoryLabel: (options.category || cat).toUpperCase(),
+      snippet: options.snippet || options.description || `Autonomous sprint task: ${taskName}`,
+      tag: options.tag || (targetCol === 'verified' ? 'Verified' : 'In Progress'),
+      risk: options.risk || 'Normal'
+    };
+    state.kanban[targetCol].unshift(newCard);
+    console.log(`[iTalase Kanban] Auto-created new Kanban card "${newCard.title}" (${key}) into "${targetCol}"`);
+    return newCard;
+  }
+}
+
 function addCard(state, column, id, title, snippet, category, tag, risk) {
   const col = column || 'recommendations';
   if (!state.kanban[col]) {
     state.kanban[col] = [];
   }
-  const cardKey = `CARD-${Math.floor(10 + Math.random() * 90)}`;
-  const cardId = id ? (id.startsWith('#') ? id : `#${id}`) : `#AUD-${Math.floor(10 + Math.random() * 90)}`;
+  const nextId = getNextCardId(state);
+  const cardKey = nextId.key;
+  const cardId = id ? (id.startsWith('#') ? id : `#${id}`) : nextId.id;
   const cat = category || 'arch';
   const newCard = {
     id: cardId,
@@ -116,15 +223,23 @@ function logPermission(state, tool, action, target, status) {
   console.log(`[iTalase Permission] Logged ${newId}: ${tool} -> ${action}`);
 }
 
-function setCurrentTask(state, name, progressPercent, status, description) {
+function setCurrentTask(state, name, progressPercent, status, description, options = {}) {
+  const progress = progressPercent !== undefined ? Number(progressPercent) : state.currentTask.progressPercent;
+  const taskStatus = status || (progress >= 100 ? 'Completed' : 'In Progress');
   state.currentTask = {
     name: name || state.currentTask.name,
-    progressPercent: progressPercent !== undefined ? Number(progressPercent) : state.currentTask.progressPercent,
-    status: status || state.currentTask.status,
-    startedAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    progressPercent: progress,
+    status: taskStatus,
+    startedAt: state.currentTask.startedAt || new Date().toISOString().replace('T', ' ').substring(0, 19),
     description: description || state.currentTask.description
   };
   console.log(`[iTalase Task] Active task updated: "${state.currentTask.name}" (${state.currentTask.progressPercent}%)`);
+
+  // MANDATORY AUTOMATIC KANBAN CARD SYNCHRONIZATION
+  syncCurrentTaskToKanban(state, state.currentTask.name, progress, {
+    description: state.currentTask.description,
+    ...options
+  });
 }
 
 function checkKanbanServer(port = 3300) {
@@ -222,13 +337,15 @@ if (args.length === 0 || args.includes('--help')) {
 Usage: node update_dashboard.js [options]
 
 Commands:
-  --status                              Print current dashboard & kanban overview
-  --ensure-services                     Check and auto-start MCP & Kanban server on separate terminal
-  --move <CARD_KEY> --to <COLUMN>       Move card (columns: backlog, inProgress, verified, recommendations)
-  --add-rec --title <T> --snippet <S>   Add a proactive recommendation card to the Recommendations column
-  --set-task <NAME> --progress <NUM>    Update current active task and percentage
-  --log-perm <TOOL> <ACTION> <TARGET>   Record an autonomous tool permission execution
-  --test-coverage <PERCENT>             Update JaCoCo test coverage metric
+  --status                                Print current dashboard & kanban overview
+  --ensure-services                       Check and auto-start MCP & Kanban server on separate terminal
+  --move <CARD_KEY> --to <COLUMN>         Move card (columns: backlog, inProgress, verified, recommendations)
+  --add-rec --title <T> --snippet <S>     Add a proactive recommendation card to the Recommendations column
+  --set-task <NAME> --progress <NUM>      Update active sprint task (auto-syncs or creates Kanban card)
+  --start-task <NAME>                     Start new sprint task (auto-places into inProgress column)
+  --complete-task <NAME>                  Complete sprint task (auto-moves into verified column)
+  --log-perm <TOOL> <ACTION> <TARGET>     Record an autonomous tool permission execution
+  --test-coverage <PERCENT>               Update JaCoCo test coverage metric
   `);
   process.exit(0);
 }
@@ -251,12 +368,44 @@ Commands:
       }
       moveCard(state, args[cardIdx], args[toIdx]);
       saveState(state);
-    } else if (args.includes('--set-task')) {
-      const taskIdx = args.indexOf('--set-task') + 1;
-      const progIdx = args.indexOf('--progress') + 1;
-      const taskName = args[taskIdx];
-      const progress = progIdx > 0 ? args[progIdx] : 50;
-      setCurrentTask(state, taskName, progress, 'In Progress');
+    } else if (args.includes('--set-task') || args.includes('--start-task') || args.includes('--complete-task')) {
+      let taskName = '';
+      let progress = 10;
+      let status = 'In Progress';
+
+      if (args.includes('--start-task')) {
+        taskName = args[args.indexOf('--start-task') + 1];
+        progress = 10;
+        status = 'In Progress';
+      } else if (args.includes('--complete-task')) {
+        taskName = args[args.indexOf('--complete-task') + 1];
+        progress = 100;
+        status = 'Completed';
+      } else {
+        const taskIdx = args.indexOf('--set-task') + 1;
+        const progIdx = args.indexOf('--progress') + 1;
+        taskName = args[taskIdx];
+        progress = progIdx > 0 ? Number(args[progIdx]) : (args.includes('--complete') ? 100 : 10);
+        status = progress >= 100 ? 'Completed' : 'In Progress';
+      }
+
+      const descIdx = args.indexOf('--desc') !== -1 ? args.indexOf('--desc') + 1 : (args.indexOf('--description') !== -1 ? args.indexOf('--description') + 1 : -1);
+      const catIdx = args.indexOf('--cat') !== -1 ? args.indexOf('--cat') + 1 : (args.indexOf('--category') !== -1 ? args.indexOf('--category') + 1 : -1);
+      const tagIdx = args.indexOf('--tag') !== -1 ? args.indexOf('--tag') + 1 : -1;
+      const cardKeyIdx = args.indexOf('--card') !== -1 ? args.indexOf('--card') + 1 : (args.indexOf('--card-key') !== -1 ? args.indexOf('--card-key') + 1 : -1);
+      const snippetIdx = args.indexOf('--snippet') !== -1 ? args.indexOf('--snippet') + 1 : -1;
+      const riskIdx = args.indexOf('--risk') !== -1 ? args.indexOf('--risk') + 1 : -1;
+
+      const options = {
+        description: descIdx > 0 ? args[descIdx] : null,
+        snippet: snippetIdx > 0 ? args[snippetIdx] : (descIdx > 0 ? args[descIdx] : null),
+        category: catIdx > 0 ? args[catIdx] : null,
+        tag: tagIdx > 0 ? args[tagIdx] : null,
+        cardKey: cardKeyIdx > 0 ? args[cardKeyIdx] : null,
+        risk: riskIdx > 0 ? args[riskIdx] : null
+      };
+
+      setCurrentTask(state, taskName, progress, status, options.description, options);
       saveState(state);
     } else if (args.includes('--log-perm')) {
       const baseIdx = args.indexOf('--log-perm');

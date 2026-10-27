@@ -297,8 +297,8 @@ fun AppNavHost(
     // State top bar per-route; layar menulisnya via TopBarInfoEffect.
     val topBarState = remember { TopBarState() }
 
-    // Zhitung kunjungan ke Beranda; naik lagi setiap kali tab diaktifkan kembali.
-    var homeVisit by remember { mutableIntStateOf(0) }
+    // Hitung kunjungan ke Beranda; naik lagi setiap kali tab diaktifkan kembali.
+    var homeVisit by remember { mutableIntStateOf(1) }
 
     // Pindah tab: stack diratakan ke start destination dan state tiap tab
     // disimpan. Tanpa ini Home -> Stok menumpuk Stok di atas Home, sehingga
@@ -306,6 +306,9 @@ fun AppNavHost(
     // filter Stok tetap utuh saat pindah tab.
     val goToTab: (String) -> Unit = { route ->
         if (route != current) {
+            if (route == Routes.HOME) {
+                homeVisit++
+            }
             navController.navigate(route) {
                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                 launchSingleTop = true
@@ -325,7 +328,14 @@ fun AppNavHost(
     // Dashboard quick action + MoreScreen pakai ini supaya tab route ga ke-push
     // jadi sub-screen (yang bikin bottom bar Home no-op + back stack rusak).
     val goToRoute: (String) -> Unit = { route ->
-        if (Routes.isTabRoute(route)) goToTab(route) else goToScreen(route)
+        if (Routes.isTabRoute(route)) {
+            if (route == Routes.HOME && current != Routes.HOME) {
+                homeVisit++
+            }
+            goToTab(route)
+        } else {
+            goToScreen(route)
+        }
     }
 
     // Tiap destinasi punya scroll behavior sendiri (lihat ScreenScope), jadi
@@ -389,15 +399,13 @@ fun AppNavHost(
                         composable(Routes.HOME) {
                             ScreenScope(Routes.HOME) {
                                 val vm: DashboardViewModel = koinInject()
-                                // Naik tiap kali Beranda menjadi tab aktif, jadi omzet/piutang
-                                // selalu segar setelah cashier atau bon berubah di tab lain.
-                                LaunchedEffect(Unit) { homeVisit++ }
                                 val summary by vm.summary.collectAsStateWithLifecycle()
                                 val top by vm.top.collectAsStateWithLifecycle()
                                 val piutang by vm.piutang.collectAsStateWithLifecycle()
                                 val products by vm.products.collectAsStateWithLifecycle()
                                 val debts by vm.activeDebts.collectAsStateWithLifecycle()
                                 val error by vm.error.collectAsStateWithLifecycle()
+                                val isLoading by vm.isLoading.collectAsStateWithLifecycle()
 
                                 val persistentTop = remember(top) { top.toPersistentList() }
                                 val lowStock = remember(products) {
@@ -412,6 +420,7 @@ fun AppNavHost(
                                     lowStock = lowStock,
                                     activeDebtCount = debts.size,
                                     error = error?.text().orEmpty(),
+                                    isLoading = isLoading,
                                     onRefresh = vm::refresh,
                                     onQuickAction = goToRoute,
                                     refreshKey = homeVisit,
@@ -427,6 +436,7 @@ fun AppNavHost(
                                 val categories by vm.categories.collectAsState()
                                 val visible by vm.visibleProducts.collectAsState()
                                 val message by vm.message.collectAsState()
+                                val isLoading by vm.isLoading.collectAsState()
                                 var showPay by remember { mutableStateOf(false) }
 
                                 CashierScreen(
@@ -441,6 +451,7 @@ fun AppNavHost(
                                     total = vm.cartTotal(),
                                     message = message?.text().orEmpty(),
                                     showPayDialog = showPay,
+                                    isLoading = isLoading,
                                     onAdd = vm::add,
                                     onSetQty = vm::setQty,
                                     onClear = vm::clearCart,
@@ -461,6 +472,7 @@ fun AppNavHost(
                                 val category by vm.category.collectAsState()
                                 val categories by vm.categories.collectAsState()
                                 val message by vm.message.collectAsState()
+                                val isLoading by vm.isLoading.collectAsState()
                                 var showForm by remember { mutableStateOf(false) }
                                 var edit: ProductEntity? by remember { mutableStateOf(null) }
 
@@ -474,6 +486,7 @@ fun AppNavHost(
                                     message = message?.text().orEmpty(),
                                     showForm = showForm,
                                     edit = edit,
+                                    isLoading = isLoading,
                                     onAdd = { edit = null; showForm = true },
                                     onEdit = { edit = it; showForm = true },
                                     onDelete = vm::delete,
@@ -497,6 +510,7 @@ fun AppNavHost(
                                 val rangeTo by vm.rangeTo.collectAsState()
                                 val exporting by vm.exporting.collectAsState()
                                 val exportMessage by vm.exportMessage.collectAsState()
+                                val isLoading by vm.isLoading.collectAsState()
 
                                 HistoryScreen(
                                     sales = sales,
@@ -507,6 +521,7 @@ fun AppNavHost(
                                     rangeFrom = rangeFrom,
                                     rangeTo = rangeTo,
                                     exporting = exporting,
+                                    isLoading = isLoading,
                                     onCategory = vm::selectCategory,
                                     onRange = vm::selectRange,
                                     onExport = vm::exportPdf,
@@ -556,6 +571,7 @@ fun AppNavHost(
                                 val vm: DebtViewModel = koinInject()
                                 val debts by vm.debts.collectAsState()
                                 val message by vm.message.collectAsState()
+                                val isLoading by vm.isLoading.collectAsState()
                                 var showAdd by remember { mutableStateOf(false) }
                                 var payId by remember { mutableStateOf<Long?>(null) }
 
@@ -564,6 +580,7 @@ fun AppNavHost(
                                     message = message?.text().orEmpty(),
                                     showAddDialog = showAdd,
                                     payId = payId,
+                                    isLoading = isLoading,
                                     onAdd = { showAdd = true },
                                     onPay = { payId = it },
                                     onDismissAdd = { showAdd = false },
@@ -586,6 +603,7 @@ fun AppNavHost(
                                 val message by vm.message.collectAsState()
                                 val loadingMore by vm.loadingMore.collectAsState()
                                 val hasMore by vm.hasMore.collectAsState()
+                                val isLoading by vm.isLoading.collectAsState()
                                 var showAdd by remember { mutableStateOf(false) }
 
                                 ExpenseScreen(
@@ -594,6 +612,7 @@ fun AppNavHost(
                                     showAddDialog = showAdd,
                                     loadingMore = loadingMore,
                                     hasMore = hasMore,
+                                    isLoading = isLoading,
                                     onAdd = { showAdd = true },
                                     onDelete = vm::delete,
                                     onDismissAdd = { showAdd = false },
