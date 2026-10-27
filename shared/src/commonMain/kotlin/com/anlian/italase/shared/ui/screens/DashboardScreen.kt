@@ -153,6 +153,10 @@ fun DashboardContent(
     val appeared = rememberAppear(!isLoading)
 
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
+    val scrollState = rememberScrollState()
+    LaunchedEffect(scrollState.value) {
+        scrollBehavior?.state?.contentOffset = -scrollState.value.toFloat()
+    }
     TopBarInfoEffect(
         eyebrow = stringResource(Res.string.dash_hello_sub),
         title = stringResource(Res.string.dash_hello),
@@ -169,7 +173,7 @@ fun DashboardContent(
                     modifier = Modifier
                         .fillMaxSize()
                         .nestedScrollConnection(scrollBehavior, null)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(scrollState)
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
@@ -185,7 +189,7 @@ fun DashboardContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScrollConnection(scrollBehavior, null)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -293,7 +297,7 @@ fun DashboardContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScrollConnection(scrollBehavior, null)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {

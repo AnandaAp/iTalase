@@ -14,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +57,10 @@ import org.jetbrains.compose.resources.stringResource
 fun MoreScreen(onNavigate: (String) -> Unit = {}) {
     val appeared = rememberAppear()
     val scrollBehavior = LocalTopAppBarScrollBehavior.current
+    val scrollState = rememberScrollState()
+    LaunchedEffect(scrollState.value) {
+        scrollBehavior?.state?.contentOffset = -scrollState.value.toFloat()
+    }
     TopBarInfoEffect(
         eyebrow = stringResource(Res.string.more_menu_count, 4),
         title = stringResource(Res.string.title_more),
@@ -65,7 +70,7 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
             .fillMaxSize()
             .enter(appeared, 0)
             .nestedScrollConnection(scrollBehavior, null)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

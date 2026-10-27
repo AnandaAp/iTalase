@@ -6,6 +6,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -405,7 +407,7 @@ fun AppNavHost(
                         .fillMaxHeight()
                         .padding(end = contentEndPadding),
                 ) {
-                    val topBarContentHeight = if (isLandscape) 52.dp else TOP_BAR_CONTENT_HEIGHT
+                    val topBarContentHeight = if (isLandscape) 48.dp else TOP_BAR_CONTENT_HEIGHT
                     val overlayTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + topBarContentHeight
                     val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                     val barHeight = if (isLandscape) 48.dp else 64.dp
@@ -677,7 +679,13 @@ fun AppNavHost(
                             // Semua nilai diambil dari bucket route AKTIF: judul/eyebrow
                             // ditulis layar lewat TopBarInfoEffect, frost & interaksi dari scroll
                             // behavior milik destinasi aktif.
-                            val frostOffset = topBarState.behaviors[current]?.state?.contentOffset ?: 0f
+                            // Di mode adaptive layout (landscape / tablet), efek frost & collapse
+                            // HANYA berlaku untuk Beranda (Routes.HOME) karena di Beranda seluruh layout
+                            // scrollable dan melintas di bawah bar. Di layar lain (Kasir, Stok, Bon, Riwayat),
+                            // hanya daftar item internal yang bergulir di bawah search bar/filter tetap,
+                            // sehingga top bar tetap di posisi rest (transparan & stabil).
+                            val rawOffset = topBarState.behaviors[current]?.state?.contentOffset ?: 0f
+                            val frostOffset = if (isLandscape && current != Routes.HOME) 0f else rawOffset
                             PremiumTopBar(
                                 eyebrow = topBarState.eyebrow[current].orEmpty(),
                                 title = topBarState.title[current].orEmpty(),
@@ -1065,7 +1073,10 @@ private fun PremiumTopBar(
     val isDark = surface.luminance() < 0.5f
 
     // Animasi pegas fluida untuk transparansi kaca menurut contentOffset scroll.
-    val targetGlass = (kotlin.math.abs(scrollOffset) / 80f).coerceIn(0f, 1f)
+    // Di landscape, threshold lebih responsif (40px vs 70px) agar efek docking & frost
+    // mulai terbentuk mulus segera setelah scroll tipis.
+    val glassThreshold = if (isLandscape) 40f else 70f
+    val targetGlass = (kotlin.math.abs(scrollOffset) / glassThreshold).coerceIn(0f, 1f)
     val glass by animateFloatAsState(
         targetValue = targetGlass,
         animationSpec = spring(
@@ -1075,9 +1086,12 @@ private fun PremiumTopBar(
         label = "TopBarGlass",
     )
 
-    // Skala tipografi halus saat konten lewat di bawah bar (docking khas Apple UINavigationBar).
+    // Docking tipografi khas Apple UINavigationBar / Material 3 Large TopBar.
+    // Di landscape, saat konten bergulir, title sedikit mengecil (docking 0.08)
+    // agar menyatu rapi dalam header kompak baris tunggal.
+    val scaleReduction = if (isLandscape) 0.08f else 0.04f
     val titleScale by animateFloatAsState(
-        targetValue = 1f - (0.04f * glass),
+        targetValue = 1f - (scaleReduction * glass),
         animationSpec = spring(
             stiffness = Spring.StiffnessMediumLow,
             dampingRatio = Spring.DampingRatioNoBouncy,
@@ -1085,43 +1099,88 @@ private fun PremiumTopBar(
         label = "TopBarTitleScale",
     )
 
+    // ── Landscape collapsing: eyebrow fades & padding collapses on scroll ──
+    // Saat user scroll di landscape:
+    //  1. Eyebrow memudar (fade out) dan menyusut vertikal (collapse height ke 0dp).
+    //  2. Padding vertikal menyempit secara dinamis sehingga bar bertransformasi
+    //     menjadi compact single-line pinned header, menghemat ruang vertikal yang langka.
+    val landscapeCollapse by animateFloatAsState(
+        targetValue = if (isLandscape) glass else 0f,
+        animationSpec = spring(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioNoBouncy,
+        ),
+        label = "LandscapeCollapse",
+    )
+
+    // Padding vertikal dinamis:
+    // Di landscape: saat rest (4dp top, 6dp bottom), saat scrolled (2dp top, 3dp bottom)
+    val topPad = if (isLandscape) (4.dp * (1f - landscapeCollapse * 0.5f)) else 10.dp
+    val bottomPad = if (isLandscape) (6.dp * (1f - landscapeCollapse * 0.5f)) else 14.dp
+
+    // Bayangan halus saat docked agar bar terangkat elegan di atas konten yang bergulir
+    val shadowElevation = if (isLandscape) 3.dp * glass else 6.dp * glass
+    val shadowAmbient = if (isLandscape) 0.04f * glass else 0.06f * glass
+    val shadowSpot = if (isLandscape) 0.08f * glass else 0.12f * glass
+
+    // Latar frosted glass yang kedap:
+    // Menggunakan alpha tinggi (0.97f terang / 0.94f gelap) saat docked penuh agar
+    // kartu dan teks tebal yang lewat di bawahnya terlindung total tanpa tabrakan teks.
+    val glassBgAlpha = if (isDark) 0.94f * glass else 0.97f * glass
+
     Box(
         Modifier
             .fillMaxWidth()
             .then(
                 if (glass > 0.01f) {
                     Modifier.shadow(
-                        elevation = 8.dp * glass,
+                        elevation = shadowElevation,
                         shape = RectangleShape,
-                        ambientColor = scheme.onSurface.copy(alpha = 0.08f * glass),
-                        spotColor = scheme.onSurface.copy(alpha = 0.14f * glass),
+                        ambientColor = scheme.onSurface.copy(alpha = shadowAmbient),
+                        spotColor = scheme.onSurface.copy(alpha = shadowSpot),
                     )
                 } else {
                     Modifier
                 },
             ),
     ) {
-        // Latar liquid glass dinamis: alpha menyatu halus dengan pergerakan scroll.
+        // Latar liquid glass dinamis: menutupi seluruh area dari status bar hingga bawah bar
         if (glass > 0.01f) {
             Box(
                 Modifier
                     .matchParentSize()
-                    .background(surface.copy(alpha = if (isDark) 0.82f * glass else 0.86f * glass)),
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                surface.copy(alpha = glassBgAlpha),
+                                surface.copy(alpha = glassBgAlpha * 0.98f),
+                            ),
+                        ),
+                    ),
             )
-            // Rim specular halus di tepi bawah (pantulan cahaya tipis 1px).
+            // Rim specular Apple Liquid Glass: pantulan cahaya tipis 1px di bibir bawah bar
             Box(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .height(1.dp)
                     .background(
-                        Brush.verticalGradient(
+                        Brush.horizontalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.45f * glass),
-                                scheme.onSurface.copy(alpha = 0.08f * glass),
+                                Color.White.copy(alpha = 0.25f * glass),
+                                Color.White.copy(alpha = 0.60f * glass),
+                                Color.White.copy(alpha = 0.25f * glass),
                             ),
                         ),
                     ),
+            )
+            // Garis pembatas tipis 0.5dp untuk kontras pemisah konten
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(scheme.onSurface.copy(alpha = 0.08f * glass)),
             )
         }
 
@@ -1132,8 +1191,8 @@ private fun PremiumTopBar(
                 .padding(
                     start = 16.dp,
                     end = 20.dp,
-                    top = if (isLandscape) 4.dp else 10.dp,
-                    bottom = if (isLandscape) 6.dp else 14.dp,
+                    top = topPad,
+                    bottom = bottomPad,
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1158,6 +1217,10 @@ private fun PremiumTopBar(
                     label = "BackButtonScale",
                 )
 
+                // Tombol kembali lebih kecil di landscape (32dp vs 38dp) agar proporsional
+                val backButtonSize = if (isLandscape) 32.dp else 38.dp
+                val backIconSize = if (isLandscape) 16.dp else 18.dp
+
                 Box(
                     modifier = Modifier
                         .padding(end = 10.dp)
@@ -1165,7 +1228,7 @@ private fun PremiumTopBar(
                             scaleX = backScale
                             scaleY = backScale
                         }
-                        .size(38.dp)
+                        .size(backButtonSize)
                         .clip(CircleShape)
                         .background(
                             scheme.surfaceContainerHighest.copy(
@@ -1183,7 +1246,7 @@ private fun PremiumTopBar(
                         AppIcon.ARROW_BACK_IOS_NEW.painter(),
                         contentDescription = stringResource(Res.string.cd_back),
                         tint = scheme.onSurface,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(backIconSize),
                     )
                 }
             }
@@ -1200,9 +1263,31 @@ private fun PremiumTopBar(
                         scaleY = titleScale
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     },
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(
+                    // Di landscape, spacing eyebrow↔title juga collapse
+                    if (isLandscape) (2.dp * (1f - landscapeCollapse * 0.6f)) else 2.dp,
+                ),
             ) {
-                if (eyebrow.isNotBlank()) {
+                // Eyebrow: di landscape, collapse + fade out saat scroll agar bar menjadi
+                // single-line compact. Di portrait, selalu tampil penuh.
+                // Menggunakan AnimatedVisibility agar height collapse otomatis dengan spring.
+                if (isLandscape) {
+                    AnimatedVisibility(
+                        visible = eyebrow.isNotBlank() && landscapeCollapse < 0.70f,
+                        enter = fadeIn(spring(stiffness = Spring.StiffnessMediumLow)) +
+                            expandVertically(spring(stiffness = Spring.StiffnessMediumLow)),
+                        exit = fadeOut(spring(stiffness = Spring.StiffnessMedium)) +
+                            shrinkVertically(spring(stiffness = Spring.StiffnessMedium)),
+                    ) {
+                        TopBarEyebrow(
+                            eyebrow = eyebrow,
+                            color = scheme.primary,
+                            modifier = Modifier.graphicsLayer {
+                                alpha = (1f - landscapeCollapse * 1.4f).coerceIn(0f, 1f)
+                            },
+                        )
+                    }
+                } else if (eyebrow.isNotBlank()) {
                     TopBarEyebrow(
                         eyebrow = eyebrow,
                         color = scheme.primary,
@@ -1230,7 +1315,17 @@ private fun PremiumTopBar(
                 ) { currentTitle ->
                     Text(
                         currentTitle,
-                        style = MaterialTheme.typography.headlineSmall,
+                        // Di landscape, gunakan titleLarge saat rest dan titleMedium saat docked
+                        // agar proporsional dengan ruang vertikal yang terbatas.
+                        style = if (isLandscape) {
+                            if (landscapeCollapse > 0.5f) {
+                                MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            } else {
+                                MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            MaterialTheme.typography.headlineSmall
+                        },
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.25).sp,
                         color = scheme.onSurface,

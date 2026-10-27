@@ -1,6 +1,8 @@
 package com.anlian.italase.shared.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -157,46 +160,83 @@ fun HistoryContent(
         eyebrow = stringResource(Res.string.hist_count, sales.size),
         title = stringResource(Res.string.title_history),
     )
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .nestedScrollConnection(scrollBehavior, listState),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
-        Enter(appeared, 0) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                CategoryChips(
-                    categories = categories,
-                    active = activeCategory,
-                    onSelect = onCategory,
-                )
-                // Baris filter tanggal + aksi ekspor. Rentang ditampilkan pada
-                // chip-nya sendiri supaya user tahu sedang melihat periode apa
-                // tanpa harus membuka dialog.
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    DateRangeChip(
-                        from = rangeFrom,
-                        to = rangeTo,
-                        onClick = { pickingRange = true },
-                    )
-                    Spacer(Modifier.weight(1f))
-                    // Tombol nonaktif selama laporan disiapkan: laporan membaca
-                    // SELURUH rentang, jadi menekan dua kali akan menggandakan kerja.
-                    GlassIconButton(
-                        icon = AppIcon.RECEIPT,
-                        contentDescription = stringResource(Res.string.hist_export),
-                        onClick = onExport,
-                        enabled = !exporting && sales.isNotEmpty(),
-                    )
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val isLandscape = (maxWidth > maxHeight && maxWidth >= 540.dp) || maxWidth >= 600.dp
+
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .nestedScrollConnection(scrollBehavior, listState),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+            Enter(appeared, 0) {
+                if (isLandscape) {
+                    // Tata letak Adaptive Landscape: Satu baris terpadu, seimbang, dan proporsional.
+                    // Kiri: Saringan Kategori (fleksibel scroll horizontal),
+                    // Kanan: Tombol Filter Rentang Tanggal + Tombol Cetak / Ekspor berdampingan.
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (categories.isNotEmpty()) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                CategoryChips(
+                                    categories = categories,
+                                    active = activeCategory,
+                                    onSelect = onCategory,
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            DateRangeChip(
+                                from = rangeFrom,
+                                to = rangeTo,
+                                onClick = { pickingRange = true },
+                            )
+                            GlassIconButton(
+                                icon = AppIcon.RECEIPT,
+                                contentDescription = stringResource(Res.string.hist_export),
+                                onClick = onExport,
+                                enabled = !exporting && sales.isNotEmpty(),
+                            )
+                        }
+                    }
+                } else {
+                    // Tata letak Portrait Standar
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CategoryChips(
+                            categories = categories,
+                            active = activeCategory,
+                            onSelect = onCategory,
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            DateRangeChip(
+                                from = rangeFrom,
+                                to = rangeTo,
+                                onClick = { pickingRange = true },
+                            )
+                            Spacer(Modifier.weight(1f))
+                            GlassIconButton(
+                                icon = AppIcon.RECEIPT,
+                                contentDescription = stringResource(Res.string.hist_export),
+                                onClick = onExport,
+                                enabled = !exporting && sales.isNotEmpty(),
+                            )
+                        }
+                    }
                 }
             }
-        }
         ShimmerCrossfade(
             loading = isLoading,
             modifier = Modifier.weight(1f),
@@ -286,11 +326,12 @@ fun HistoryContent(
                         }
                     }
                 }
-                item(key = "load-more") { LoadMoreFooter(loadingMore) }
+                    item(key = "load-more") { LoadMoreFooter(loadingMore) }
+                }
             }
-        }
-    }
-)
+        },
+    )
+}
 }
 
     if (pickingRange) {

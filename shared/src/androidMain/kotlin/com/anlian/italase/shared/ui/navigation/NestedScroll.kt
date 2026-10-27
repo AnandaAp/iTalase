@@ -21,8 +21,5 @@ actual fun Modifier.nestedScrollConnection(
     listState: LazyListState?,
 ): Modifier {
     if (scrollBehavior == null) return this
-    if (listState == null) return nestedScroll(scrollBehavior.nestedScrollConnection)
-    
-    // Standard connection - no gating. Let Compose handle simultaneous scroll.
     return nestedScroll(scrollBehavior.nestedScrollConnection)
 }

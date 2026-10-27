@@ -7,7 +7,7 @@ window.AUDIT_STATE = {
     "version": "1.0.0",
     "versionCode": 100000,
     "platform": "Kotlin Multiplatform (Android + iOS)",
-    "lastUpdated": "2026-10-27 16:11:23",
+    "lastUpdated": "2026-10-27 17:46:33",
     "turboMode": true,
     "agentMode": "Autonomous Turbo Pair Programmer",
     "connectedDevice": {
@@ -45,13 +45,148 @@ window.AUDIT_STATE = {
     }
   },
   "currentTask": {
-    "name": "Adaptive Navigation Rail for Landscape & Tablets",
+    "name": "Fix PremiumTopBar Scroll Effect in Adaptive Layout",
     "progressPercent": 100,
     "status": "Completed",
     "startedAt": "2026-10-27 11:04:09",
-    "description": "JaCoCo coverage verified and all unit tests passed. Building release APK for device testing"
+    "description": "Efek scroll top app bar dibatasi hanya pada Home screen saat adaptive layout dan layout Riwayat Transaksi diperbarui menjadi 1 baris proporsional. Teruji langsung pada Galaxy A54 5G."
   },
   "agenticPermissions": [
+    {
+      "id": "PERM-106",
+      "timestamp": "2026-10-27 17:46:33",
+      "tool": "run_command",
+      "action": "Git commit and push changes for adaptive layout and history layout",
+      "target": "git",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-105",
+      "timestamp": "2026-10-27 17:28:56",
+      "tool": "run_command",
+      "action": "Install release APK to physical device via ADB",
+      "target": "adb install",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-104",
+      "timestamp": "2026-10-27 17:25:11",
+      "tool": "run_command",
+      "action": "Assemble release APK and install on Samsung Galaxy A54",
+      "target": "gradlew & adb",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-103",
+      "timestamp": "2026-10-27 17:23:20",
+      "tool": "run_command",
+      "action": "Run unit tests and verify JaCoCo coverage",
+      "target": "gradlew",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-102",
+      "timestamp": "2026-10-27 17:23:13",
+      "tool": "edit_file",
+      "action": "Fix HistoryScreen closing braces for adaptive layout",
+      "target": "HistoryScreen.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-101",
+      "timestamp": "2026-10-27 17:16:52",
+      "tool": "edit_file",
+      "action": "Unify category chips, date picker, and export button into adaptive header row",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/screens/HistoryScreen.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-100",
+      "timestamp": "2026-10-27 17:16:30",
+      "tool": "edit_file",
+      "action": "Limit top bar scroll effect to Home screen only in adaptive mode",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/navigation/AppNavHost.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-99",
+      "timestamp": "2026-10-27 17:15:59",
+      "tool": "write_file",
+      "action": "Revert manual LazyListState override in NestedScroll.kt",
+      "target": "shared/src/androidMain/kotlin/com/anlian/italase/shared/ui/navigation/NestedScroll.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-98",
+      "timestamp": "2026-10-27 17:00:06",
+      "tool": "run_command",
+      "action": "Install release APK on Samsung Galaxy A54 5G",
+      "target": "adb install -r -d androidApp-release.apk",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-97",
+      "timestamp": "2026-10-27 16:56:20",
+      "tool": "run_command",
+      "action": "Build release APK for physical device",
+      "target": "./gradlew :androidApp:assembleRelease",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-96",
+      "timestamp": "2026-10-27 16:53:11",
+      "tool": "edit_file",
+      "action": "Refine PremiumTopBar adaptive scroll docking and liquid glass veil",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/navigation/AppNavHost.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-95",
+      "timestamp": "2026-10-27 16:51:29",
+      "tool": "write_file",
+      "action": "Hoist scrollState and sync with TopAppBarScrollBehavior",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/screens/MoreScreen.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-94",
+      "timestamp": "2026-10-27 16:50:31",
+      "tool": "write_file",
+      "action": "Hoist scrollState and sync with TopAppBarScrollBehavior",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/screens/DashboardScreen.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-93",
+      "timestamp": "2026-10-27 16:49:35",
+      "tool": "edit_file",
+      "action": "Sync LazyListState with TopAppBarScrollBehavior",
+      "target": "shared/src/androidMain/kotlin/com/anlian/italase/shared/ui/navigation/NestedScroll.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-92",
+      "timestamp": "2026-10-27 16:20:02",
+      "tool": "edit_file",
+      "action": "Improve PremiumTopBar with collapsing eyebrow, faster glass, tighter padding, smaller title in landscape",
+      "target": "AppNavHost.kt PremiumTopBar",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
     {
       "id": "PERM-91",
       "timestamp": "2026-10-27 16:11:23",
@@ -901,6 +1036,26 @@ window.AUDIT_STATE = {
     ],
     "inProgress": [],
     "verified": [
+      {
+        "id": "#AUD-95",
+        "key": "CARD-95",
+        "title": "Fix PremiumTopBar Scroll Effect in Adaptive Layout",
+        "category": "ui",
+        "categoryLabel": "UI",
+        "snippet": "Efek scroll top app bar dibatasi hanya pada Home screen saat adaptive layout dan layout Riwayat Transaksi diperbarui menjadi 1 baris proporsional. Teruji langsung pada Galaxy A54 5G.",
+        "tag": "In Progress",
+        "risk": "Normal"
+      },
+      {
+        "id": "#AUD-96",
+        "key": "CARD-96",
+        "title": "Refine Adaptive Top App Bar Scroll Effect",
+        "category": "ui",
+        "categoryLabel": "UI",
+        "snippet": "Fix top bar status bar coverage, glass opacity, and compact collapse on scroll in landscape",
+        "tag": "In Progress",
+        "risk": "Normal"
+      },
       {
         "id": "#AUD-94",
         "key": "CARD-94",
