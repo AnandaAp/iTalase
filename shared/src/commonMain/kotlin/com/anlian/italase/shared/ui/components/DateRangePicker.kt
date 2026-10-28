@@ -5,10 +5,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -70,7 +74,7 @@ fun DateRangeChip(
  *
  * `onApply(null, null)` berarti "seluruh riwayat" dan sengaja tersedia sebagai
  * aksi eksplisit — user yang sudah memilih rentang harus bisa melepasnya kembali
- * tanpa menebak.
+ * tanpa menebak. Adaptif terhadap mode landscape dan layar tablet.
  */
 @Composable
 fun DateRangePickerDialog(
@@ -84,78 +88,167 @@ fun DateRangePickerDialog(
     var picking by remember { mutableStateOf<Field?>(null) }
 
     GlassDialog(onDismiss = onDismiss) {
-        Text(
-            stringResource(Res.string.range_pick),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(
-            formatDateRange(start, end),
-            modifier = Modifier.padding(top = 4.dp),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        val isLandscape = LocalIsLandscape.current
+        val today = remember { localDateOf(nowMillis()) }
 
-        Row(
-            Modifier.fillMaxWidth().padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            RangeField(
-                label = stringResource(Res.string.range_from),
-                value = start?.let { formatDateLong(startOfDayMillis(it)!!) },
-                modifier = Modifier.weight(1f),
-            ) { picking = Field.START }
-            RangeField(
-                label = stringResource(Res.string.range_to),
-                value = end?.let { formatDateLong(startOfDayMillis(it)!!) },
-                modifier = Modifier.weight(1f),
-            ) { picking = Field.END }
-        }
+        if (isLandscape) {
+            // Adaptive Landscape: Header sejajar dengan tombol aksi cepat
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(Res.string.range_pick),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        formatDateRange(start, end),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GlassButton(
+                        text = stringResource(Res.string.action_cancel),
+                        onClick = onDismiss,
+                        container = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                        content = MaterialTheme.colorScheme.onSurface,
+                        elevation = 0.dp,
+                        specular = 0.18f,
+                    )
+                    GlassButton(
+                        text = stringResource(Res.string.range_apply),
+                        onClick = { onApply(start, end) },
+                    )
+                }
+            }
 
-        FlowRow(
-            Modifier.fillMaxWidth().padding(top = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            GlassChip(
-                text = stringResource(Res.string.range_all),
-                selected = start == null && end == null,
-                onClick = {
-                    start = null
-                    end = null
-                },
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 240.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    RangeField(
+                        label = stringResource(Res.string.range_from),
+                        value = start?.let { formatDateLong(startOfDayMillis(it)!!) },
+                        modifier = Modifier.weight(1f),
+                    ) { picking = Field.START }
+                    RangeField(
+                        label = stringResource(Res.string.range_to),
+                        value = end?.let { formatDateLong(startOfDayMillis(it)!!) },
+                        modifier = Modifier.weight(1f),
+                    ) { picking = Field.END }
+                }
+
+                FlowRow(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    GlassChip(
+                        text = stringResource(Res.string.range_all),
+                        selected = start == null && end == null,
+                        onClick = {
+                            start = null
+                            end = null
+                        },
+                    )
+                    RANGE_PRESETS.forEach { days ->
+                        GlassChip(
+                            text = "$days hari terakhir",
+                            selected = start == today.minusDays(days - 1) && end == today,
+                            onClick = {
+                                start = today.minusDays(days - 1)
+                                end = today
+                            },
+                        )
+                    }
+                }
+            }
+        } else {
+            // Portrait Standar
+            Text(
+                stringResource(Res.string.range_pick),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
             )
-            RANGE_PRESETS.forEach { days ->
-                val today: LocalDate = localDateOf(nowMillis())
+            Text(
+                formatDateRange(start, end),
+                modifier = Modifier.padding(top = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Row(
+                Modifier.fillMaxWidth().padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                RangeField(
+                    label = stringResource(Res.string.range_from),
+                    value = start?.let { formatDateLong(startOfDayMillis(it)!!) },
+                    modifier = Modifier.weight(1f),
+                ) { picking = Field.START }
+                RangeField(
+                    label = stringResource(Res.string.range_to),
+                    value = end?.let { formatDateLong(startOfDayMillis(it)!!) },
+                    modifier = Modifier.weight(1f),
+                ) { picking = Field.END }
+            }
+
+            FlowRow(
+                Modifier.fillMaxWidth().padding(top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 GlassChip(
-                    text = "$days hari terakhir",
-                    selected = start == today.minusDays(days - 1) && end == today,
+                    text = stringResource(Res.string.range_all),
+                    selected = start == null && end == null,
                     onClick = {
-                        start = today.minusDays(days - 1)
-                        end = today
+                        start = null
+                        end = null
                     },
                 )
+                RANGE_PRESETS.forEach { days ->
+                    GlassChip(
+                        text = "$days hari terakhir",
+                        selected = start == today.minusDays(days - 1) && end == today,
+                        onClick = {
+                            start = today.minusDays(days - 1)
+                            end = today
+                        },
+                    )
+                }
             }
-        }
 
-        Row(
-            Modifier.fillMaxWidth().padding(top = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            GlassButton(
-                text = stringResource(Res.string.action_cancel),
-                onClick = onDismiss,
-                container = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                content = MaterialTheme.colorScheme.onSurface,
-                elevation = 0.dp,
-                specular = 0.18f,
-                modifier = Modifier.weight(1f),
-            )
-            GlassButton(
-                text = stringResource(Res.string.range_apply),
-                onClick = { onApply(start, end) },
-                modifier = Modifier.weight(1f),
-            )
+            Row(
+                Modifier.fillMaxWidth().padding(top = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                GlassButton(
+                    text = stringResource(Res.string.action_cancel),
+                    onClick = onDismiss,
+                    container = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                    content = MaterialTheme.colorScheme.onSurface,
+                    elevation = 0.dp,
+                    specular = 0.18f,
+                    modifier = Modifier.weight(1f),
+                )
+                GlassButton(
+                    text = stringResource(Res.string.range_apply),
+                    onClick = { onApply(start, end) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
 
         if (picking != null) {
@@ -182,7 +275,7 @@ private fun RangeField(
     onClick: () -> Unit,
 ) {
     GlassCard(
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(16.dp),
         onClick = onClick,
         modifier = modifier
     ) {
@@ -209,6 +302,9 @@ private fun RangeField(
  * dalam itu; daftar tak terbatas berarti menggulir ratusan baris untuk data
  * tahun lalu. Rentang yang lebih tua tetap bisa dicapai setelah filter ini
  * diubah menjadi pemilih bulan pada iterasi berikutnya.
+ *
+ * Memiliki batas tinggi maksimum adaptif (`heightIn`) agar aman diorientasikan
+ * secara vertikal maupun horizontal (landscape) tanpa mengalami overflow.
  */
 @Composable
 private fun DateListPicker(
@@ -216,15 +312,35 @@ private fun DateListPicker(
     onPick: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val today: LocalDate = localDateOf(nowMillis())
+    val isLandscape = LocalIsLandscape.current
+    val today: LocalDate = remember { localDateOf(nowMillis()) }
     val dates: List<LocalDate> = remember(today) { (0 until 120).map { today.minusDays(it) } }
     GlassDialog(onDismiss = onDismiss) {
-        Text(
-            stringResource(Res.string.range_pick),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-        )
-        LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(Res.string.range_pick),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            GlassButton(
+                text = stringResource(Res.string.action_cancel),
+                onClick = onDismiss,
+                container = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                content = MaterialTheme.colorScheme.onSurface,
+                elevation = 0.dp,
+                specular = 0.18f,
+            )
+        }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = if (isLandscape) 200.dp else 360.dp)
+                .padding(top = 8.dp),
+        ) {
             items(dates) { date ->
                 val selected = date == initial
                 Row(
