@@ -7,7 +7,7 @@ window.AUDIT_STATE = {
     "version": "1.0.0",
     "versionCode": 100000,
     "platform": "Kotlin Multiplatform (Android + iOS)",
-    "lastUpdated": "2026-10-27 19:34:00",
+    "lastUpdated": "2026-10-28 02:27:26",
     "turboMode": true,
     "agentMode": "Autonomous Turbo Pair Programmer",
     "connectedDevice": {
@@ -31,7 +31,7 @@ window.AUDIT_STATE = {
       "status": "Single Dex Only"
     },
     "testCoverage": {
-      "instruction": "79.50%",
+      "instruction": "77.23%",
       "lines": "79.62%",
       "classes": "81.40%",
       "passedTests": "92 unit + 5 device instrumentation tests",
@@ -45,13 +45,67 @@ window.AUDIT_STATE = {
     }
   },
   "currentTask": {
-    "name": "Lainnya Adaptive Scrolled TopBar Effect",
+    "name": "ADR-008: Baseline Profiles & Adaptive Fluid Navigation Architecture Documentation",
     "progressPercent": 100,
     "status": "Completed",
     "startedAt": "2026-10-27 11:04:09",
-    "description": "Rounded corner top app bar scroll effect on Lainnya screen in adaptive layout"
+    "description": "Formalize architectural decisions for ART Baseline Profiles and adaptive fluid navigation rail across landscape, foldable, and tablet devices in docs/adr/ADR-008-baseline-profiles-adaptive-navigation.md"
   },
   "agenticPermissions": [
+    {
+      "id": "PERM-139",
+      "timestamp": "2026-10-28 02:27:26",
+      "tool": "run_command",
+      "action": "Complete CARD-102 and transition to verified",
+      "target": "CARD-102",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-138",
+      "timestamp": "2026-10-28 02:26:55",
+      "tool": "write_file",
+      "action": "Create ADR-008 documentation",
+      "target": "docs/adr/ADR-008-baseline-profiles-adaptive-navigation.md",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-137",
+      "timestamp": "2026-10-28 02:26:45",
+      "tool": "run_command",
+      "action": "Transition CARD-102 to In Progress",
+      "target": "CARD-102",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-136",
+      "timestamp": "2026-10-28 02:26:38",
+      "tool": "run_command",
+      "action": "Complete CARD-100 and transition to verified",
+      "target": "CARD-100",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-135",
+      "timestamp": "2026-10-28 02:22:22",
+      "tool": "edit_file",
+      "action": "Implement Adaptive DateRangePicker",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/components/DateRangePicker.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-134",
+      "timestamp": "2026-10-28 02:22:01",
+      "tool": "run_command",
+      "action": "Transition CARD-100 to In Progress",
+      "target": "CARD-100",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
     {
       "id": "PERM-133",
       "timestamp": "2026-10-27 19:34:00",
@@ -1280,6 +1334,26 @@ window.AUDIT_STATE = {
     "inProgress": [],
     "verified": [
       {
+        "id": "#AUD-102",
+        "key": "CARD-102",
+        "title": "ADR-008: Baseline Profiles & Adaptive Fluid Navigation Architecture Documentation",
+        "category": "arch",
+        "categoryLabel": "ARCH",
+        "snippet": "Formalize architectural decisions for ART Baseline Profiles and adaptive fluid navigation rail across landscape, foldable, and tablet devices in docs/adr/ADR-008-baseline-profiles-adaptive-navigation.md",
+        "tag": "Architecture & ADR",
+        "risk": "Low"
+      },
+      {
+        "id": "#AUD-100",
+        "key": "CARD-100",
+        "title": "Adaptive DateRangePickerDialog & ListPicker with Glass Layout",
+        "category": "ui",
+        "categoryLabel": "UI",
+        "snippet": "Refactor DateRangePickerDialog & DateListPicker for landscape orientation with scrollable layout, max-height constraints, and Apple fluid motion",
+        "tag": "UI Polish",
+        "risk": "Low"
+      },
+      {
         "id": "#AUD-99",
         "key": "CARD-99",
         "title": "Lainnya Adaptive Scrolled TopBar Effect",
@@ -1560,7 +1634,28 @@ window.AUDIT_STATE = {
         "risk": "DashboardScreen"
       }
     ],
-    "recommendations": []
+    "recommendations": [
+      {
+        "id": "#AUD-103",
+        "key": "CARD-103",
+        "title": "Expand Sales Report PDF Generation & DateRangePicker Unit Tests",
+        "category": "test",
+        "categoryLabel": "TEST",
+        "snippet": "Add comprehensive unit test coverage for DateRangePicker calculations, preset ranges, and SalesReportPdf formatting edge cases to increase JaCoCo test coverage above 80%.",
+        "tag": "JaCoCo Verification",
+        "risk": "Low"
+      },
+      {
+        "id": "#AUD-101",
+        "key": "CARD-101",
+        "title": "Room Schema v6: Composite Index on sales(dateMillis, status) & products(name, category)",
+        "category": "perf",
+        "categoryLabel": "PERF",
+        "snippet": "Add composite query indexes on sales(dateMillis, status) for filtered reporting and products(name, category) to accelerate real-time cashier searches as product catalogs scale up.",
+        "tag": "DB Optimization",
+        "risk": "Medium"
+      }
+    ]
   },
   "activityLogs": [
     {
