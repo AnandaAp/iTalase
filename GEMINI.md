@@ -46,7 +46,12 @@ The telemetry state store is stored at `iTalase Agentic Dashboard/audit_state.js
 
 ## 4. Autonomous Reasoning Engine & iOS Hardware Quarantine
 
-- **Zero Interruption Autonomy**: In scheduled `/automation` sidecars or autonomous sprints, the agent MUST NOT halt or ask the user "Which task should I do?". The agent must autonomously reason through candidates and make decisions independently.
+- **Zero Interruption Autonomy & Strict Ban on Choice Prompts**:
+  In scheduled `/automation` sidecars or autonomous sprints:
+  1. **Strictly Forbidden**: The agent MUST NOT halt, prompt, or ask the user questions such as *"Which task should I do?"*, *"Would you like me to execute CARD-X or CARD-Y?"*, or any variation soliciting user direction.
+  2. **Autonomous Execution**: The agent must autonomously evaluate candidate tasks based on its own engineering reasoning (impact, risk, dependencies, test coverage) and make execution decisions independently.
+  3. **Continuous Execution**: If iteration capacity remains after completing a task, the agent must autonomously promote the next highest-value non-quarantined task from `recommendations`/`backlog` to `inProgress` and execute it immediately without asking.
+  4. **Definitive Conclusion**: When concluding the session report, the agent must document its autonomous decisions definitively with ZERO trailing questions or choice prompts.
 - **iOS Hardware Quarantine**: The current development environment is Windows without macOS/Xcode hardware. All iOS-specific tasks (e.g. `CARD-02`, Swift, NSData cinterop, iOS lifecycle) MUST remain quarantined in `backlog` with the tag `iOS Quarantine`. NEVER pull iOS tasks into `inProgress`.
 - **Mandatory Proactive Daily Recommendations (4 Pillars)**:
   At the beginning of every daily automation window (09:00 - 14:00 WIB), the agent MUST NOT only check the backlog. It MUST actively inspect the codebase with `codebase-memory-mcp` and synthesize fresh candidate tasks across the 4 core pillars:
