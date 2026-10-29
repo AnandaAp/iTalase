@@ -6,7 +6,7 @@ import com.anlian.italase.shared.util.formatRupiah
 // ════════════════════════════════════════════════════════════════════════
 //  LAPORAN RIWAYAT TRANSAKSI (PDF)
 // ════════════════════════════════════════════════════════════════════════
-//  Yang dicetak: kop berlogo + nama app, periode dan waktu unduh, ringkasan
+//  Yang dicetak: kop berlogo + nama app/warung, periode dan waktu unduh, ringkasan
 //  angka, tabel transaksi bernomor halaman, lalu blok total. Datanya sudah
 //  dihitung pemanggil — lapisan ini murni tata letak, jadi bisa diuji tanpa
 //  database, Compose, atau jaringan.
@@ -68,6 +68,12 @@ data class SalesReport(
      * laporan yang sebenarnya tidak lengkap.
      */
     val invoiceLimitReached: Boolean = false,
+    /** Token branding dan identitas toko/warung (AUD-104). */
+    val branding: ShopBranding = ShopBranding(
+        shopName = appName,
+        tagline = tagline,
+        reportFooter = footerNote,
+    ),
 )
 
 /** Lebar isi halaman setelah margin. */
@@ -156,7 +162,7 @@ private fun pageCountFor(rows: Int): Int {
 }
 
 /**
- * Kop halaman: pita hijau merek, logo, nama aplikasi, dan identitas laporan.
+ * Kop halaman: pita hijau merek, logo, nama aplikasi/toko, dan identitas laporan.
  *
  * Halaman lanjutan memakai pita yang lebih pendek — tidak perlu mengulang
  * tagline dan tanggal unduh di setiap halaman.
@@ -170,15 +176,22 @@ private fun drawBand(
 ) {
     val bandHeight = if (firstPage) 96f else 60f
     canvas.rect(0f, 0f, A4_WIDTH, bandHeight, PdfColor.BRAND)
+    // Aksen specular Warung Liquid Glass di perbatasan bawah pita
+    canvas.rule(0f, bandHeight, A4_WIDTH, PdfColor.BRAND_SOFT, 1.2f)
+
     val logoBox = 44f
     val logoTop = if (firstPage) 26f else 12f
     if (logoJpeg != null && logoSize != null) {
         canvas.image(logoJpeg, MARGIN, logoTop, logoBox, logoBox, logoSize.first, logoSize.second)
     }
     val textX = if (logoJpeg != null && logoSize != null) MARGIN + logoBox + 14f else MARGIN
-    canvas.text(textX, logoTop + 17f, report.appName, 20f, PdfColor.WHITE, bold = true)
+    val shopTitle = report.branding.shopName.ifBlank { report.appName }
+    val shopTagline = report.branding.tagline.ifBlank { report.tagline }
+
+    canvas.text(textX, logoTop + 17f, shopTitle, 20f, PdfColor.WHITE, bold = true)
     if (firstPage) {
-        canvas.text(textX, logoTop + 34f, report.tagline, 8.5f, PdfColor.WHITE)
+        val extraInfo = if (report.branding.address.isNotBlank()) " • ${report.branding.address}" else ""
+        canvas.text(textX, logoTop + 34f, "$shopTagline$extraInfo", 8.5f, PdfColor.WHITE)
         canvas.text(COL_STATUS, 34f, report.title, 12f, PdfColor.WHITE, bold = true)
         canvas.text(COL_STATUS, 52f, "Periode: ${report.periodLabel}", 9f, PdfColor.WHITE)
         canvas.text(COL_STATUS, 66f, report.filterLabel, 9f, PdfColor.WHITE)
@@ -302,7 +315,8 @@ private fun drawFooter(canvas: PdfCanvas, report: SalesReport, page: Int, total:
     // tepi bawah A4, bukan menempel di tepi. Sebelumnya garisnya ditaruh terlalu
     // dekat (790 pt) sehingga pada render terlihat sebagai bingkai halaman.
     canvas.rule(MARGIN, 782f, RIGHT)
-    canvas.text(MARGIN, 797f, report.footerNote, 7.5f, PdfColor.MUTED)
+    val footerText = report.branding.reportFooter.ifBlank { report.footerNote }
+    canvas.text(MARGIN, 797f, footerText, 7.5f, PdfColor.MUTED)
     canvas.text(COL_PROFIT, 797f, "Halaman $page / $total", 7.5f, PdfColor.MUTED, bold = true)
 }
 
@@ -312,5 +326,6 @@ fun salesReportFileName(report: SalesReport): String {
         .joinToString("")
         .replace("--", "-")
         .trim('-')
-    return "iTalase-Laporan-$stamp.pdf"
+    val prefix = (report.branding.shopName.ifBlank { "iTalase" }).filter { it.isLetterOrDigit() }
+    return "$prefix-Laporan-$stamp.pdf"
 }
