@@ -35,7 +35,7 @@ import kotlinx.coroutines.IO
         DebtPaymentEntity::class,
         ExpenseEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @ConstructedBy(ITalaseDatabaseConstructor::class)
@@ -90,6 +90,9 @@ private const val DB_VERSION_4 = 4
 /** Versi skema 5: indeks pada debts.saleId untuk percepatan kueri getBySaleId. */
 private const val DB_VERSION_5 = 5
 
+/** Versi skema 6: indeks komposit pada sales(dateMillis, status) dan products(name), products(category, name). */
+private const val DB_VERSION_6 = 6
+
 /** Migrasi 3→4: membuat indeks pada dateMillis, saleId, category, status, debtId. */
 val MIGRATION_3_4 = object : Migration(DB_VERSION_3, DB_VERSION_4) {
     override fun migrate(connection: SQLiteConnection) {
@@ -107,6 +110,15 @@ val MIGRATION_3_4 = object : Migration(DB_VERSION_3, DB_VERSION_4) {
 val MIGRATION_4_5 = object : Migration(DB_VERSION_4, DB_VERSION_5) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL("CREATE INDEX IF NOT EXISTS index_debts_saleId ON ${Tables.DEBTS}(saleId)")
+    }
+}
+
+/** Migrasi 5→6: membuat indeks komposit pada sales(dateMillis, status) dan products(name), products(category, name). */
+val MIGRATION_5_6 = object : Migration(DB_VERSION_5, DB_VERSION_6) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_sales_dateMillis_status ON ${Tables.SALES}(dateMillis, status)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_products_name ON ${Tables.PRODUCTS}(name)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_products_category_name ON ${Tables.PRODUCTS}(category, name)")
     }
 }
 
@@ -132,7 +144,7 @@ fun getRoomDatabase(
     return builder
         .setDriver(driver)
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
         .build()
 }
 

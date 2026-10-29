@@ -2,6 +2,7 @@ package com.anlian.italase.shared.data.local.entity
 
 import androidx.compose.runtime.Immutable
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.anlian.italase.shared.data.ProductCategories
 import com.anlian.italase.shared.data.ShopDefaults
@@ -11,7 +12,13 @@ import com.anlian.italase.shared.data.local.Tables
  *  checkout, bukan angka stok awal. Menghapus barang TIDAK menghapus riwayat
  *  penjualan, karena sale_items menyimpan salinan nama dan harga. */
 @Immutable
-@Entity(tableName = Tables.PRODUCTS)
+@Entity(
+    tableName = Tables.PRODUCTS,
+    indices = [
+        Index("name"),
+        Index("category", "name"),
+    ],
+)
 data class ProductEntity(
     /** 0 berarti baris baru; Room mengisi id saat insert, dan repository
      *  memakai nilai ini untuk membedakan tambah vs edit. */
