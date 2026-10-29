@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Verifikasi konsistensi Room Auto-Migration & skema database v1 -> v5 (AUD-01 & AUD-11).
+ * Verifikasi konsistensi Room Auto-Migration & skema database v1 -> v6 (AUD-01, AUD-11 & CARD-101).
  * Menguji nomor versi skema, pendaftaran migrasi, dan eksekusi skrip DDL SQL.
  */
 class RoomMigrationVerificationTest {
@@ -65,6 +65,10 @@ class RoomMigrationVerificationTest {
         // v4 -> v5 (AUD-11)
         assertEquals(4, MIGRATION_4_5.startVersion)
         assertEquals(5, MIGRATION_4_5.endVersion)
+
+        // v5 -> v6 (CARD-101)
+        assertEquals(5, MIGRATION_5_6.startVersion)
+        assertEquals(6, MIGRATION_5_6.endVersion)
     }
 
     @Test
@@ -123,16 +127,40 @@ class RoomMigrationVerificationTest {
     }
 
     @Test
-    fun testFullSequentialMigrationPipelineFromV1ToV5() {
+    fun testMigration5To6ExecutionForCompositeIndexes() {
+        val conn = RecordingSQLiteConnection()
+        MIGRATION_5_6.migrate(conn)
+
+        assertEquals(3, conn.statements.size)
+        assertEquals(
+            "CREATE INDEX IF NOT EXISTS index_sales_dateMillis_status ON ${Tables.SALES}(dateMillis, status)",
+            conn.statements[0]
+        )
+        assertEquals(
+            "CREATE INDEX IF NOT EXISTS index_products_name ON ${Tables.PRODUCTS}(name)",
+            conn.statements[1]
+        )
+        assertEquals(
+            "CREATE INDEX IF NOT EXISTS index_products_category_name ON ${Tables.PRODUCTS}(category, name)",
+            conn.statements[2]
+        )
+    }
+
+    @Test
+    fun testFullSequentialMigrationPipelineFromV1ToV6() {
         val conn = RecordingSQLiteConnection()
         
         MIGRATION_1_2.migrate(conn)
         MIGRATION_2_3.migrate(conn)
         MIGRATION_3_4.migrate(conn)
         MIGRATION_4_5.migrate(conn)
+        MIGRATION_5_6.migrate(conn)
 
-        // 1 (v1->v2) + 2 (v2->v3) + 7 (v3->v4) + 1 (v4->v5) = 11 DDL statements
-        assertEquals(11, conn.statements.size)
-        assertEquals("CREATE INDEX IF NOT EXISTS index_debts_saleId ON ${Tables.DEBTS}(saleId)", conn.statements.last())
+        // 1 (v1->v2) + 2 (v2->v3) + 7 (v3->v4) + 1 (v4->v5) + 3 (v5->v6) = 14 DDL statements
+        assertEquals(14, conn.statements.size)
+        assertEquals(
+            "CREATE INDEX IF NOT EXISTS index_products_category_name ON ${Tables.PRODUCTS}(category, name)",
+            conn.statements.last()
+        )
     }
 }

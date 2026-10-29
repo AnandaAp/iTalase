@@ -13,18 +13,18 @@ import kotlin.test.assertTrue
  */
 class SalesReportPdfTest {
 
-    private fun row(i: Long, customer: String = "") = SalesReportRow(
+    private fun row(i: Long, customerName: String = "", paid: Boolean = i % 3L != 0L, total: Long = 10_000L * i, profit: Long = 2_500L * i) = SalesReportRow(
         receiptNo = i,
         dateMillis = 1_760_000_000_000L + i * 3_600_000L,
         methodLabel = if (i % 3L == 0L) "Bon" else "Tunai",
-        statusLabel = if (i % 3L == 0L) "Bon" else "Lunas",
-        paid = i % 3L != 0L,
-        total = 10_000L * i,
-        profit = 2_500L * i,
-        customerName = customer,
+        statusLabel = if (paid) "Lunas" else "Bon",
+        paid = paid,
+        total = total,
+        profit = profit,
+        customerName = customerName,
     )
 
-    private fun report(rows: List<SalesReportRow>) = SalesReport(
+    private fun report(rows: List<SalesReportRow>, invoiceLimitReached: Boolean = false) = SalesReport(
         appName = "iTalase",
         tagline = "Kasir & stok warung, offline",
         title = "Laporan Riwayat Transaksi",
@@ -39,10 +39,11 @@ class SalesReportPdfTest {
             unpaid = rows.filter { !it.paid }.sumOf { it.total },
         ),
         footerNote = "Sumber data: database lokal iTalase",
+        invoiceLimitReached = invoiceLimitReached,
     )
 
-    private fun pdfOf(rows: List<SalesReportRow>) =
-        renderSalesReportPdf(report(rows), logoJpeg = null)
+    private fun pdfOf(rows: List<SalesReportRow>, invoiceLimitReached: Boolean = false) =
+        renderSalesReportPdf(report(rows, invoiceLimitReached), logoJpeg = null)
 
     private fun ByteArray.asLatin1(): String = decodeToString()
 
@@ -236,5 +237,54 @@ class SalesReportPdfTest {
         assertEquals("12.34", pdfNum(12.34f))
         assertEquals("0.50", pdfNum(0.50f))
         assertEquals("0.05", pdfNum(0.05f))
+    }
+
+    @Test
+    fun testInvoiceLimitReachedWarningPrinted() {
+        val text = pdfOf(listOf(row(1)), invoiceLimitReached = true).asWinAnsi()
+        assertTrue(text.contains("Catatan: laporan dibatasi"), "Peringatan limit transaksi harus tercetak")
+        assertTrue(text.contains("Persempit rentang tanggal untuk laporan lengkap"), "Instruksi persempit rentang harus ada")
+    }
+
+    @Test
+    fun testUnpaidPiutangHighlightedInSummaryAndTotals() {
+        val unpaidRow = row(3, customerName = "Bu Siti", paid = false, total = 75_000L, profit = 15_000L)
+        val text = pdfOf(listOf(unpaidRow)).asWinAnsi()
+        assertTrue(text.contains("Belum lunas"), "Label belum lunas piutang harus tercetak di blok total")
+        assertTrue(text.contains("Rp75.000"), "Nominal piutang harus terformat dengan benar")
+    }
+
+    @Test
+    fun testCustomerNamePrintedWithPaymentMethod() {
+        val customerRow = row(1, customerName = "Pak Haji Joko", paid = true)
+        val text = pdfOf(listOf(customerRow)).asWinAnsi()
+        assertTrue(text.contains("Pak Haji Joko"), "Nama pelanggan harus tercetak di kolom metode")
+        assertTrue(text.contains("Tunai"), "Metode pembayaran harus tercetak")
+    }
+
+    @Test
+    fun testMultiPageReportThreePages() {
+        // 80 baris: halaman 1 muat 26 baris, halaman 2 muat 34 baris, halaman 3 muat 20 baris
+        val rows = (1L..80L).map { row(it) }
+        val text = pdfOf(rows).asWinAnsi()
+        assertTrue(text.contains("Halaman 1 / 3"), "Harus memiliki halaman 1 dari 3")
+        assertTrue(text.contains("Halaman 2 / 3"), "Harus memiliki halaman 2 dari 3")
+        assertTrue(text.contains("Halaman 3 / 3"), "Harus memiliki halaman 3 dari 3")
+    }
+
+    @Test
+    fun testNegativeProfitOrLossTransactions() {
+        val promoRow = row(1, total = 5_000L, profit = -1_500L)
+        val text = pdfOf(listOf(promoRow)).asWinAnsi()
+        assertTrue(text.length > 1_000, "PDF harus berhasil dirender meski profit negatif")
+        assertTrue(text.contains("Rp5.000"), "Omzet harus tercetak")
+    }
+
+    @Test
+    fun testLargeRevenueAndProfitFormatting() {
+        val bigRow = row(1, total = 2_500_000_000L, profit = 500_000_000L)
+        val text = pdfOf(listOf(bigRow)).asWinAnsi()
+        assertTrue(text.contains("Rp2.500.000.000"), "Omzet miliaran harus diformat dengan pemisah ribuan")
+        assertTrue(text.contains("Rp500.000.000"), "Laba miliaran harus diformat dengan pemisah ribuan")
     }
 }

@@ -35,6 +35,7 @@ object PayMethod {
     tableName = Tables.SALES,
     indices = [
         Index("dateMillis"),
+        Index("dateMillis", "status"),
     ],
 )
 data class SaleEntity(

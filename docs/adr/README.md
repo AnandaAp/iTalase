@@ -14,3 +14,4 @@ This repository documents significant architectural decisions governing the deve
 | [ADR-006](ADR-006-sqlcipher-hardware-keystore.md) | SQLCipher 256-bit AES-GCM Key Wrapping & Zero Plaintext Guarantees | Accepted | 2026-10-27 |
 | [ADR-007](ADR-007-aab-abi-split.md) | Google Play App Bundle (AAB) ABI Split & Multi-Architecture Optimization | Accepted | 2026-10-27 |
 | [ADR-008](ADR-008-baseline-profiles-adaptive-navigation.md) | Baseline Profiles & Adaptive Fluid Navigation Architecture | Accepted | 2026-10-28 |
+| [ADR-009](ADR-009-room-schema-v6-composite-indexes.md) | Room Schema v6 Composite Indexes & Query Performance Ratification | Accepted | 2026-10-29 |
