@@ -7,7 +7,7 @@ window.AUDIT_STATE = {
     "version": "1.0.0",
     "versionCode": 100000,
     "platform": "Kotlin Multiplatform (Android + iOS)",
-    "lastUpdated": "2026-10-29 13:26:05",
+    "lastUpdated": "2026-10-29 13:41:50",
     "turboMode": true,
     "agentMode": "Autonomous Turbo Pair Programmer",
     "connectedDevice": {
@@ -31,10 +31,10 @@ window.AUDIT_STATE = {
       "status": "Single Dex Only"
     },
     "testCoverage": {
-      "instruction": "77.21%",
+      "instruction": "78.58%",
       "lines": "79.62%",
       "classes": "81.40%",
-      "passedTests": "113 unit + 5 device instrumentation tests",
+      "passedTests": "121 unit + 5 device instrumentation tests",
       "status": "Passes >= 75% Gate"
     },
     "securityRating": {
@@ -45,13 +45,67 @@ window.AUDIT_STATE = {
     }
   },
   "currentTask": {
-    "name": "ADR-009: Room Schema v6 Composite Indexes & Query Performance Ratification",
+    "name": "Receipt & Sales Report Customization with Warung Branding Tokens",
     "progressPercent": 100,
     "status": "Completed",
     "startedAt": "2026-10-27 11:04:09",
-    "description": "Ratify ADR-009 formalizing Room schema v6 composite indexes on sales(dateMillis, status) and products(name, category), documented in docs/adr/ADR-009-room-schema-v6-composite-indexes.md and linked in README.md."
+    "description": "Enhance PDF reports and introduce multi-format receipt formatters (58mm thermal, 80mm POS, and WhatsApp) with customizable Warung branding tokens."
   },
   "agenticPermissions": [
+    {
+      "id": "PERM-155",
+      "timestamp": "2026-10-29 13:37:55",
+      "tool": "run_command",
+      "action": "Verify test suite with ReceiptFormatter and custom branding",
+      "target": ":shared:testAndroidHostTest :shared:jacocoTestCoverageVerification",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-154",
+      "timestamp": "2026-10-29 13:36:54",
+      "tool": "edit_file",
+      "action": "Integrate receipt formatting copy actions in SaleDetailScreen",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/screens/SaleDetailScreen.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-153",
+      "timestamp": "2026-10-29 13:34:34",
+      "tool": "write_file",
+      "action": "Create ReceiptFormatterTest unit test suite",
+      "target": "shared/src/commonTest/kotlin/com/anlian/italase/shared/report/ReceiptFormatterTest.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-152",
+      "timestamp": "2026-10-29 13:33:24",
+      "tool": "edit_file",
+      "action": "Enhance SalesReportPdf with ShopBranding tokens and Warung liquid glass accent rule",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/report/SalesReportPdf.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-151",
+      "timestamp": "2026-10-29 13:32:46",
+      "tool": "write_file",
+      "action": "Create ReceiptFormatter for thermal and WhatsApp receipts",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/report/ReceiptFormatter.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
+    {
+      "id": "PERM-150",
+      "timestamp": "2026-10-29 13:32:34",
+      "tool": "write_file",
+      "action": "Create ShopBranding data class",
+      "target": "shared/src/commonMain/kotlin/com/anlian/italase/shared/report/ShopBranding.kt",
+      "permissionScope": "Agentic Turbo Execution",
+      "status": "EXECUTED"
+    },
     {
       "id": "PERM-149",
       "timestamp": "2026-10-29 13:25:38",
@@ -1424,6 +1478,16 @@ window.AUDIT_STATE = {
     "inProgress": [],
     "verified": [
       {
+        "id": "#AUD-104",
+        "key": "CARD-104",
+        "title": "Receipt & Sales Report Customization with Warung Branding Tokens",
+        "category": "ui",
+        "categoryLabel": "UI",
+        "snippet": "Enhance PDF reports and introduce multi-format receipt formatters (58mm thermal, 80mm POS, and WhatsApp) with customizable Warung branding tokens.",
+        "tag": "Warung UI/UX",
+        "risk": "Low"
+      },
+      {
         "id": "#AUD-105",
         "key": "CARD-105",
         "title": "ADR-009: Room Schema v6 Composite Indexes & Query Performance Ratification",
@@ -1754,18 +1818,7 @@ window.AUDIT_STATE = {
         "risk": "DashboardScreen"
       }
     ],
-    "recommendations": [
-      {
-        "id": "#AUD-104",
-        "key": "CARD-104",
-        "title": "Receipt & Sales Report Customization with Warung Branding Tokens",
-        "category": "ui",
-        "categoryLabel": "UI",
-        "snippet": "Enhance PDF reports and receipt formatters with customizable shop header, metadata, and Warung liquid glass styling.",
-        "tag": "Warung UI/UX",
-        "risk": "Low"
-      }
-    ]
+    "recommendations": []
   },
   "activityLogs": [
     {

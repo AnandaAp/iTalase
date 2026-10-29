@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import com.anlian.italase.shared.report.ReceiptFormatter
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -349,6 +353,70 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
                             fontWeight = FontWeight.Bold,
                         )
                         Text(sale.note, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
+        item {
+            var copiedReceiptType by remember { mutableStateOf<String?>(null) }
+            val clipboard = LocalClipboardManager.current
+
+            GlassCard(shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            AppIcon.RECEIPT.painter(),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            "Format Struk Transaksi",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                    }
+                    Text(
+                        "Salin teks struk untuk dicetak ke printer thermal Bluetooth (58mm) atau dibagikan ke WhatsApp.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        GlassButton(
+                            text = "Thermal 58mm",
+                            onClick = {
+                                val text = ReceiptFormatter.formatThermal(detail)
+                                clipboard.setText(AnnotatedString(text))
+                                copiedReceiptType = "Thermal 58mm"
+                            },
+                            modifier = Modifier.weight(1f),
+                            specular = 0.16f,
+                        )
+                        GlassButton(
+                            text = "WhatsApp",
+                            onClick = {
+                                val text = ReceiptFormatter.formatWhatsApp(detail)
+                                clipboard.setText(AnnotatedString(text))
+                                copiedReceiptType = "WhatsApp"
+                            },
+                            modifier = Modifier.weight(1f),
+                            specular = 0.16f,
+                        )
+                    }
+                    if (copiedReceiptType != null) {
+                        Text(
+                            "Teks struk $copiedReceiptType berhasil disalin ke papan klip!",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
             }

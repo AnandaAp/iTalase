@@ -287,4 +287,22 @@ class SalesReportPdfTest {
         assertTrue(text.contains("Rp2.500.000.000"), "Omzet miliaran harus diformat dengan pemisah ribuan")
         assertTrue(text.contains("Rp500.000.000"), "Laba miliaran harus diformat dengan pemisah ribuan")
     }
+
+    @Test
+    fun testCustomShopBrandingPdfGeneration() {
+        val customBranding = ShopBranding(
+            shopName = "Toko Kelontong Berkah",
+            tagline = "Sedia Sembako Lengkap",
+            address = "Pasar Tradisional Blok A No. 5",
+            phone = "08123456789",
+            reportFooter = "Dicetak melalui iTalase POS",
+        )
+        val rep = report(listOf(row(1))).copy(
+            branding = customBranding
+        )
+        val text = renderSalesReportPdf(rep, logoJpeg = null).asWinAnsi()
+        assertTrue(text.contains("Toko Kelontong Berkah"), "Nama toko kustom harus ada di PDF")
+        assertTrue(text.contains("Pasar Tradisional Blok A No. 5"), "Alamat toko kustom harus ada di PDF")
+        assertTrue(text.contains("Dicetak melalui iTalase POS"), "Footer laporan kustom harus tercetak")
+    }
 }
