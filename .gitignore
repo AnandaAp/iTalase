@@ -25,3 +25,9 @@ androidApp/release/
 *.apk
 dist/
 
+# Playwright & E2E Testing
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
