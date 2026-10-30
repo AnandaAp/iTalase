@@ -62,7 +62,7 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
         scrollBehavior?.state?.contentOffset = -scrollState.value.toFloat()
     }
     TopBarInfoEffect(
-        eyebrow = stringResource(Res.string.more_menu_count, 4),
+        eyebrow = stringResource(Res.string.more_menu_count, 5),
         title = stringResource(Res.string.title_more),
     )
     Column(
@@ -85,6 +85,11 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
             desc = stringResource(Res.string.more_expense_d),
             icon = AppIcon.PAYMENTS,
         ) { onNavigate(Routes.EXPENSE) }
+        MoreRow(
+            title = "Pengaturan",
+            desc = "Metode pembayaran & QRIS kasir",
+            icon = AppIcon.PAYMENTS,
+        ) { onNavigate(Routes.SETTINGS) }
         MoreInfoCard(
             title = stringResource(Res.string.more_about_t),
             desc = stringResource(Res.string.more_about_d),

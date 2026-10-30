@@ -107,14 +107,19 @@ import com.anlian.italase.shared.ui.screens.DebtScreen
 import com.anlian.italase.shared.ui.screens.ExpenseScreen
 import com.anlian.italase.shared.ui.screens.HistoryScreen
 import com.anlian.italase.shared.ui.screens.MoreScreen
+import com.anlian.italase.shared.ui.screens.PaymentSettingsScreen
 import com.anlian.italase.shared.ui.screens.ProductScreen
+import com.anlian.italase.shared.ui.screens.QrisReviewScreen
+import com.anlian.italase.shared.ui.screens.QrisSetupScreen
 import com.anlian.italase.shared.ui.screens.SaleDetailScreen
+import com.anlian.italase.shared.ui.screens.SettingsScreen
 import com.anlian.italase.shared.ui.state.CashierViewModel
 import com.anlian.italase.shared.ui.state.DashboardViewModel
 import com.anlian.italase.shared.ui.state.DebtViewModel
 import com.anlian.italase.shared.ui.state.ExpenseViewModel
 import com.anlian.italase.shared.ui.state.HistoryViewModel
 import com.anlian.italase.shared.ui.state.ProductViewModel
+import com.anlian.italase.shared.ui.state.QrisViewModel
 import com.anlian.italase.shared.ui.state.text
 import italase.shared.generated.resources.Res
 import italase.shared.generated.resources.cd_back
@@ -469,6 +474,7 @@ fun AppNavHost(
                         composable(Routes.CASHIER) {
                             ScreenScope(Routes.CASHIER) {
                                 val vm: CashierViewModel = koinInject()
+                                val qrisVm: QrisViewModel = koinInject()
                                 val cart by vm.cart.collectAsState()
                                 val query by vm.query.collectAsState()
                                 val category by vm.category.collectAsState()
@@ -476,6 +482,7 @@ fun AppNavHost(
                                 val visible by vm.visibleProducts.collectAsState()
                                 val message by vm.message.collectAsState()
                                 val isLoading by vm.isLoading.collectAsState()
+                                val qrisConfig by qrisVm.qrisConfig.collectAsStateWithLifecycle()
                                 var showPay by remember { mutableStateOf(false) }
 
                                 CashierScreen(
@@ -491,6 +498,10 @@ fun AppNavHost(
                                     message = message?.text().orEmpty(),
                                     showPayDialog = showPay,
                                     isLoading = isLoading,
+                                    qrisConfig = qrisConfig,
+                                    qrisVm = qrisVm,
+                                    onNavigateQrisSetup = { navController.navigate(Routes.QRIS_SETUP) },
+                                    onDismissQrisPrompt = { qrisVm.dismissPrompt() },
                                     onAdd = vm::add,
                                     onSetQty = vm::setQty,
                                     onClear = vm::clearCart,
@@ -666,6 +677,63 @@ fun AppNavHost(
                         composable(Routes.MORE) {
                             ScreenScope(Routes.MORE) {
                                 MoreScreen(onNavigate = goToRoute)
+                            }
+                        }
+                        composable(Routes.SETTINGS) {
+                            ScreenScope(Routes.SETTINGS) {
+                                SettingsScreen(onNavigate = goToRoute)
+                            }
+                        }
+                        composable(Routes.SETTINGS_PAYMENT) {
+                            ScreenScope(Routes.SETTINGS_PAYMENT) {
+                                val qrisVm: QrisViewModel = koinInject()
+                                val config by qrisVm.qrisConfig.collectAsStateWithLifecycle()
+                                val msg by qrisVm.message.collectAsStateWithLifecycle()
+
+                                PaymentSettingsScreen(
+                                    qrisConfig = config,
+                                    onToggleEnabled = qrisVm::setEnabled,
+                                    onNavigateSetup = { goToRoute(Routes.QRIS_SETUP) },
+                                    onDeleteQris = qrisVm::deleteQris,
+                                    message = msg?.text(),
+                                    onClearMessage = qrisVm::clearMessage,
+                                )
+                            }
+                        }
+                        composable(Routes.QRIS_SETUP) {
+                            ScreenScope(Routes.QRIS_SETUP) {
+                                val qrisVm: QrisViewModel = koinInject()
+                                QrisSetupScreen(
+                                    onImageObtained = { rawBytes ->
+                                        qrisVm.setPendingImage(rawBytes)
+                                        goToRoute(Routes.QRIS_REVIEW)
+                                    },
+                                    onBack = { navController.popBackStack() },
+                                )
+                            }
+                        }
+                        composable(Routes.QRIS_REVIEW) {
+                            ScreenScope(Routes.QRIS_REVIEW) {
+                                val qrisVm: QrisViewModel = koinInject()
+                                val rawBytes by qrisVm.pendingImageBytes.collectAsStateWithLifecycle()
+                                val isSaving by qrisVm.isProcessing.collectAsStateWithLifecycle()
+                                val msg by qrisVm.message.collectAsStateWithLifecycle()
+
+                                QrisReviewScreen(
+                                    rawBytes = rawBytes,
+                                    isSaving = isSaving,
+                                    errorMessage = msg?.text(),
+                                    onRetake = {
+                                        qrisVm.clearPendingImage()
+                                        navController.popBackStack()
+                                    },
+                                    onSaveAndActivate = {
+                                        qrisVm.savePendingQris {
+                                            navController.popBackStack(Routes.QRIS_SETUP, inclusive = true)
+                                        }
+                                    },
+                                    onClearError = qrisVm::clearMessage,
+                                )
                             }
                         }
                             }

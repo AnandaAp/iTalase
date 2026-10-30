@@ -12,6 +12,7 @@ import com.anlian.italase.shared.data.local.entity.DebtStatus
 import com.anlian.italase.shared.data.local.entity.ExpenseEntity
 import com.anlian.italase.shared.data.local.entity.PayMethod
 import com.anlian.italase.shared.data.local.entity.ProductEntity
+import com.anlian.italase.shared.data.local.entity.QrisConfigEntity
 import com.anlian.italase.shared.data.local.entity.SaleEntity
 import com.anlian.italase.shared.data.local.entity.SaleItemEntity
 import com.anlian.italase.shared.data.local.entity.TxnStatus
@@ -428,4 +429,78 @@ class ShopRepository(
 
     /** Hapus permanen satu baris pengeluaran; tidak ada undo di lapisan data. */
     suspend fun deleteExpense(id: Long) = db.expenseDao().delete(id)
+
+    // ---- QRIS Konfigurasi & Kasir (AUD-107) ----
+
+    /**
+     * Aliran observasi reaktif konfigurasi QRIS toko.
+     * Mengalirkan pembaruan konfigurasi ke CashierScreen dan PaymentSettingsScreen.
+     */
+    fun observeQrisConfig(): Flow<QrisConfigEntity?> = db.qrisConfigDao().observeConfig()
+
+    /**
+     * Membaca konfigurasi QRIS saat ini secara sinkron suspend.
+     * Mengembalikan null jika belum pernah diinisialisasi atau telah dihapus.
+     */
+    suspend fun getQrisConfig(): QrisConfigEntity? = db.qrisConfigDao().getConfig()
+
+    /**
+     * Menyimpan citra QRIS teroptimasi ke database.
+     * Mengaktifkan metode QRIS secara otomatis (isEnabled = true) dan memperbarui [updatedAt].
+     * Mempertahankan [promptDismissCount] yang sudah berjalan.
+     */
+    suspend fun saveQrisConfig(imageBytes: ByteArray, mimeType: String = "image/jpeg") {
+        val now = nowMillis()
+        val cur = db.qrisConfigDao().getConfig()
+        val dismissCount = cur?.promptDismissCount ?: 0
+        db.qrisConfigDao().upsert(
+            QrisConfigEntity(
+                id = 1,
+                isEnabled = true,
+                imageBytes = imageBytes,
+                mimeType = mimeType,
+                promptDismissCount = dismissCount,
+                updatedAt = now,
+            ),
+        )
+    }
+
+    /**
+     * Mengaktifkan atau menonaktifkan QRIS dari layar Pengaturan tanpa menghapus foto barcode.
+     */
+    suspend fun setQrisEnabled(enabled: Boolean) {
+        val now = nowMillis()
+        val cur = db.qrisConfigDao().getConfig()
+        if (cur != null) {
+            db.qrisConfigDao().setEnabled(enabled)
+        } else {
+            db.qrisConfigDao().upsert(
+                QrisConfigEntity(id = 1, isEnabled = enabled, updatedAt = now),
+            )
+        }
+    }
+
+    /**
+     * Menambah counter dismiss pop-up prompt QRIS di kasir saat kasir memilih "Nanti Saja".
+     * Persisten disimpan di database agar prompt hanya muncul maksimal 3 kali.
+     */
+    suspend fun dismissQrisPrompt() {
+        val now = nowMillis()
+        val cur = db.qrisConfigDao().getConfig()
+        if (cur != null) {
+            db.qrisConfigDao().incrementDismissCount()
+        } else {
+            db.qrisConfigDao().upsert(
+                QrisConfigEntity(id = 1, promptDismissCount = 1, updatedAt = now),
+            )
+        }
+    }
+
+    /**
+     * Menghapus konfigurasi QRIS dari database secara permanen.
+     */
+    suspend fun deleteQrisConfig() {
+        db.qrisConfigDao().deleteConfig()
+    }
 }
+

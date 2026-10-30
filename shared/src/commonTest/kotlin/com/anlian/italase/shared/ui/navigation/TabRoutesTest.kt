@@ -25,6 +25,10 @@ class TabRoutesTest {
             Routes.HISTORY,
             Routes.HISTORY_DETAIL,
             Routes.EXPENSE,
+            Routes.SETTINGS,
+            Routes.SETTINGS_PAYMENT,
+            Routes.QRIS_SETUP,
+            Routes.QRIS_REVIEW,
         ).forEach { assertFalse(Routes.isTabRoute(it), "$it harus bisa di-pop dengan back") }
     }
 
@@ -48,16 +52,20 @@ class TabRoutesTest {
         assertTrue(Routes.TAB_ROUTES.size == 5, "tab root tidak boleh duplikat: ${Routes.TAB_ROUTES}")
     }
 
-    // ── Tombol back di top bar: HANYA Riwayat + Pengeluaran ──
+    // ── Tombol back di top bar: Riwayat, Pengeluaran, Pengaturan, Pembayaran, QRIS Setup & Review ──
     /**
-     * Jumlah rute ber-tombol back dikunci ke 2 supaya layar baru tidak diam-diam mendapat tombol
+     * Jumlah rute ber-tombol back dikunci ke 6 supaya layar baru tidak diam-diam mendapat tombol
      * back di top bar saat ditambahkan ke daftar.
      */
     @Test
     fun onlyHistoryAndExpenseGetABackButton() {
         assertTrue(Routes.hasBackButton(Routes.HISTORY))
         assertTrue(Routes.hasBackButton(Routes.EXPENSE))
-        assertTrue(Routes.BACK_ROUTES.size == 2, "jangan tambah tanpa sengaja: ${Routes.BACK_ROUTES}")
+        assertTrue(Routes.hasBackButton(Routes.SETTINGS))
+        assertTrue(Routes.hasBackButton(Routes.SETTINGS_PAYMENT))
+        assertTrue(Routes.hasBackButton(Routes.QRIS_SETUP))
+        assertTrue(Routes.hasBackButton(Routes.QRIS_REVIEW))
+        assertTrue(Routes.BACK_ROUTES.size == 6, "jangan tambah tanpa sengaja: ${Routes.BACK_ROUTES}")
     }
 
     @Test

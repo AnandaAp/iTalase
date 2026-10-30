@@ -69,6 +69,10 @@ class RoomMigrationVerificationTest {
         // v5 -> v6 (CARD-101)
         assertEquals(5, MIGRATION_5_6.startVersion)
         assertEquals(6, MIGRATION_5_6.endVersion)
+
+        // v6 -> v7 (AUD-107)
+        assertEquals(6, MIGRATION_6_7.startVersion)
+        assertEquals(7, MIGRATION_6_7.endVersion)
     }
 
     @Test
@@ -147,20 +151,30 @@ class RoomMigrationVerificationTest {
     }
 
     @Test
-    fun testFullSequentialMigrationPipelineFromV1ToV6() {
+    fun testMigration6To7Execution() {
         val conn = RecordingSQLiteConnection()
-        
+        MIGRATION_6_7.migrate(conn)
+
+        assertEquals(2, conn.statements.size)
+        assertTrue(conn.statements[0].contains("CREATE TABLE IF NOT EXISTS ${Tables.QRIS_CONFIG}"))
+        assertTrue(conn.statements[0].contains("imageBytes BLOB"))
+        assertTrue(conn.statements[0].contains("promptDismissCount INTEGER NOT NULL"))
+        assertTrue(conn.statements[1].contains("INSERT OR IGNORE INTO ${Tables.QRIS_CONFIG}"))
+    }
+
+    @Test
+    fun testFullSequentialMigrationPipelineFromV1ToV7() {
+        val conn = RecordingSQLiteConnection()
+
         MIGRATION_1_2.migrate(conn)
         MIGRATION_2_3.migrate(conn)
         MIGRATION_3_4.migrate(conn)
         MIGRATION_4_5.migrate(conn)
         MIGRATION_5_6.migrate(conn)
+        MIGRATION_6_7.migrate(conn)
 
-        // 1 (v1->v2) + 2 (v2->v3) + 7 (v3->v4) + 1 (v4->v5) + 3 (v5->v6) = 14 DDL statements
-        assertEquals(14, conn.statements.size)
-        assertEquals(
-            "CREATE INDEX IF NOT EXISTS index_products_category_name ON ${Tables.PRODUCTS}(category, name)",
-            conn.statements.last()
-        )
+        // 1 (v1->v2) + 2 (v2->v3) + 7 (v3->v4) + 1 (v4->v5) + 3 (v5->v6) + 2 (v6->v7) = 16 DDL/DML statements
+        assertEquals(16, conn.statements.size)
+        assertTrue(conn.statements.last().contains("INSERT OR IGNORE INTO ${Tables.QRIS_CONFIG}"))
     }
 }

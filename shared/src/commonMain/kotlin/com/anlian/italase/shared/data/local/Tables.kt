@@ -24,4 +24,8 @@ object Tables {
 
     /** Pengeluaran operasional toko, di luar pembelian stok. */
     const val EXPENSES = "expenses"
+
+    /** Konfigurasi QRIS kasir; satu baris dengan id = 1. */
+    const val QRIS_CONFIG = "qris_config"
 }
+

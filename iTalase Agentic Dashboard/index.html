@@ -15,12 +15,12 @@
   <!-- Tailwind CSS Engine -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Offline-First Local React & Babel Runtime with CDN Fallbacks -->
+  <!-- Offline-First Local React 19 & Babel Runtime with CDN Fallbacks -->
   <script src="vendor/react.min.js"></script>
-  <script>window.React || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"><\\/script>')</script>
+  <script>window.React || document.write('<script src="https://unpkg.com/react@19/umd/react.production.min.js"><\\/script>')</script>
 
   <script src="vendor/react-dom.min.js"></script>
-  <script>window.ReactDOM || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"><\\/script>')</script>
+  <script>window.ReactDOM || document.write('<script src="https://unpkg.com/react-dom@19/umd/react-dom.production.min.js"><\\/script>')</script>
 
   <script src="vendor/babel.min.js"></script>
   <script>window.Babel || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"><\\/script>')</script>
@@ -31,7 +31,7 @@
   <!-- Initial State Store -->
   <script src="audit_state.js?v=init"></script>
 
-  <!-- Modular React 18 Application Architecture -->
+  <!-- Modular React 19 Application Architecture -->
   <script type="text/babel" src="src/theme/ThemeAndStyles.jsx"></script>
   <script type="text/babel" src="src/utils/helpers.jsx"></script>
   <script type="text/babel" src="src/components/NavigationDock.jsx"></script>
