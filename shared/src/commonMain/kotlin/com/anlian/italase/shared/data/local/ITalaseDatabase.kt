@@ -171,6 +171,16 @@ expect object ITalaseDatabaseConstructor : RoomDatabaseConstructor<ITalaseDataba
  *  Driver-nya datang dari per-platform (`createEncryptedDriver`): Android memakai
  *  SQLCipher, iOS memakai SQLCipher lewat CocoaPods. Driver SQLite polos tidak
  *  dipakai di mana pun — database yang tersimpan di disk harus terenkripsi. */
+/** Seluruh migrasi database terurut dari v1 hingga versi saat ini. */
+val ALL_MIGRATIONS = arrayOf(
+    MIGRATION_1_2,
+    MIGRATION_2_3,
+    MIGRATION_3_4,
+    MIGRATION_4_5,
+    MIGRATION_5_6,
+    MIGRATION_6_7,
+)
+
 fun getRoomDatabase(
     builder: RoomDatabase.Builder<ITalaseDatabase>,
     driver: SQLiteDriver,
@@ -178,7 +188,7 @@ fun getRoomDatabase(
     return builder
         .setDriver(driver)
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        .addMigrations(*ALL_MIGRATIONS)
         .build()
 }
 

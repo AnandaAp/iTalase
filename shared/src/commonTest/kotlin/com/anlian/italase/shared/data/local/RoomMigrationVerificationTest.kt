@@ -8,8 +8,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Verifikasi konsistensi Room Auto-Migration & skema database v1 -> v6 (AUD-01, AUD-11 & CARD-101).
- * Menguji nomor versi skema, pendaftaran migrasi, dan eksekusi skrip DDL SQL.
+ * Verifikasi konsistensi Room Auto-Migration & skema database v1 -> v7 (AUD-01, AUD-11, CARD-101 & AUD-107).
+ * Menguji nomor versi skema, pendaftaran migrasi, konsistensi rantai migrasi, dan eksekusi skrip DDL SQL.
  */
 class RoomMigrationVerificationTest {
 
@@ -73,6 +73,15 @@ class RoomMigrationVerificationTest {
         // v6 -> v7 (AUD-107)
         assertEquals(6, MIGRATION_6_7.startVersion)
         assertEquals(7, MIGRATION_6_7.endVersion)
+    }
+
+    @Test
+    fun testAllRegisteredMigrationsListConsistency() {
+        assertEquals(6, ALL_MIGRATIONS.size)
+        for (i in ALL_MIGRATIONS.indices) {
+            assertEquals(i + 1, ALL_MIGRATIONS[i].startVersion)
+            assertEquals(i + 2, ALL_MIGRATIONS[i].endVersion)
+        }
     }
 
     @Test
@@ -160,6 +169,23 @@ class RoomMigrationVerificationTest {
         assertTrue(conn.statements[0].contains("imageBytes BLOB"))
         assertTrue(conn.statements[0].contains("promptDismissCount INTEGER NOT NULL"))
         assertTrue(conn.statements[1].contains("INSERT OR IGNORE INTO ${Tables.QRIS_CONFIG}"))
+    }
+
+    @Test
+    fun testQrisConfigSchemaFieldsAndDefaultRow() {
+        val conn = RecordingSQLiteConnection()
+        MIGRATION_6_7.migrate(conn)
+        val createSql = conn.statements[0]
+        assertTrue(createSql.contains("id INTEGER NOT NULL"))
+        assertTrue(createSql.contains("isEnabled INTEGER NOT NULL"))
+        assertTrue(createSql.contains("imageBytes BLOB"))
+        assertTrue(createSql.contains("mimeType TEXT NOT NULL"))
+        assertTrue(createSql.contains("promptDismissCount INTEGER NOT NULL"))
+        assertTrue(createSql.contains("updatedAt INTEGER NOT NULL"))
+        assertTrue(createSql.contains("PRIMARY KEY(id)"))
+
+        val insertSql = conn.statements[1]
+        assertTrue(insertSql.contains("VALUES (1, 0, NULL, 'image/jpeg', 0, 0)"))
     }
 
     @Test
