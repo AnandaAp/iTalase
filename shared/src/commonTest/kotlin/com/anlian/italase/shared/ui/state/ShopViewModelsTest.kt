@@ -4,6 +4,7 @@ import com.anlian.italase.shared.data.local.entity.DebtEntity
 import com.anlian.italase.shared.data.local.entity.DebtStatus
 import com.anlian.italase.shared.data.local.entity.PayMethod
 import com.anlian.italase.shared.data.local.entity.ProductEntity
+import com.anlian.italase.shared.data.local.entity.TxnStatus
 import com.anlian.italase.shared.data.repository.CartLine
 import com.anlian.italase.shared.data.repository.FakeDatabase
 import com.anlian.italase.shared.data.repository.ShopRepository
@@ -385,5 +386,219 @@ class ShopViewModelsTest {
         // Verify debt created in repository
         val debts = repo.observeActiveDebts().first()
         assertTrue(debts.any { it.customerName == "Pak RT" && it.remaining == 68000L })
+    }
+
+    // =========================================================================
+    // QrisViewModel Tests (Milestone M3)
+    // =========================================================================
+
+    @Test
+    fun testQrisViewModelInitialStateAndBuffer() = runTest {
+        val (_, repo) = createEnv()
+        val vm = QrisViewModel(repo)
+        backgroundScope.launch { vm.qrisConfig.collect() }
+        advanceUntilIdle()
+
+        // Initial state from InMemoryQrisConfigDao
+        assertNotNull(vm.qrisConfig.value)
+        assertEquals(false, vm.qrisConfig.value?.isEnabled)
+        assertNull(vm.qrisConfig.value?.imageBytes)
+        assertNull(vm.pendingImageBytes.value)
+
+        // Set pending image buffer
+        val sample = byteArrayOf(0x01, 0x02, 0x03)
+        vm.setPendingImage(sample)
+        assertEquals(sample, vm.pendingImageBytes.value)
+
+        // Clear buffer
+        vm.clearPendingImage()
+        assertNull(vm.pendingImageBytes.value)
+    }
+
+    @Test
+    fun testQrisViewModelTogglesAndDeletion() = runTest {
+        val (_, repo) = createEnv()
+        val vm = QrisViewModel(repo)
+        backgroundScope.launch { vm.qrisConfig.collect() }
+
+        // Toggle enabled to true
+        vm.setEnabled(true)
+        advanceUntilIdle()
+        assertEquals(true, repo.getQrisConfig()?.isEnabled)
+
+        // Toggle enabled to false
+        vm.setEnabled(false)
+        advanceUntilIdle()
+        assertEquals(false, repo.getQrisConfig()?.isEnabled)
+
+        // Delete QRIS config
+        vm.deleteQris()
+        advanceUntilIdle()
+        assertNull(repo.getQrisConfig())
+    }
+
+    @Test
+    fun testQrisViewModelSavePendingQrisOptimization() = runTest {
+        val (_, repo) = createEnv()
+        val vm = QrisViewModel(repo)
+        vm.computationDispatcher = testDispatcher
+        backgroundScope.launch { vm.qrisConfig.collect() }
+
+        // Create genuine test JPEG via JvmImageEngine
+        val testEngine = com.anlian.italase.shared.media.JvmImageEngine()
+        val originalEngine = com.anlian.italase.shared.media.ImageOptimizer.engine
+        com.anlian.italase.shared.media.ImageOptimizer.engine = testEngine
+
+        try {
+            val img = java.awt.image.BufferedImage(200, 200, java.awt.image.BufferedImage.TYPE_INT_RGB)
+            val baos = java.io.ByteArrayOutputStream()
+            javax.imageio.ImageIO.write(img, "jpg", baos)
+            val rawBytes = baos.toByteArray()
+
+            vm.setPendingImage(rawBytes)
+            var successTriggered = false
+            vm.savePendingQris { successTriggered = true }
+            advanceUntilIdle()
+
+            assertTrue(successTriggered)
+            assertNull(vm.pendingImageBytes.value)
+            val saved = repo.getQrisConfig()
+            assertNotNull(saved)
+            assertEquals(true, saved.isEnabled)
+            val bytes = saved.imageBytes
+            assertNotNull(bytes)
+            assertTrue(bytes.isNotEmpty())
+            assertTrue(saved.updatedAt > 0L)
+        } finally {
+            com.anlian.italase.shared.media.ImageOptimizer.engine = originalEngine
+        }
+    }
+
+    @Test
+    fun testQrisViewModelPromptDismiss() = runTest {
+        val (_, repo) = createEnv()
+        val vm = QrisViewModel(repo)
+
+        vm.dismissPrompt()
+        advanceUntilIdle()
+        assertEquals(1, repo.getQrisConfig()?.promptDismissCount)
+
+        vm.dismissPrompt()
+        advanceUntilIdle()
+        assertEquals(2, repo.getQrisConfig()?.promptDismissCount)
+    }
+
+    @Test
+    fun testQrisViewModelClearMessage() = runTest {
+        val (_, repo) = createEnv()
+        val vm = QrisViewModel(repo)
+
+        vm.message.value = UiMessage.GenericFailure
+        assertEquals(UiMessage.GenericFailure, vm.message.value)
+        vm.clearMessage()
+        assertNull(vm.message.value)
+    }
+
+    // =========================================================================
+    // Milestone M4: QRIS Checkout, payMethodLabelOf, & History ViewModels Tests
+    // =========================================================================
+
+    @Test
+    fun testCheckoutWithQrisCreatesLunasSaleWithoutDebt() = runTest {
+        val (db, repo) = createEnv()
+        val p = ProductEntity(id = 1L, name = "Kopi Susu", buyPrice = 5000, sellPrice = 12000, stock = 10)
+        db.pDao.upsert(p)
+
+        val vm = CashierViewModel(repo)
+        backgroundScope.launch { vm.products.collect() }
+        vm.products.first { it.isNotEmpty() }
+        advanceUntilIdle()
+
+        vm.add(p)
+        assertEquals(12000L, vm.cartTotal())
+
+        // Execute checkout with QRIS (paid = total)
+        vm.checkout(paid = 12000L, method = PayMethod.QRIS, customer = "Pelanggan QRIS")
+        advanceUntilIdle()
+
+        val msg = vm.message.first { it != null }
+        assertTrue(msg is UiMessage.TxnSaved)
+        assertTrue(vm.cart.value.isEmpty())
+
+        val saleId = vm.lastSaleId.value
+        assertNotNull(saleId)
+
+        val sale = repo.saleDetail(saleId)?.sale
+        assertNotNull(sale)
+        assertEquals(PayMethod.QRIS, sale.payMethod)
+        assertEquals(TxnStatus.LUNAS, sale.status)
+        assertEquals(12000L, sale.total)
+        assertEquals(12000L, sale.paidAmount)
+        assertEquals(12000L, sale.tendered)
+        assertEquals(7000L, sale.profit)
+        assertEquals("Pelanggan QRIS", sale.customerName)
+
+        // Verify no debt was created
+        val debts = repo.observeActiveDebts().first()
+        assertTrue(debts.none { it.saleId == saleId })
+
+        // Verify stock decremented
+        assertEquals(9, repo.observeProducts().first().first { it.id == 1L }.stock)
+    }
+
+    @Test
+    fun testHistoryViewModelPayMethodLabelOf() = runTest {
+        val (_, repo) = createEnv()
+        val vm = HistoryViewModel(repo)
+
+        assertEquals("Tunai", vm.payMethodLabelOf(PayMethod.TUNAI))
+        assertEquals("Transfer", vm.payMethodLabelOf(PayMethod.TRANSFER))
+        assertEquals("QRIS", vm.payMethodLabelOf(PayMethod.QRIS))
+        assertEquals("Bon", vm.payMethodLabelOf(PayMethod.BON))
+        assertEquals("Bon", vm.payMethodLabelOf("UNKNOWN_METHOD"))
+    }
+
+    @Test
+    fun testHistoryViewModelUpdateInfoToQris() = runTest {
+        val (db, repo) = createEnv()
+        val p = ProductEntity(id = 1L, name = "Teh Manis", buyPrice = 1000, sellPrice = 3000, stock = 10)
+        db.pDao.upsert(p)
+        val saleId = repo.checkout(listOf(CartLine(p, 1)), 3000, PayMethod.TUNAI, "Budi", "Catatan")
+
+        val vm = HistoryViewModel(repo)
+        backgroundScope.launch { vm.sales.collect() }
+        vm.loadDetail(saleId)
+        advanceUntilIdle()
+
+        // Update payment method to QRIS
+        vm.updateInfo(saleId, "Budi QRIS", "Catatan update", PayMethod.QRIS, 3000L)
+        advanceUntilIdle()
+
+        assertEquals(UiMessage.SaleInfoSaved, vm.detailMessage.first { it != null })
+        val updated = vm.detail.value?.sale
+        assertNotNull(updated)
+        assertEquals(PayMethod.QRIS, updated.payMethod)
+        assertEquals(TxnStatus.LUNAS, updated.status)
+        assertEquals(3000L, updated.tendered)
+        assertEquals("Budi QRIS", updated.customerName)
+    }
+
+    @Test
+    fun testHistoryViewModelExportPdfWithQris() = runTest {
+        val (db, repo) = createEnv()
+        val p = ProductEntity(id = 1L, name = "Snack", buyPrice = 2000, sellPrice = 5000, stock = 10)
+        db.pDao.upsert(p)
+        repo.checkout(listOf(CartLine(p, 1)), 5000, PayMethod.QRIS, "Rian")
+
+        val vm = HistoryViewModel(repo)
+        backgroundScope.launch { vm.sales.collect() }
+        advanceUntilIdle()
+
+        vm.exportPdf()
+        advanceUntilIdle()
+
+        assertNotNull(vm.exportMessage.value)
+        vm.clearExportMessage()
+        assertNull(vm.exportMessage.value)
     }
 }

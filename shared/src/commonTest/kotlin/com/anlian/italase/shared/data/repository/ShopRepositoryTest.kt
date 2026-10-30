@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -332,5 +333,131 @@ class ShopRepositoryTest {
         assertEquals(2, top.size)
         assertEquals("Kopi Hitam", top[0].productName)
         assertEquals(3, top[0].q)
+    }
+
+    @Test
+    fun testQrisConfigCrudAndToggles() = runBlocking {
+        val (db, repo) = setupRepo()
+
+        // 1. Initial state check
+        val initial = repo.getQrisConfig()
+        assertNotNull(initial)
+        assertEquals(false, initial.isEnabled)
+        assertNull(initial.imageBytes)
+        assertEquals(0, initial.promptDismissCount)
+
+        // 2. Save new QRIS photo
+        val sampleBytes = byteArrayOf(1, 2, 3, 4, 5)
+        repo.saveQrisConfig(sampleBytes, "image/png")
+
+        val saved = repo.getQrisConfig()
+        assertNotNull(saved)
+        assertTrue(saved.isEnabled)
+        assertTrue(sampleBytes.contentEquals(saved.imageBytes))
+        assertEquals("image/png", saved.mimeType)
+        assertTrue(saved.updatedAt > 0L)
+
+        // 3. Observe reactive Flow
+        val observed = repo.observeQrisConfig().first()
+        assertEquals(saved, observed)
+
+        // 4. Toggle disabled
+        repo.setQrisEnabled(false)
+        val disabled = repo.getQrisConfig()
+        assertNotNull(disabled)
+        assertEquals(false, disabled.isEnabled)
+        assertNotNull(disabled.imageBytes)
+
+        // 5. Toggle enabled again
+        repo.setQrisEnabled(true)
+        val reEnabled = repo.getQrisConfig()
+        assertNotNull(reEnabled)
+        assertEquals(true, reEnabled.isEnabled)
+
+        // 6. Delete config
+        repo.deleteQrisConfig()
+        val deleted = repo.getQrisConfig()
+        assertNull(deleted)
+
+        // 7. Toggle enabled on null record safely creates it
+        repo.setQrisEnabled(true)
+        val afterNullEnable = repo.getQrisConfig()
+        assertNotNull(afterNullEnable)
+        assertEquals(1, afterNullEnable.id)
+        assertTrue(afterNullEnable.isEnabled)
+        assertNull(afterNullEnable.imageBytes)
+
+        // 8. Delete again and save on null record safely re-creates
+        repo.deleteQrisConfig()
+        val newBytes = byteArrayOf(9, 8, 7)
+        repo.saveQrisConfig(newBytes)
+        val recreated = repo.getQrisConfig()
+        assertNotNull(recreated)
+        assertEquals(1, recreated.id)
+        assertTrue(recreated.isEnabled)
+        assertTrue(newBytes.contentEquals(recreated.imageBytes))
+        assertEquals("image/jpeg", recreated.mimeType)
+    }
+
+    @Test
+    fun testQrisPromptDismissalCounter() = runBlocking {
+        val (db, repo) = setupRepo()
+
+        // Dismiss 1
+        repo.dismissQrisPrompt()
+        assertEquals(1, repo.getQrisConfig()?.promptDismissCount)
+
+        // Dismiss 2
+        repo.dismissQrisPrompt()
+        assertEquals(2, repo.getQrisConfig()?.promptDismissCount)
+
+        // Dismiss 3
+        repo.dismissQrisPrompt()
+        val config3 = repo.getQrisConfig()
+        assertEquals(3, config3?.promptDismissCount)
+
+        // Verify prompt eligibility condition: imageBytes == null && promptDismissCount < 3
+        val isPromptEligible = config3?.imageBytes == null && (config3?.promptDismissCount ?: 0) < 3
+        assertFalse(isPromptEligible)
+
+        // Dismiss on deleted/null record
+        repo.deleteQrisConfig()
+        repo.dismissQrisPrompt()
+        val afterNullDismiss = repo.getQrisConfig()
+        assertNotNull(afterNullDismiss)
+        assertEquals(1, afterNullDismiss.promptDismissCount)
+    }
+
+    @Test
+    fun testCheckoutWithQrisPayMethod() = runBlocking {
+        val (db, repo) = setupRepo()
+        val prod = ProductEntity(id = 1L, name = "Kopi Susu", buyPrice = 5000, sellPrice = 10000, stock = 10)
+        db.pDao.upsert(prod)
+
+        // Checkout with PayMethod.QRIS (Lunas)
+        val saleId = repo.checkout(
+            lines = listOf(CartLine(prod, 2)),
+            paidAmount = 20000,
+            payMethod = PayMethod.QRIS,
+            customerName = "Rudi Scan",
+            note = "QRIS Dinamis",
+        )
+        assertEquals(1L, saleId)
+
+        val sale = db.sDao.getSale(saleId)
+        assertNotNull(sale)
+        assertEquals(PayMethod.QRIS, sale.payMethod)
+        assertEquals(TxnStatus.LUNAS, sale.status)
+        assertEquals(20000L, sale.total)
+        assertEquals(20000L, sale.paidAmount)
+        assertEquals(20000L, sale.tendered)
+        assertEquals("Rudi Scan", sale.customerName)
+        assertEquals(8, db.pDao.getById(1L)?.stock)
+
+        // Update payment info to QRIS
+        repo.updateSaleInfo(saleId, "Rudi Scan Updated", "QRIS Validated", PayMethod.QRIS, 20000L)
+        val updatedSale = db.sDao.getSale(saleId)
+        assertEquals(PayMethod.QRIS, updatedSale?.payMethod)
+        assertEquals("QRIS Validated", updatedSale?.note)
     }
 }

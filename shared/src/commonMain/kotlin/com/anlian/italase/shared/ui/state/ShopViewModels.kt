@@ -706,9 +706,10 @@ class HistoryViewModel(private val repo: ShopRepository) : ViewModel() {
      * jadi nilainya diambil dari konstanta yang sama (`PayMethod`), dengan nilai
      * cadangan untuk data lama yang metodenya tidak dikenal.
      */
-    private fun payMethodLabelOf(method: String): String = when (method) {
+    internal fun payMethodLabelOf(method: String): String = when (method) {
         PayMethod.TUNAI -> "Tunai"
         PayMethod.TRANSFER -> "Transfer"
+        PayMethod.QRIS -> "QRIS"
         else -> "Bon"
     }
 

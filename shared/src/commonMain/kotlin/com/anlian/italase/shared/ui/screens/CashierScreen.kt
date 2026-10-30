@@ -1,19 +1,42 @@
 package com.anlian.italase.shared.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Icon
@@ -23,7 +46,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.anlian.italase.shared.data.local.entity.QrisConfigEntity
+import com.anlian.italase.shared.ui.components.LocalIsLandscape
+import com.anlian.italase.shared.ui.state.QrisViewModel
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -105,6 +135,114 @@ import org.jetbrains.compose.resources.stringResource
 private val CHECKOUT_CARD_HEIGHT = 148.dp
 
 /**
+ * Banner prompt inisiasi QRIS di layar Kasir (AUD-107).
+ * Mengikuti prinsip desain Warung Liquid Glass.
+ */
+@Composable
+fun QrisPromptBanner(
+    onNavigateSetup: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val isDark = scheme.surface.luminance() < 0.5f
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .glassSurface(
+                shape = RoundedCornerShape(20.dp),
+                tint = scheme.surface,
+                alpha = if (isDark) 0.88f else 0.94f,
+                elevation = 8.dp,
+                specular = 0.32f,
+                veil = true,
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Badge Ikon Emerald
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            scheme.primary.copy(alpha = if (isDark) 0.28f else 0.18f),
+                            scheme.primary.copy(alpha = if (isDark) 0.12f else 0.08f),
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                AppIcon.PAYMENTS.painter(),
+                contentDescription = null,
+                tint = scheme.primary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        // Label Edukatif
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = "Aktifkan QRIS",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = scheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "Terima pembayaran non-tunai di kasir",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        // Tombol Aksi
+        GlassButton(
+            text = "Aktifkan",
+            onClick = onNavigateSetup,
+            height = 36.dp,
+            elevation = 4.dp,
+            specular = 0.26f,
+            modifier = Modifier.padding(end = 4.dp),
+        )
+
+        // Tombol Dismiss '✕'
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(modifier = Modifier.size(12.dp)) {
+                val strokeWidth = 1.8.dp.toPx()
+                val color = scheme.onSurfaceVariant.copy(alpha = 0.75f)
+                drawLine(color, Offset(0f, 0f), Offset(size.width, size.height), strokeWidth = strokeWidth)
+                drawLine(color, Offset(0f, size.height), Offset(size.width, 0f), strokeWidth = strokeWidth)
+            }
+        }
+    }
+}
+
+/**
  * Entry point layar Kasir: daftar produk + keranjang, dan dialog bayar saat
  * [showPayDialog] true. Dipasang NavHost setelah state-nya dirakit ViewModel.
  *
@@ -128,6 +266,11 @@ fun CashierScreen(
     message: String,
     showPayDialog: Boolean,
     isLoading: Boolean = false,
+    qrisConfig: QrisConfigEntity? = null,
+    qrisVm: QrisViewModel? = null,
+    showQrisPrompt: Boolean? = null,
+    onNavigateQrisSetup: () -> Unit = {},
+    onDismissQrisPrompt: () -> Unit = {},
     onAdd: (ProductEntity) -> Unit = {},
     onSetQty: (Long, Int) -> Unit = { _, _ -> },
     onClear: () -> Unit = {},
@@ -135,6 +278,15 @@ fun CashierScreen(
     onDismissPay: () -> Unit = {},
     onConfirmPay: (Long, String, String) -> Unit = { _, _, _ -> },
 ) {
+    val vmConfig = qrisVm?.qrisConfig?.collectAsStateWithLifecycle()?.value
+    val effectiveConfig = qrisConfig ?: vmConfig
+
+    var dismissedThisSession by rememberSaveable { mutableStateOf(false) }
+
+    val isQrisActive = effectiveConfig != null && effectiveConfig.isEnabled && effectiveConfig.imageBytes != null
+    val isPromptPermanentlyDismissed = (effectiveConfig?.promptDismissCount ?: 0) >= 3
+    val bannerVisible = showQrisPrompt ?: (!isQrisActive && !isPromptPermanentlyDismissed && !dismissedThisSession)
+
     CashierContent(
         query = query,
         onQuery = onQuery,
@@ -147,6 +299,13 @@ fun CashierScreen(
         total = total,
         message = message,
         isLoading = isLoading,
+        showQrisPrompt = bannerVisible,
+        onNavigateQrisSetup = onNavigateQrisSetup,
+        onDismissQrisPrompt = {
+            dismissedThisSession = true
+            qrisVm?.dismissPrompt()
+            onDismissQrisPrompt()
+        },
         onAdd = onAdd,
         onSetQty = onSetQty,
         onClear = onClear,
@@ -156,6 +315,7 @@ fun CashierScreen(
     if (showPayDialog) {
         PayDialog(
             total = total,
+            qrisConfig = effectiveConfig,
             onDismiss = onDismissPay,
             onConfirm = onConfirmPay,
         )
@@ -186,6 +346,9 @@ fun CashierContent(
     total: Long,
     message: String,
     isLoading: Boolean = false,
+    showQrisPrompt: Boolean = false,
+    onNavigateQrisSetup: () -> Unit = {},
+    onDismissQrisPrompt: () -> Unit = {},
     onAdd: (ProductEntity) -> Unit = {},
     onSetQty: (Long, Int) -> Unit = { _, _ -> },
     onClear: () -> Unit = {},
@@ -253,6 +416,17 @@ fun CashierContent(
                         active = activeCategory,
                         onSelect = onCategory,
                     )
+                    AnimatedVisibility(
+                        visible = showQrisPrompt,
+                        enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy)) + fadeIn(),
+                        exit = shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy)) + fadeOut(),
+                    ) {
+                        QrisPromptBanner(
+                            onNavigateSetup = onNavigateQrisSetup,
+                            onDismiss = onDismissQrisPrompt,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                        )
+                    }
                     ShimmerCrossfade(
                         loading = isLoading,
                         modifier = Modifier.weight(1f),
@@ -346,6 +520,17 @@ fun CashierContent(
                         active = activeCategory,
                         onSelect = onCategory,
                     )
+                    AnimatedVisibility(
+                        visible = showQrisPrompt,
+                        enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy)) + fadeIn(),
+                        exit = shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy)) + fadeOut(),
+                    ) {
+                        QrisPromptBanner(
+                            onNavigateSetup = onNavigateQrisSetup,
+                            onDismiss = onDismissQrisPrompt,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                        )
+                    }
                     ShimmerCrossfade(
                         loading = isLoading,
                         modifier = Modifier.weight(1f),
@@ -761,44 +946,67 @@ private fun CheckoutCard(
  * @param onConfirm dipanggil dengan (nominal dibayar dalam rupiah utuh, metode,
  *   nama pelanggan); nama pelanggan boleh kosong.
  */
+/**
+ * Dialog pembayaran: nominal, nama pelanggan, dan metode (tunai/transfer/bon/QRIS).
+ * State-nya lokal dan tidak dilaporkan ke atas sampai simpan ditekan, jadi
+ * menutup dialog membatalkan isian tanpa efek samping.
+ *
+ * Pada mode QRIS, ditampilkan barcode QRIS adaptif dengan kontras tinggi (kartu putih)
+ * dan tombol berubah menjadi "Konfirmasi Lunas" (AUD-107).
+ *
+ * @param onConfirm dipanggil dengan (nominal dibayar dalam rupiah utuh, metode,
+ *   nama pelanggan); nama pelanggan boleh kosong.
+ */
 @Composable
-fun PayDialog(total: Long, onDismiss: () -> Unit, onConfirm: (Long, String, String) -> Unit) {
+fun PayDialog(
+    total: Long,
+    qrisConfig: QrisConfigEntity? = null,
+    initialMethod: String = PayMethod.TUNAI,
+    onDismiss: () -> Unit,
+    onConfirm: (Long, String, String) -> Unit,
+) {
     var paidText by remember { mutableStateOf("") }
     var customer by remember { mutableStateOf("") }
-    var method by remember { mutableStateOf(PayMethod.TUNAI) }
+    var method by remember { mutableStateOf(initialMethod) }
     val paid = parseRupiah(paidText)
     val scheme = MaterialTheme.colorScheme
+    val isLandscape = LocalIsLandscape.current
+
+    val isQrisConfigured = qrisConfig != null && qrisConfig.isEnabled && qrisConfig.imageBytes != null
+
+    val qrisBitmap: ImageBitmap? = remember(qrisConfig?.imageBytes) {
+        qrisConfig?.imageBytes?.let { bytes ->
+            try {
+                bytes.decodeToImageBitmap()
+            } catch (_: Throwable) {
+                null
+            }
+        }
+    }
 
     GlassFormDialog(
         title = stringResource(Res.string.cash_pay_title, formatRupiah(total)),
         onDismiss = onDismiss,
-        onConfirm = { onConfirm(paid, method, customer) },
+        onConfirm = {
+            val finalPaid = if (method == PayMethod.QRIS) total else paid
+            onConfirm(finalPaid, method, customer)
+        },
         cancelText = stringResource(Res.string.action_close),
-        confirmText = stringResource(Res.string.action_save),
+        confirmText = if (method == PayMethod.QRIS) "Konfirmasi Lunas" else stringResource(Res.string.action_save),
     ) {
         GlassTextField(
             value = customer,
             onValueChange = { customer = it },
             label = stringResource(Res.string.cash_customer),
             keyboardOptions = KeyboardOptions(
-                imeAction = ImeAction.Next,
+                imeAction = if (method == PayMethod.QRIS) ImeAction.Done else ImeAction.Next,
             ),
         )
-        GlassTextField(
-            value = paidText,
-            onValueChange = { input ->
-                val digits = input.filter { it.isDigit() }
-                if (digits.length <= 15) {
-                    paidText = digits
-                }
-            },
-            label = stringResource(Res.string.cash_paid),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done,
-            ),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             GlassChip(
                 text = stringResource(Res.string.cash_m_cash),
                 selected = method == PayMethod.TUNAI,
@@ -814,38 +1022,163 @@ fun PayDialog(total: Long, onDismiss: () -> Unit, onConfirm: (Long, String, Stri
                 selected = method == PayMethod.BON,
                 onClick = { method = PayMethod.BON },
             )
-        }
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .glassSurface(
-                    shape = RoundedCornerShape(16.dp),
-                    tint = scheme.surfaceContainerLow,
-                    alpha = 0.90f,
-                    elevation = 6.dp,
-                    specular = 0.18f,
-                    veil = false,
-                )
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                if (paid >= total) stringResource(Res.string.cash_change)
-                else stringResource(Res.string.cash_short),
-                color = scheme.onSurfaceVariant,
-            )
-            Text(
-                formatRupiah(if (paid >= total) paid - total else total - paid),
-                fontWeight = FontWeight.Bold,
-                color = scheme.onSurface,
+            GlassChip(
+                text = "QRIS",
+                selected = method == PayMethod.QRIS,
+                onClick = {
+                    if (isQrisConfigured) {
+                        method = PayMethod.QRIS
+                    }
+                },
             )
         }
-        if (method != PayMethod.BON && paid < total) {
+
+        if (!isQrisConfigured && method != PayMethod.QRIS) {
             Text(
-                stringResource(Res.string.cash_short_hint),
-                color = scheme.error,
+                text = "QRIS belum aktif. Atur di menu Pengaturan > Pembayaran.",
                 style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant.copy(alpha = 0.70f),
             )
+        }
+
+        if (method == PayMethod.QRIS) {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White)
+                            .padding(10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (qrisBitmap != null) {
+                            Image(
+                                bitmap = qrisBitmap,
+                                contentDescription = "Barcode QRIS Pembayaran",
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = if (isLandscape) 140.dp else 220.dp),
+                            )
+                        } else {
+                            Text(
+                                text = "Gagal memuat gambar barcode QRIS",
+                                color = Color.Gray,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Arahkan kamera pelanggan ke kode QR di atas",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .glassSurface(
+                        shape = RoundedCornerShape(16.dp),
+                        tint = scheme.surfaceContainerLow,
+                        alpha = 0.90f,
+                        elevation = 6.dp,
+                        specular = 0.18f,
+                        veil = false,
+                    )
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Total Tagihan",
+                    color = scheme.onSurfaceVariant,
+                )
+                Text(
+                    text = formatRupiah(total),
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.primary,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        } else {
+            GlassTextField(
+                value = paidText,
+                onValueChange = { input ->
+                    val digits = input.filter { it.isDigit() }
+                    if (digits.length <= 15) {
+                        paidText = digits
+                    }
+                },
+                label = stringResource(Res.string.cash_paid),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done,
+                ),
+            )
+
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .glassSurface(
+                        shape = RoundedCornerShape(16.dp),
+                        tint = scheme.surfaceContainerLow,
+                        alpha = 0.90f,
+                        elevation = 6.dp,
+                        specular = 0.18f,
+                        veil = false,
+                    )
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    if (paid >= total) stringResource(Res.string.cash_change)
+                    else stringResource(Res.string.cash_short),
+                    color = scheme.onSurfaceVariant,
+                )
+                Text(
+                    formatRupiah(if (paid >= total) paid - total else total - paid),
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onSurface,
+                )
+            }
+
+            if (method != PayMethod.BON && paid < total) {
+                Text(
+                    stringResource(Res.string.cash_short_hint),
+                    color = scheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }
+
+/**
+ * Overload pendukung untuk pemanggil tanpa parameter [qrisConfig].
+ */
+@Composable
+fun PayDialog(
+    total: Long,
+    onDismiss: () -> Unit,
+    onConfirm: (Long, String, String) -> Unit,
+) = PayDialog(
+    total = total,
+    qrisConfig = null,
+    initialMethod = PayMethod.TUNAI,
+    onDismiss = onDismiss,
+    onConfirm = onConfirm,
+)

@@ -26,6 +26,9 @@ object PayMethod {
 
     /** Transfer bank/e-wallet; selalu tercatat lunas. */
     const val TRANSFER: String = "TRANSFER"
+
+    /** Pembayaran QRIS (Quick Response Code Indonesian Standard); selalu tercatat lunas. */
+    const val QRIS: String = "QRIS"
 }
 
 /** Header struk: satu baris per checkout. total dan profit disimpan sudah

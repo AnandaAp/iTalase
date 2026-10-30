@@ -9,6 +9,7 @@ import com.anlian.italase.shared.ui.components.GlassDialog
 import com.anlian.italase.shared.ui.components.GlassFormDialog
 import com.anlian.italase.shared.ui.components.GlassTextField
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -202,6 +203,7 @@ private fun SaleDetailContent(detail: SaleDetail, message: String) {
     val methodLabel = when (sale.payMethod) {
         PayMethod.TUNAI -> stringResource(Res.string.cash_m_cash)
         PayMethod.TRANSFER -> stringResource(Res.string.cash_m_transfer)
+        PayMethod.QRIS -> PayMethod.QRIS
         else -> stringResource(Res.string.tab_debt)
     }
 
@@ -511,7 +513,10 @@ fun SaleEditDialog(
                 imeAction = ImeAction.Next,
             ),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             GlassChip(
                 text = stringResource(Res.string.cash_m_cash),
                 selected = method == PayMethod.TUNAI,
@@ -521,6 +526,11 @@ fun SaleEditDialog(
                 text = stringResource(Res.string.cash_m_transfer),
                 selected = method == PayMethod.TRANSFER,
                 onClick = { method = PayMethod.TRANSFER },
+            )
+            GlassChip(
+                text = PayMethod.QRIS,
+                selected = method == PayMethod.QRIS,
+                onClick = { method = PayMethod.QRIS },
             )
             GlassChip(
                 text = stringResource(Res.string.tab_debt),

@@ -57,6 +57,7 @@ object ReceiptFormatter {
             PayMethod.TUNAI -> "Tunai"
             PayMethod.TRANSFER -> "Transfer"
             PayMethod.BON -> "Bon (Hutang)"
+            PayMethod.QRIS -> "QRIS"
             else -> sale.payMethod
         }
         val statusLabel = if (sale.status == TxnStatus.LUNAS) "LUNAS" else "BELUM LUNAS"
@@ -81,7 +82,7 @@ object ReceiptFormatter {
         if (tendered > 0) {
             sb.appendLine(twoColumn("Bayar", formatRupiah(tendered), lineWidth))
             val change = tendered - sale.total
-            if (change >= 0) {
+            if (change > 0 || (change == 0L && sale.payMethod == PayMethod.TUNAI)) {
                 sb.appendLine(twoColumn("Kembali", formatRupiah(change), lineWidth))
             }
         }
@@ -130,6 +131,7 @@ object ReceiptFormatter {
             PayMethod.TUNAI -> "Tunai"
             PayMethod.TRANSFER -> "Transfer"
             PayMethod.BON -> "Bon"
+            PayMethod.QRIS -> "QRIS"
             else -> sale.payMethod
         }
         val statusText = if (sale.status == TxnStatus.LUNAS) "LUNAS" else "BELUM LUNAS (BON)"
@@ -147,7 +149,7 @@ object ReceiptFormatter {
         if (tendered > 0) {
             sb.appendLine("Uang Diterima: ${formatRupiah(tendered)}")
             val change = tendered - sale.total
-            if (change >= 0) {
+            if (change > 0 || (change == 0L && sale.payMethod == PayMethod.TUNAI)) {
                 sb.appendLine("Kembalian    : ${formatRupiah(change)}")
             }
         }

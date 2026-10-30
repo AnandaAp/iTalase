@@ -12,11 +12,13 @@ import com.anlian.italase.shared.data.ProductCategories
 import com.anlian.italase.shared.data.local.dao.DebtDao
 import com.anlian.italase.shared.data.local.dao.ExpenseDao
 import com.anlian.italase.shared.data.local.dao.ProductDao
+import com.anlian.italase.shared.data.local.dao.QrisConfigDao
 import com.anlian.italase.shared.data.local.dao.SaleDao
 import com.anlian.italase.shared.data.local.entity.DebtEntity
 import com.anlian.italase.shared.data.local.entity.DebtPaymentEntity
 import com.anlian.italase.shared.data.local.entity.ExpenseEntity
 import com.anlian.italase.shared.data.local.entity.ProductEntity
+import com.anlian.italase.shared.data.local.entity.QrisConfigEntity
 import com.anlian.italase.shared.data.local.entity.SaleEntity
 import com.anlian.italase.shared.data.local.entity.SaleItemEntity
 import kotlinx.coroutines.Dispatchers
@@ -34,8 +36,9 @@ import kotlinx.coroutines.IO
         DebtEntity::class,
         DebtPaymentEntity::class,
         ExpenseEntity::class,
+        QrisConfigEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @ConstructedBy(ITalaseDatabaseConstructor::class)
@@ -51,6 +54,9 @@ abstract class ITalaseDatabase : RoomDatabase() {
 
     /** Jalur baca/tulis expenses. */
     abstract fun expenseDao(): ExpenseDao
+
+    /** Jalur baca/tulis konfigurasi QRIS toko. */
+    abstract fun qrisConfigDao(): QrisConfigDao
 }
 
 /** Versi skema 1: rilis pertama. */
@@ -122,6 +128,34 @@ val MIGRATION_5_6 = object : Migration(DB_VERSION_5, DB_VERSION_6) {
     }
 }
 
+/** Versi skema 7: tabel konfigurasi QRIS kasir (AUD-107). */
+private const val DB_VERSION_7 = 7
+
+/** Migrasi 6→7: membuat tabel qris_config dan inisialisasi baris default (id=1). */
+val MIGRATION_6_7 = object : Migration(DB_VERSION_6, DB_VERSION_7) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS ${Tables.QRIS_CONFIG} (
+                id INTEGER NOT NULL,
+                isEnabled INTEGER NOT NULL,
+                imageBytes BLOB,
+                mimeType TEXT NOT NULL,
+                promptDismissCount INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                PRIMARY KEY(id)
+            )
+            """.trimIndent(),
+        )
+        connection.execSQL(
+            """
+            INSERT OR IGNORE INTO ${Tables.QRIS_CONFIG} (id, isEnabled, imageBytes, mimeType, promptDismissCount, updatedAt)
+            VALUES (1, 0, NULL, 'image/jpeg', 0, 0)
+            """.trimIndent(),
+        )
+    }
+}
+
 /** Implementasi konkret per platform (lihat androidMain/iosMain) karena Room
  *  perlu kode pembangun database yang beda tiap target. */
 @Suppress("KotlinNoActualForExpect")
@@ -144,7 +178,7 @@ fun getRoomDatabase(
     return builder
         .setDriver(driver)
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
         .build()
 }
 

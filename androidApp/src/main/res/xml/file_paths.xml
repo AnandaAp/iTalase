@@ -10,4 +10,8 @@
     <cache-path
         name="reports"
         path="reports/" />
+    <!-- Direktori cache sementara untuk tangkapan foto kamera QRIS -->
+    <cache-path
+        name="qris"
+        path="qris/" />
 </paths>

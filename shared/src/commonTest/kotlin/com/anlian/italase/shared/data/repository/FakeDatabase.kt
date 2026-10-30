@@ -7,6 +7,7 @@ import com.anlian.italase.shared.data.local.ITalaseDatabase
 import com.anlian.italase.shared.data.local.dao.DebtDao
 import com.anlian.italase.shared.data.local.dao.ExpenseDao
 import com.anlian.italase.shared.data.local.dao.ProductDao
+import com.anlian.italase.shared.data.local.dao.QrisConfigDao
 import com.anlian.italase.shared.data.local.dao.SaleDao
 import com.anlian.italase.shared.data.local.dao.TopRow
 import com.anlian.italase.shared.data.local.entity.DebtEntity
@@ -14,8 +15,10 @@ import com.anlian.italase.shared.data.local.entity.DebtPaymentEntity
 import com.anlian.italase.shared.data.local.entity.DebtStatus
 import com.anlian.italase.shared.data.local.entity.ExpenseEntity
 import com.anlian.italase.shared.data.local.entity.ProductEntity
+import com.anlian.italase.shared.data.local.entity.QrisConfigEntity
 import com.anlian.italase.shared.data.local.entity.SaleEntity
 import com.anlian.italase.shared.data.local.entity.SaleItemEntity
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.lang.reflect.InvocationHandler
@@ -28,6 +31,7 @@ open class FakeDatabase(
     val sDao: InMemorySaleDao = InMemorySaleDao(),
     val dDao: InMemoryDebtDao = InMemoryDebtDao(),
     val eDao: InMemoryExpenseDao = InMemoryExpenseDao(),
+    val qDao: InMemoryQrisConfigDao = InMemoryQrisConfigDao(),
 ) : ITalaseDatabase() {
     init {
         setupFakeConnectionManager()
@@ -37,6 +41,7 @@ open class FakeDatabase(
     override fun saleDao(): SaleDao = sDao
     override fun debtDao(): DebtDao = dDao
     override fun expenseDao(): ExpenseDao = eDao
+    override fun qrisConfigDao(): QrisConfigDao = qDao
     override fun createOpenDelegate(): RoomOpenDelegate = throw NotImplementedError()
     override fun createInvalidationTracker(): InvalidationTracker = throw NotImplementedError()
     override fun clearAllTables() {}
@@ -139,7 +144,7 @@ open class FakeDatabase(
             scopeField.set(this, kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Unconfined))
 
             @Suppress("DEPRECATION")
-            val tracker = InvalidationTracker(this, "products", "sales", "sale_items", "debts", "debt_payments", "expenses")
+            val tracker = InvalidationTracker(this, "products", "sales", "sale_items", "debts", "debt_payments", "expenses", "qris_config")
             val trackerField = RoomDatabase::class.java.getDeclaredField("internalTracker")
             trackerField.isAccessible = true
             trackerField.set(this, tracker)
@@ -296,3 +301,32 @@ class InMemoryExpenseDao : ExpenseDao {
         expenses.value = expenses.value.filter { it.id != id }
     }
 }
+
+class InMemoryQrisConfigDao(
+    initial: QrisConfigEntity? = QrisConfigEntity(id = 1),
+) : QrisConfigDao {
+    val config = MutableStateFlow<QrisConfigEntity?>(initial)
+
+    override fun observeConfig(): Flow<QrisConfigEntity?> = config.asStateFlow()
+
+    override suspend fun getConfig(): QrisConfigEntity? = config.value
+
+    override suspend fun upsert(config: QrisConfigEntity) {
+        this.config.value = config
+    }
+
+    override suspend fun incrementDismissCount() {
+        val cur = config.value ?: QrisConfigEntity(id = 1)
+        config.value = cur.copy(promptDismissCount = cur.promptDismissCount + 1)
+    }
+
+    override suspend fun setEnabled(enabled: Boolean) {
+        val cur = config.value ?: QrisConfigEntity(id = 1)
+        config.value = cur.copy(isEnabled = enabled)
+    }
+
+    override suspend fun deleteConfig() {
+        config.value = null
+    }
+}
+

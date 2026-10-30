@@ -123,6 +123,7 @@ fun HistoryScreen(
 private fun payMethodLabel(method: String): String = when (method) {
     PayMethod.TUNAI -> stringResource(Res.string.cash_m_cash)
     PayMethod.TRANSFER -> stringResource(Res.string.cash_m_transfer)
+    PayMethod.QRIS -> PayMethod.QRIS
     else -> stringResource(Res.string.tab_debt)
 }
 

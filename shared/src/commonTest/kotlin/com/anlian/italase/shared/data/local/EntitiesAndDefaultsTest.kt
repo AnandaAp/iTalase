@@ -9,6 +9,7 @@ import com.anlian.italase.shared.data.local.entity.DebtStatus
 import com.anlian.italase.shared.data.local.entity.ExpenseEntity
 import com.anlian.italase.shared.data.local.entity.PayMethod
 import com.anlian.italase.shared.data.local.entity.ProductEntity
+import com.anlian.italase.shared.data.local.entity.QrisConfigEntity
 import com.anlian.italase.shared.data.local.entity.SaleEntity
 import com.anlian.italase.shared.data.local.entity.SaleItemEntity
 import com.anlian.italase.shared.data.local.entity.TxnStatus
@@ -66,6 +67,7 @@ class EntitiesAndDefaultsTest {
         assertEquals("debts", Tables.DEBTS)
         assertEquals("debt_payments", Tables.DEBT_PAYMENTS)
         assertEquals("expenses", Tables.EXPENSES)
+        assertEquals("qris_config", Tables.QRIS_CONFIG)
     }
 
     @Test
@@ -101,6 +103,7 @@ class EntitiesAndDefaultsTest {
         assertEquals("TUNAI", PayMethod.TUNAI)
         assertEquals("TRANSFER", PayMethod.TRANSFER)
         assertEquals("BON", PayMethod.BON)
+        assertEquals("QRIS", PayMethod.QRIS)
 
         assertEquals("LUNAS", TxnStatus.LUNAS)
         assertEquals("BON", TxnStatus.BON)
@@ -154,6 +157,50 @@ class EntitiesAndDefaultsTest {
         assertEquals(1, exp.id)
         assertEquals(50000, exp.amount)
         assertEquals(exp, exp.copy())
+
+        val b1 = byteArrayOf(1, 2, 3)
+        val b2 = byteArrayOf(1, 2, 3)
+        val b3 = byteArrayOf(4, 5, 6)
+        val qris1 = QrisConfigEntity(
+            id = 1, isEnabled = true, imageBytes = b1, mimeType = "image/jpeg",
+            promptDismissCount = 1, updatedAt = 100L
+        )
+        val qris2 = QrisConfigEntity(
+            id = 1, isEnabled = true, imageBytes = b2, mimeType = "image/jpeg",
+            promptDismissCount = 1, updatedAt = 100L
+        )
+        val qris3 = QrisConfigEntity(
+            id = 1, isEnabled = true, imageBytes = b3, mimeType = "image/jpeg",
+            promptDismissCount = 1, updatedAt = 100L
+        )
+        val qrisNull = QrisConfigEntity(id = 1, isEnabled = false, imageBytes = null)
+
+        assertEquals(1, qris1.id)
+        assertTrue(qris1.isEnabled)
+        assertEquals("image/jpeg", qris1.mimeType)
+        assertEquals(1, qris1.promptDismissCount)
+        assertEquals(100L, qris1.updatedAt)
+
+        assertEquals(qris1, qris2)
+        assertEquals(qris1.hashCode(), qris2.hashCode())
+        assertTrue(qris1 == qris1)
+        assertFalse(qris1.equals(null))
+        assertFalse(qris1.equals("string"))
+
+        assertFalse(qris1 == qris3)
+        assertFalse(qris1 == qrisNull)
+        assertFalse(qrisNull == qris1)
+        assertFalse(qris1 == qris1.copy(id = 2))
+        assertFalse(qris1 == qris1.copy(isEnabled = false))
+        assertFalse(qris1 == qris1.copy(mimeType = "image/png"))
+        assertFalse(qris1 == qris1.copy(promptDismissCount = 2))
+        assertFalse(qris1 == qris1.copy(updatedAt = 200L))
+
+        assertEquals(qrisNull, qrisNull.copy())
+        assertEquals(qrisNull.hashCode(), qrisNull.copy().hashCode())
+
+        assertTrue(qris1.toString().contains("3 bytes"))
+        assertTrue(qrisNull.toString().contains("null"))
     }
 
     @Test

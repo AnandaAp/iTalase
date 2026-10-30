@@ -180,4 +180,74 @@ class ReceiptFormatterTest {
         assertTrue(col.startsWith("TOTAL"))
         assertTrue(col.endsWith("Rp10.000"))
     }
+
+    @Test
+    fun testThermalReceiptQrisPayment() {
+        val qrisDetail = sampleDetail(
+            receiptNo = 105L,
+            payMethod = PayMethod.QRIS,
+            status = TxnStatus.LUNAS,
+            total = 35_000L,
+            tendered = 35_000L,
+        )
+        val text = ReceiptFormatter.formatThermal(qrisDetail, lineWidth = ReceiptFormatter.WIDTH_58MM)
+
+        assertTrue(text.contains("Metode: QRIS"), "Harus menampilkan Metode: QRIS")
+        assertTrue(text.contains("LUNAS"), "Status harus LUNAS")
+        assertTrue(text.contains("TOTAL"), "Harus mencetak baris TOTAL")
+        assertTrue(text.contains("Rp35.000"), "Harus memuat nominal total")
+        assertTrue(text.contains("Bayar"), "Harus mencetak baris Bayar")
+        // Kembalian Rp0 tidak dicetak pada pembayaran QRIS
+        val lines = text.lines()
+        val hasKembali = lines.any { it.contains("Kembali") }
+        assertEquals(false, hasKembali, "Metode QRIS tidak boleh mencetak baris Kembali Rp0")
+    }
+
+    @Test
+    fun testWhatsAppReceiptQrisPayment() {
+        val qrisDetail = sampleDetail(
+            receiptNo = 105L,
+            payMethod = PayMethod.QRIS,
+            status = TxnStatus.LUNAS,
+            total = 35_000L,
+            tendered = 35_000L,
+        )
+        val wa = ReceiptFormatter.formatWhatsApp(qrisDetail)
+
+        assertTrue(wa.contains("Status    : *LUNAS* (QRIS)"), "Status WA harus *LUNAS* (QRIS)")
+        assertTrue(wa.contains("💰 *TOTAL: Rp35.000*"))
+        assertTrue(wa.contains("Uang Diterima: Rp35.000"))
+        val hasKembalian = wa.lines().any { it.contains("Kembalian") }
+        assertEquals(false, hasKembalian, "Metode QRIS tidak boleh mencetak baris Kembalian pada WA")
+    }
+
+    @Test
+    fun testThermalReceiptCashExactChangeZeroPrintsKembali() {
+        val cashExact = sampleDetail(
+            receiptNo = 106L,
+            payMethod = PayMethod.TUNAI,
+            status = TxnStatus.LUNAS,
+            total = 35_000L,
+            tendered = 35_000L,
+        )
+        val text = ReceiptFormatter.formatThermal(cashExact, lineWidth = ReceiptFormatter.WIDTH_58MM)
+        assertTrue(text.contains("Metode: Tunai"))
+        assertTrue(text.contains("Kembali"), "Metode Tunai harus tetap mencetak Kembali Rp0 jika uang pas")
+        assertTrue(text.contains("Rp0"))
+
+        val wa = ReceiptFormatter.formatWhatsApp(cashExact)
+        assertTrue(wa.contains("Kembalian    : Rp0"), "Metode Tunai WA harus tetap mencetak Kembalian Rp0")
+    }
+
+    @Test
+    fun testReceiptFormattingCoversAllPayMethods() {
+        val methods = listOf(PayMethod.TUNAI, PayMethod.TRANSFER, PayMethod.BON, PayMethod.QRIS, "DEBIT")
+        methods.forEach { method ->
+            val detail = sampleDetail(payMethod = method)
+            val thermal = ReceiptFormatter.formatThermal(detail)
+            val wa = ReceiptFormatter.formatWhatsApp(detail)
+            assertTrue(thermal.isNotBlank(), "Format thermal untuk $method tidak boleh kosong")
+            assertTrue(wa.isNotBlank(), "Format WA untuk $method tidak boleh kosong")
+        }
+    }
 }
