@@ -62,7 +62,7 @@ fun MoreScreen(onNavigate: (String) -> Unit = {}) {
         scrollBehavior?.state?.contentOffset = -scrollState.value.toFloat()
     }
     TopBarInfoEffect(
-        eyebrow = stringResource(Res.string.more_menu_count, 5),
+        eyebrow = stringResource(Res.string.more_menu_count, 6),
         title = stringResource(Res.string.title_more),
     )
     Column(
