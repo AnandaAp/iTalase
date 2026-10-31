@@ -66,4 +66,18 @@ object Routes {
 
     /** True kalau top bar harus merender tombol back untuk rute ini. */
     fun hasBackButton(route: String?): Boolean = route != null && route in BACK_ROUTES
+
+    // Layar yang seluruh layout-nya scrollable menembus di bawah top bar.
+    // Memerlukan efek liquid glass frost di mode potret dan docking adaptif di lanskap.
+    val FULL_PAGE_SCROLL_ROUTES: Set<String> = setOf(
+        HOME,
+        MORE,
+        SETTINGS,
+        SETTINGS_PAYMENT,
+        QRIS_SETUP,
+        QRIS_REVIEW,
+    )
+
+    /** True jika rute ini memiliki konten scrollable penuh yang melintas di bawah top bar. */
+    fun isFullPageScrollable(route: String?): Boolean = route != null && route in FULL_PAGE_SCROLL_ROUTES
 }

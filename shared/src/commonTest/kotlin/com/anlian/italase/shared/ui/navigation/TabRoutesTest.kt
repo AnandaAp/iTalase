@@ -77,4 +77,33 @@ class TabRoutesTest {
         }
         assertFalse(Routes.hasBackButton(null))
     }
+
+    @Test
+    fun fullPageScrollableRoutesIncludeHomeMoreAndSettingsSuite() {
+        listOf(
+            Routes.HOME,
+            Routes.MORE,
+            Routes.SETTINGS,
+            Routes.SETTINGS_PAYMENT,
+            Routes.QRIS_SETUP,
+            Routes.QRIS_REVIEW,
+        ).forEach {
+            assertTrue(Routes.isFullPageScrollable(it), "$it harus full page scroll")
+        }
+
+        listOf(
+            Routes.CASHIER,
+            Routes.STOCK,
+            Routes.DEBT,
+            Routes.HISTORY,
+            Routes.HISTORY_DETAIL,
+            Routes.EXPENSE,
+            null,
+            "tidak-ada",
+        ).forEach {
+            assertFalse(Routes.isFullPageScrollable(it), "$it bukan full page scroll")
+        }
+
+        assertTrue(Routes.FULL_PAGE_SCROLL_ROUTES.size == 6)
+    }
 }

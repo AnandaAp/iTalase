@@ -53,7 +53,9 @@ import com.anlian.italase.shared.ui.components.painter
 import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.components.rememberImagePickerLauncher
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
+import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
 import com.anlian.italase.shared.ui.theme.Marigold
 import com.anlian.italase.shared.ui.theme.MarigoldSoft
@@ -115,7 +117,12 @@ fun QrisSetupContent(
     modifier: Modifier = Modifier,
 ) {
     val appeared = rememberAppear()
+    val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val scrollState = rememberScrollState()
+
+    LaunchedEffect(scrollState.value) {
+        scrollBehavior?.state?.contentOffset = -scrollState.value.toFloat()
+    }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
@@ -123,35 +130,56 @@ fun QrisSetupContent(
         Column(
             Modifier
                 .fillMaxSize()
+                .nestedScrollConnection(scrollBehavior, null)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
         ) {
-            Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+            Spacer(Modifier.height(LocalTopOverlayPadding.current + (if (isLandscape) 6.dp else 14.dp)))
 
-            // Header kartu penjelasan
+            // Header kartu penjelasan ringkas & elegan
             GlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .enter(appeared, 0),
             ) {
-                Column(Modifier.padding(18.dp)) {
-                    Text(
-                        text = "Tambah Barcode QRIS Warung",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "Pelanggan dapat melakukan scan barcode pembayaran langsung di kasir. Pilih metode pengambilan gambar barcode toko Anda:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 20.sp,
-                    )
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            AppIcon.PAYMENTS.painter(),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "Barcode Pembayaran Toko",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "Pelanggan dapat scan barcode langsung di meja kasir. Pilih cara menambahkan barcode QRIS warung Anda:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 18.sp,
+                        )
+                    }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
 
             if (isLandscape) {
                 // Layout 2 Kolom untuk Lanskap
@@ -186,11 +214,11 @@ fun QrisSetupContent(
                 }
             } else {
                 // Layout Vertikal untuk Potret
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SetupOptionCard(
                         title = "Ambil Foto Barcode",
                         description = "Buka kamera untuk memotret stiker atau cetakan barcode QRIS warung Anda secara langsung.",
-                        badge = "Kamera",
+                        badge = "Kamera Langsung",
                         badgeColor = WarungGreenSoft,
                         badgeTextColor = WarungGreen,
                         iconTint = WarungGreen,
@@ -211,7 +239,7 @@ fun QrisSetupContent(
                 }
             }
 
-            Spacer(Modifier.height(LocalBottomOverlayPadding.current + 24.dp))
+            Spacer(Modifier.height(LocalBottomOverlayPadding.current + (if (isLandscape) 14.dp else 24.dp)))
         }
     }
 }
@@ -232,18 +260,18 @@ private fun SetupOptionCard(
 ) {
     GlassCard(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         onClick = onClick,
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 Modifier
-                    .size(54.dp)
+                    .size(50.dp)
                     .clip(CircleShape)
                     .background(badgeColor),
                 contentAlignment = Alignment.Center,
@@ -252,38 +280,36 @@ private fun SetupOptionCard(
                     AppIcon.PAYMENTS.painter(),
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(26.dp),
                 )
             }
 
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(14.dp))
 
             Column(Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(badgeColor)
+                        .padding(horizontal = 7.dp, vertical = 2.dp),
                 ) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
+                        text = badge,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = badgeTextColor,
+                        maxLines = 1,
+                        softWrap = false,
                     )
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(badgeColor)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Text(
-                            text = badge,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = badgeTextColor,
-                        )
-                    }
                 }
                 Spacer(Modifier.height(4.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(3.dp))
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
@@ -301,7 +327,6 @@ private fun SetupOptionCard(
         }
     }
 }
-
 /**
  * Dialog edukasi ramah ketika izin akses kamera ditolak pengguna.
  * Menggunakan Warung emerald palette yang menenangkan tanpa warna merah destruktif.

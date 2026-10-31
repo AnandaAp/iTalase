@@ -1,6 +1,7 @@
 package com.anlian.italase.shared.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,7 +35,8 @@ import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 /**
  * Layar Hub Pengaturan Toko (AUD-107).
  *
- * Titik masuk ke konfigurasi toko: metode pembayaran & QRIS kasir.
+ * Titik masuk ke konfigurasi toko: metode pembayaran & QRIS kasir,
+ * dengan tata letak responsif adaptive landscape & docking top bar liquid glass.
  */
 @Composable
 fun SettingsScreen(onNavigate: (String) -> Unit = {}) {
@@ -51,25 +53,102 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}) {
         title = "Pengaturan Toko",
     )
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .enter(appeared, 0)
-            .nestedScrollConnection(scrollBehavior, null)
-            .verticalScroll(scrollState)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val isLandscape = maxWidth > maxHeight
+        val topSpacerHeight = LocalTopOverlayPadding.current + (if (isLandscape) 6.dp else 14.dp)
+        val bottomSpacerHeight = LocalBottomOverlayPadding.current + (if (isLandscape) 14.dp else 24.dp)
 
-        SettingsRow(
-            title = "Metode Pembayaran",
-            desc = "Kelola QRIS kasir dan opsi pembayaran nontunai",
-            icon = AppIcon.PAYMENTS,
-        ) { onNavigate(Routes.SETTINGS_PAYMENT) }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .nestedScrollConnection(scrollBehavior, null)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp),
+        ) {
+            Spacer(Modifier.height(topSpacerHeight))
 
-        // Ruang ekor untuk scroll menembus bottom tab bar
-        Spacer(Modifier.height(LocalBottomOverlayPadding.current + 32.dp))
+            if (isLandscape) {
+                // Adaptive 2-Column Split-Pane untuk Mode Landscape & Tablet
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Column(
+                        Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        SettingsRow(
+                            title = "Metode Pembayaran",
+                            desc = "Kelola QRIS kasir dan opsi pembayaran nontunai",
+                            icon = AppIcon.PAYMENTS,
+                            modifier = Modifier.enter(appeared, 0),
+                        ) { onNavigate(Routes.SETTINGS_PAYMENT) }
+
+                        SettingsRow(
+                            title = "Format Struk & Cetak",
+                            desc = "Format struk belanja, header toko & thermal printer",
+                            icon = AppIcon.RECEIPT,
+                            modifier = Modifier.enter(appeared, 1),
+                        ) {}
+                    }
+
+                    Column(
+                        Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        SettingsRow(
+                            title = "Keamanan & Database",
+                            desc = "Basis data offline lokal & enkripsi SQLCipher",
+                            icon = AppIcon.HANDSHAKE,
+                            modifier = Modifier.enter(appeared, 2),
+                        ) {}
+
+                        SettingsRow(
+                            title = "Tentang Toko & App",
+                            desc = "Informasi versi aplikasi POS & profil warung",
+                            icon = AppIcon.STOREFRONT,
+                            modifier = Modifier.enter(appeared, 3),
+                        ) {}
+                    }
+                }
+            } else {
+                // Layout Vertikal untuk Mode Portrait
+                Column(
+                    Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SettingsRow(
+                        title = "Metode Pembayaran",
+                        desc = "Kelola QRIS kasir dan opsi pembayaran nontunai",
+                        icon = AppIcon.PAYMENTS,
+                        modifier = Modifier.enter(appeared, 0),
+                    ) { onNavigate(Routes.SETTINGS_PAYMENT) }
+
+                    SettingsRow(
+                        title = "Format Struk & Cetak",
+                        desc = "Format struk belanja, header toko & thermal printer",
+                        icon = AppIcon.RECEIPT,
+                        modifier = Modifier.enter(appeared, 1),
+                    ) {}
+
+                    SettingsRow(
+                        title = "Keamanan & Database",
+                        desc = "Basis data offline lokal & enkripsi SQLCipher",
+                        icon = AppIcon.HANDSHAKE,
+                        modifier = Modifier.enter(appeared, 2),
+                    ) {}
+
+                    SettingsRow(
+                        title = "Tentang Toko & App",
+                        desc = "Informasi versi aplikasi POS & profil warung",
+                        icon = AppIcon.STOREFRONT,
+                        modifier = Modifier.enter(appeared, 3),
+                    ) {}
+                }
+            }
+
+            Spacer(Modifier.height(bottomSpacerHeight))
+        }
     }
 }
 
@@ -78,9 +157,10 @@ private fun SettingsRow(
     title: String,
     desc: String,
     icon: AppIcon,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    GlassCard(onClick = onClick) {
+    GlassCard(onClick = onClick, modifier = modifier) {
         Row(
             Modifier
                 .fillMaxWidth()

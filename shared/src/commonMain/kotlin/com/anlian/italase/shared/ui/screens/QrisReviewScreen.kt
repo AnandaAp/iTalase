@@ -36,7 +36,9 @@ import com.anlian.italase.shared.ui.components.StatusChip
 import com.anlian.italase.shared.ui.components.enter
 import com.anlian.italase.shared.ui.components.rememberAppear
 import com.anlian.italase.shared.ui.navigation.LocalBottomOverlayPadding
+import com.anlian.italase.shared.ui.navigation.LocalTopAppBarScrollBehavior
 import com.anlian.italase.shared.ui.navigation.LocalTopOverlayPadding
+import com.anlian.italase.shared.ui.navigation.nestedScrollConnection
 import com.anlian.italase.shared.ui.navigation.TopBarInfoEffect
 import com.anlian.italase.shared.ui.theme.WarungGreen
 import org.jetbrains.compose.resources.decodeToImageBitmap
@@ -102,7 +104,12 @@ fun QrisReviewContent(
     modifier: Modifier = Modifier,
 ) {
     val appeared = rememberAppear()
+    val scrollBehavior = LocalTopAppBarScrollBehavior.current
     val scrollState = rememberScrollState()
+
+    LaunchedEffect(scrollState.value) {
+        scrollBehavior?.state?.contentOffset = -scrollState.value.toFloat()
+    }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
@@ -110,10 +117,11 @@ fun QrisReviewContent(
         Column(
             Modifier
                 .fillMaxSize()
+                .nestedScrollConnection(scrollBehavior, null)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
         ) {
-            Spacer(Modifier.height(LocalTopOverlayPadding.current + 8.dp))
+            Spacer(Modifier.height(LocalTopOverlayPadding.current + (if (isLandscape) 6.dp else 14.dp)))
 
             if (isLandscape) {
                 // Layout 2 Kolom untuk Lanskap (Split-Pane)
@@ -182,7 +190,7 @@ fun QrisReviewContent(
                 }
             }
 
-            Spacer(Modifier.height(LocalBottomOverlayPadding.current + 24.dp))
+            Spacer(Modifier.height(LocalBottomOverlayPadding.current + (if (isLandscape) 14.dp else 24.dp)))
         }
     }
 }

@@ -753,14 +753,14 @@ fun AppNavHost(
                             // Semua nilai diambil dari bucket route AKTIF: judul/eyebrow
                             // ditulis layar lewat TopBarInfoEffect, frost & interaksi dari scroll
                             // behavior milik destinasi aktif.
-                            // Di mode adaptive layout (landscape / tablet), efek frost & collapse
-                            // HANYA berlaku untuk Beranda (Routes.HOME) dan Lainnya (Routes.MORE)
-                            // karena di kedua layar tersebut seluruh layout scrollable dan melintas di bawah bar.
+                            // Rute berhalaman penuh (Beranda, Lainnya, Pengaturan, Pembayaran, QRIS Setup & Review)
+                            // menggulir seluruh layout-nya melintas di bawah top bar, sehingga top bar
+                            // menampilkan efek liquid glass frost di mode potret dan docking adaptif di lanskap.
                             // Di layar lain (Kasir, Stok, Bon, Riwayat, Pengeluaran),
                             // hanya daftar item internal yang bergulir di bawah search bar/filter tetap,
                             // sehingga top bar tetap di posisi rest (transparan & stabil).
                             val rawOffset = topBarState.behaviors[current]?.state?.contentOffset ?: 0f
-                            val frostOffset = if (isLandscape && current != Routes.HOME && current != Routes.MORE) 0f else rawOffset
+                            val frostOffset = if (Routes.isFullPageScrollable(current)) rawOffset else 0f
                             PremiumTopBar(
                                 eyebrow = topBarState.eyebrow[current].orEmpty(),
                                 title = topBarState.title[current].orEmpty(),
