@@ -38,7 +38,7 @@ Setiap token warna dikalibrasi secara presisi dan menjadi *single source of trut
 | **`Marigold`** | `#E8930C` | `secondary` | Kuning rempah hangat untuk aksi sekunder, diskon, dan peringatan. |
 | **`MarigoldSoft`** | `#FDEBC8` | `secondaryContainer` | Latar badge galeri foto & status chip netral. |
 | **`MarigoldInk`** | `#5C3800` | `onSecondaryContainer` | Teks di atas latar Marigold muda ($\ge 7:1$). |
-| **`Paper`** | `#FAF6EE` | `background` skema terang | Kertas krem warung. Sengaja sedikit lebih gelap dari `CardWhite` agar pulau kaca terlihat terangkat. |
+| **`Paper`** | `#FAF6EE` | `background` skema terang | Kertas krem warung. Sengaja lebih gelap dari `CardWhite` agar pulau kaca terlihat terangkat. |
 | **`CardWhite`** | `#FFFDF7` | `surface` skema terang | Putih susu hangat untuk kartu dan panel kaca. |
 | **`SandLow`** | `#F3EDDE` | `surfaceVariant` | Abu pasir lembut untuk selingan dan divider halus. |
 | **`InkSoft`** | `#6B6250` | `onSurfaceVariant` | Teks sekunder, label netral, dan ikon nonaktif. |
@@ -160,12 +160,120 @@ fun Modifier.glassSurface(
 
 ---
 
-## 4. Pola Isolasi Backdrop Blur & Modal Dialog
+## 4. Arsitektur & Panduan Tuning Transparansi Kaca (*Glass Alpha Tuning Guide*)
 
-### 4.1 Masalah Arsitektur Dialog di Jetpack Compose
+Tingkat transparansi (`alpha`) kaca di iTalase **tidak pernah dibuat seragam secara asal**. Besaran `alpha` dihitung secara matematis berdasarkan dua faktor penentu:
+1. **Karakter Lapisan Latar Belakang (*Backdrop Condition*)**: Apakah latar di belakang elemen sudah di-blur dan seragam, ataukah latar tajam dengan grafis dan teks tebal yang bergerak?
+2. **Kebutuhan Kontras Konten (*Information Hierarchy*)**: Seberapa padat informasi atau form input yang harus dibaca oleh pengguna di atas panel tersebut?
+
+### 4.1 Matriks Sweet Spot & Rasionale Nilai Alpha
+
+| Komponen UI | Alpha Terang | Alpha Gelap | Kondisi Latar Belakang | Rasionale & Rekomendasi Desain |
+| :--- | :---: | :---: | :--- | :--- |
+| **Pop-up Dialog Konfirmasi**<br>(`GlassConfirmDialog` / Exit / Hapus) | **`0.54f`** | **`0.58f`** | Latar Scaffold **SUDAH di-blur 20dp** + dim scrim gelap. | **Paling Bening (Kristal)**. Karena latar di belakangnya sudah diburamkan menjadi warna rata, alpha rendah (`0.54f`) tidak akan menyebabkan teks latar menembus. Teks dialog diwajibkan menggunakan `onSurface.copy(alpha = 0.86f)` agar kontras tetap $\ge 10:1$. |
+| **Form & Input Dialog**<br>(`GlassDialog` / Tambah Produk / Bayar) | **`0.88f`** | **`0.86f`** | Latar Scaffold di-blur 20dp + form isian (`OutlinedTextField`). | **Cukup Padat**. Field input teks memerlukan kontainer yang stabil agar teks yang diketik kasir tidak tampak berbayang atau silau dengan latar belakang dialog. |
+| **Kartu Konten Bergulir**<br>(`GlassCard` / `glassSurface`) | **`0.88f`** | **`0.80f` - `0.82f`** | Bergerak di atas wallpaper `Paper` dengan blob warna tanpa live blur. | **Translusen Padat**. Jika alpha diturunkan di bawah `0.80f` tanpa blur, elemen latar belakang bocor ke dalam kartu dan menimbulkan efek "kaca kotor" (*dirty glass*). Kesan kaca dibentuk oleh rim specular + diffuse shadow, bukan dari tembus pandang mentah. |
+| **Bottom Navigation Tab Bar**<br>(`LiquidGlassTabBar`) | **`0.85f`** | **`0.80f`** | Mengambang di atas konten scrollable, dialasi *scrim fade* 44dp. | **Mengambang Halus**. Didukung oleh wash scrim ber-alpha `0.90f` di belakangnya yang memudarkan teks scroll sebelum menyentuh panel bar. |
+| **Navigation Rail Lanskap**<br>(`LiquidGlassNavRail`) | **`0.88f`** | **`0.82f`** | Menempel di tepi kiri layar lanskap (`elevation = 20.dp`). | **Stabil & Tegas**. Mencegah konten yang bergulir horizontal atau transisi screen terlihat menumpuk di balik tombol navigasi. |
+| **Top App Bar Pinned**<br>(`PremiumTopBar`) | **`0.00f`** *(Rest)*<br>$\to$ **`0.97f`** *(Scrolled)* | **`0.00f`** *(Rest)*<br>$\to$ **`0.94f`** *(Scrolled)* | Saat diam: transparan murni.<br>Saat discroll: konten tebal melintas di belakang bar. | **Dinamis Paling Kedap**. Saat user scroll, teks judul kartu tebal dan angka omzet meluncur di bawah header. Alpha `0.97f` saat docked penuh menjamin **nol tabrakan teks** (*zero text collision*), dihiasi rim specular 1px di bibir bawah. |
+
+---
+
+### 4.2 Cara Mengatur Tingkat Transparansi di Kode
+
+#### A. Mengatur Transparansi pada Kartu Konten (`GlassCard` / `glassSurface`)
+Nilai bawaan (*default*) adalah `alpha = 0.88f`. Jika ingin kartu lebih tembus atau lebih pekat pada skenario tertentu:
+```kotlin
+// Cara 1: Mengatur parameter pada GlassCard langsung
+GlassCard(
+    alpha = 0.82f, // Membuat kartu sedikit lebih transparan
+    modifier = Modifier.fillMaxWidth(),
+) {
+    // Isi kartu
+}
+
+// Cara 2: Menggunakan Modifier.glassSurface langsung
+Modifier.glassSurface(
+    shape = RoundedCornerShape(20.dp),
+    tint = MaterialTheme.colorScheme.surface,
+    alpha = 0.80f,       // Atur transparansi dasar kaca
+    specular = 0.45f,    // Naikkan specular bila alpha diturunkan agar tepi tetap tegas
+    elevation = 16.dp,
+)
+```
+
+#### B. Mengatur Transparansi pada Pop-up Dialog (`GlassConfirmDialog` / `GlassDialog`)
+Buka [`Common.kt`](file:///c:/Users/anand/StudioProjects/iTalase/shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/components/Common.kt):
+```kotlin
+// Pada GlassConfirmDialog:
+Column(
+    modifier = Modifier
+        .clip(RoundedCornerShape(GLASS_RADIUS))
+        // Atur alpha panel di sini (Default: 0.54f terang / 0.58f gelap)
+        .background(scheme.surface.copy(alpha = if (isDark) 0.58f else 0.54f))
+)
+```
+> [!IMPORTANT]
+> **Aturan Teks Dialog**: Saat menurunkan alpha dialog di bawah `0.60f`, **JANGAN** gunakan `color = scheme.onSurfaceVariant` untuk isi pesan. Gunakan `color = scheme.onSurface.copy(alpha = 0.86f)` agar rasio kontras teks terhadap panel kaca tetap memenuhi standar aksesibilitas WCAG AA ($\ge 10:1$).
+
+#### C. Mengatur Transparansi pada Bottom Tab Bar & Scrim Wash
+Buka [`AppNavHost.kt`](file:///c:/Users/anand/StudioProjects/iTalase/shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/navigation/AppNavHost.kt):
+```kotlin
+// 1. Scrim Wash (Gradien pelindung di belakang bar)
+val scrimBase = scheme.background.copy(alpha = if (isDark) 0.88f else 0.90f)
+
+// 2. Panel Tab Bar Kaca
+Box(
+    Modifier
+        .fillMaxWidth()
+        .glassSurface(
+            shape = shape,
+            // Atur transparansi pulau kaca (Default: 0.85f terang / 0.80f gelap)
+            alpha = if (isDark) 0.80f else 0.85f,
+            elevation = 26.dp,
+            specular = 0.55f, // Specular rim kuat penanda tepi pulau mengambang
+        )
+)
+```
+
+#### D. Mengatur Transparansi Top App Bar saat Bergulir
+Buka [`AppNavHost.kt`](file:///c:/Users/anand/StudioProjects/iTalase/shared/src/commonMain/kotlin/com/anlian/italase/shared/ui/navigation/AppNavHost.kt) di dalam `PremiumTopBar`:
+```kotlin
+// Alpha dasar saat docked penuh (Default: 0.97f terang / 0.94f gelap)
+val glassBgAlpha = if (isDark) 0.94f * glass else 0.97f * glass
+
+// Diaplikasikan pada Box latar belakang Top Bar:
+.background(
+    Brush.verticalGradient(
+        listOf(
+            surface.copy(alpha = glassBgAlpha),
+            surface.copy(alpha = glassBgAlpha * 0.98f),
+        ),
+    ),
+)
+```
+
+---
+
+### 4.3 Hukum Kompensasi Kaca (*The Glass Compensation Rules*)
+Bila Anda perlu menyesuaikan transparansi untuk kebutuhan visual tertentu, ikuti 3 hukum kompensasi berikut agar UI tidak rusak:
+
+1. **Hukum Alpha-Specular Invers**:  
+   $$\text{Alpha Turun } \implies \text{ Naikkan Specular Sheen}$$  
+   Saat panel dibuat semakin transparan (misal dari `0.88f` turun ke `0.65f`), batas tepi kartu akan melemah. Kompensasikan dengan menaikkan parameter `specular` (misal dari `0.34f` ke `0.55f`) agar kilau cahaya di bibir atas mempertegas batas fisik kaca.
+2. **Hukum Scrim-Translucency untuk Elemen Mengambang**:  
+   Jangan pernah menurunkan alpha elemen mengambang (*floating navbar/topbar*) di bawah `0.80f` tanpa memasang *wash gradient/scrim* di bawahnya. Tanpa scrim, teks konten yang meluncur di bawah tombol navigasi akan bertabrakan dengan label ikon.
+3. **Hukum Kontras Input Solid**:  
+   Komponen yang berisi interaksi input pengguna aktif (seperti `TextField`, PIN, atau Barcode scanner) **TIDAK BOLEH** memiliki alpha di bawah `0.85f`. Input memerlukan ketegasan optik agar pengguna yakin dengan data yang dimasukkan.
+
+---
+
+## 5. Pola Isolasi Backdrop Blur & Modal Dialog
+
+### 5.1 Masalah Arsitektur Dialog di Jetpack Compose
 Dialog di Compose dirender di jendela terpisah (`android.ui.window.Dialog`). Menaruh `Modifier.blur` di dalam kartu dialog justru memburamkan teks dan ikon dialog itu sendiri.
 
-### 4.2 Solusi iTalase: Blur Scaffold Subtree Terpusat
+### 5.2 Solusi iTalase: Blur Scaffold Subtree Terpusat
 1. Buat *singleton state* penanda dialog:
    ```kotlin
    internal object GlassDialogBackdrop {
@@ -197,7 +305,7 @@ Dialog di Compose dirender di jendela terpisah (`android.ui.window.Dialog`). Men
 
 ---
 
-## 5. Tata Letak Multi-Orientasi & Desain Adaptif
+## 6. Tata Letak Multi-Orientasi & Desain Adaptif
 
 iTalase mendukung secara penuh mode **Portrait** ponsel, **Landscape** ponsel (POS mode meja kasir), dan **Tablet/Foldable**.
 
@@ -215,11 +323,11 @@ graph TD
     C --> C3["POS Dual-Column Split-Pane Layout"]
 ```
 
-### 5.1 Navigasi: Bottom Tab Bar vs Navigation Rail
+### 6.1 Navigasi: Bottom Tab Bar vs Navigation Rail
 - **Portrait**: Menggunakan `LiquidGlassTabBar` mengambang di bawah layar dengan *fade scrim* 44dp di belakangnya.
 - **Landscape**: Tab bar horizontal memakan ruang vertikal yang sangat berharga di ponsel. Oleh karena itu, antarmuka otomatis beralih ke `LiquidGlassNavRail` selebar 72dp di sisi kiri yang menyatu dengan *cutout* & *status bar insets*.
 
-### 5.2 Top App Bar Dinamis (`PremiumTopBar`)
+### 6.2 Top App Bar Dinamis (`PremiumTopBar`)
 Top bar iTalase beradaptasi secara cerdas berdasarkan orientasi dan status scroll:
 
 ```kotlin
@@ -237,7 +345,7 @@ val frostOffset = if (Routes.isFullPageScrollable(current)) rawOffset else 0f
   - *Eyebrow* memudar (*fade-out*) dan menyusut (*height collapse*) otomatis saat scroll, sehingga bar bertransformasi menjadi *single-line pinned header*.
   - Padding vertikal menyempit secara dinamis (`topPad` menyusut 50%, `bottomPad` menyusut 40%).
 
-### 5.3 Paradigma POS Split-Pane
+### 6.3 Paradigma POS Split-Pane
 Pada layar lanskap, layar utama dibagi menjadi 2 kolom dengan rasio yang seimbang:
 1. **Layar Kasir (`CashierScreen`)**:
    - *Kolom Kiri (Weight 1.2f)*: Filter kategori chip + katalog grid produk.
@@ -251,15 +359,15 @@ Pada layar lanskap, layar utama dibagi menjadi 2 kolom dengan rasio yang seimban
 
 ---
 
-## 6. Fisika Gerak Apple & Mikro-Interaksi
+## 7. Fisika Gerak Apple & Mikro-Interaksi
 
-### 6.1 Respon Sentuh Pegas (*Touch Feedback*)
+### 7.1 Respon Sentuh Pegas (*Touch Feedback*)
 Jangan gunakan *ripple effect* persegi Material standar di atas permukaan kaca. Gunakan *press-scale* berbasis `graphicsLayer`:
 - **Kartu Kaca (`GlassCard`)**: `scale = 0.975f` saat ditekan.
 - **Item Tab / Nav Rail**: `scale = 0.94f` saat ditekan.
 - **Tombol Kembali / Ikon Bulat**: `scale = 0.88f` saat ditekan dengan `Spring.DampingRatioMediumBouncy`.
 
-### 6.2 Animasi Masuk Bertahap (*Cascading Enter Transition*)
+### 7.2 Animasi Masuk Bertahap (*Cascading Enter Transition*)
 ```kotlin
 @Composable
 fun Modifier.enter(visible: Boolean, index: Int): Modifier {
@@ -283,11 +391,11 @@ fun Modifier.enter(visible: Boolean, index: Int): Modifier {
 
 ---
 
-## 7. Katalog Komponen Siap Pakai
+## 8. Katalog Komponen Siap Pakai
 
 Berikut adalah implementasi referensi untuk komponen-komponen inti:
 
-### 7.1 `GlassCard`
+### 8.1 `GlassCard`
 ```kotlin
 @Composable
 fun GlassCard(
@@ -305,7 +413,7 @@ fun GlassCard(
 }
 ```
 
-### 7.2 `GlassButton` (Pill Button)
+### 8.2 `GlassButton` (Pill Button)
 ```kotlin
 @Composable
 fun GlassButton(
@@ -344,7 +452,7 @@ fun GlassButton(
 }
 ```
 
-### 7.3 `StatusChip`
+### 8.3 `StatusChip`
 ```kotlin
 @Composable
 fun StatusChip(text: String, good: Boolean) {
@@ -367,12 +475,13 @@ fun StatusChip(text: String, good: Boolean) {
 
 ---
 
-## 8. Checklist Verifikasi Anti AI-Slop (Audit Gate)
+## 9. Checklist Verifikasi Anti AI-Slop (Audit Gate)
 
-Sebelum menandai sebuah antarmuka selesai, lakukan audit terhadap 7 butir pemeriksaan berikut:
+Sebelum menandai sebuah antarmuka selesai, lakukan audit terhadap 8 butir pemeriksaan berikut:
 
 - [ ] **Tidak Ada Border Stroke Kaku**: Komponen tidak menggunakan `border = BorderStroke(1.dp, Color.Gray)`. Efek batas murni dibentuk dari specular rim atau kontras luminance Paper vs CardWhite.
 - [ ] **Zero Live Blur dalam Scroll**: Tidak ada `Modifier.blur()` pada kartu di dalam LazyColumn/scroll list. Blur hanya di Scaffold overlay dialog.
+- [ ] **Tuning Alpha Sesuai Matriks**: Dialog menggunakan $\alpha \approx 0.54$, kartu scroll menggunakan $\alpha \approx 0.88$, tab bar menggunakan $\alpha \approx 0.85$, dan top bar docked menggunakan $\alpha \approx 0.97$.
 - [ ] **Uji Rotasi Layar (Landscape & Portrait)**: Layar telah diuji pada orientasi landscape. Dialog tidak overflow dan form input memakai `imePadding()`.
 - [ ] **Transisi Berbobot (Apple Springs)**: Klik tombol dan kartu menggunakan *press-scale* (`0.975f` / `0.94f`), bukan ripple kotak.
 - [ ] **Palet Budaya Warung Asli**: Warna dominan adalah `WarungGreen` (`#1D6B3C`), `Paper` (`#FAF6EE`), dan `CardWhite` (`#FFFDF7`). Tidak ada gradien ungu generik.
