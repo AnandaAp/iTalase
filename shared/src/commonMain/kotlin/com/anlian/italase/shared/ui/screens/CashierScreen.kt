@@ -1066,9 +1066,11 @@ fun PayDialog(
                                 bitmap = qrisBitmap,
                                 contentDescription = "Barcode QRIS Pembayaran",
                                 contentScale = ContentScale.Fit,
+                                // Tinggi diperbesar (potret 380.dp, lanskap 240.dp) dan lebar
+                                // mengikuti rasio aspek bitmap agar kode QR tampil besar &
+                                // utuh untuk dipindai pelanggan, bukan strip kecil di tengah.
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = if (isLandscape) 140.dp else 220.dp),
+                                    .heightIn(max = if (isLandscape) 240.dp else 380.dp),
                             )
                         } else {
                             Text(

@@ -168,7 +168,7 @@ fun QrisReviewContent(
                             .enter(appeared, 0),
                         contentAlignment = Alignment.Center,
                     ) {
-                        ImagePreviewCard(imageBitmap = imageBitmap, maxHeight = 340)
+                        ImagePreviewCard(imageBitmap = imageBitmap, maxHeight = 440)
                     }
 
                     Spacer(Modifier.height(16.dp))
