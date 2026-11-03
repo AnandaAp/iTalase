@@ -312,9 +312,13 @@ private fun QrisBarcodeCard(
                         Image(
                             bitmap = bitmap,
                             contentDescription = "Barcode QRIS Warung",
+                            // Ukuran mengikuti tinggi (maks 420.dp), lebar menyesuaikan rasio
+                            // aspek bitmap: foto QRIS potret tampil utuh & besar di tengah
+                            // panggung putih, bukan menyusut jadi strip sempit seperti
+                            // sebelumnya (fillMaxWidth + maks 190.dp). Foto lanskap tetap
+                            // dibatasi lebar kontainer oleh ContentScale.Fit.
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 140.dp, max = 190.dp),
+                                .heightIn(max = 420.dp),
                             contentScale = ContentScale.Fit,
                         )
                     } else {
